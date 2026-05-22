@@ -1,4 +1,4 @@
-import { Info, Github, Shield } from 'lucide-react';
+import { Info, Shield } from 'lucide-react';
 
 export default function AboutPage() {
   return (
