@@ -74,40 +74,76 @@ const TN_KEYWORDS = [
   'tasmac', 'kalaignar', 'magalir urimai',
 ];
 
+// Strict incident keywords — title must contain at least one of these.
+// Removed generic political terms (cm, minister, mla, cabinet, scheme, etc.)
+// because they were letting through pure cabinet/politics news.
 const POLITICAL_INCIDENT_KEYWORDS = [
-  // Crime / safety
-  'murder', 'rape', 'sexual assault', 'molestation', 'arrest', 'fir', 'crime',
-  'killed', 'death', 'custodial', 'lathi', 'lockup', 'encounter',
-  'honour killing', 'caste violence', 'dalit', 'sc/st',
-  // Governance failures
-  'power cut', 'blackout', 'shutdown', 'water shortage', 'sewage',
-  'flood', 'rain', 'inundation', 'pothole', 'garbage',
-  // Corruption / governance
-  'corruption', 'scam', 'tender', 'bribe', 'graft', 'kickback',
-  'cm', 'minister', 'mla', 'mp', 'cabinet', 'inauguration', 'foundation',
-  'scheme', 'launch', 'inaugurate', 'announce', 'flagship',
-  // Press freedom
-  'journalist', 'press', 'media raid', 'sedition', 'ipc 153',
-  // Communal
-  'communal', 'riot', 'clash', 'mosque', 'temple', 'church',
-  // Economy
-  'foxconn', 'pegatron', 'tata', 'vedanta', 'investment',
-  'unemployment', 'job', 'closure', 'layoff', 'msme',
-  // Fact-check / propaganda
-  'fake', 'misleading', 'edited video', 'morphed', 'fact check', 'debunked',
-  'ai generated', 'deepfake',
+  // Crime / safety (specific events)
+  'murder', 'murdered', 'rape', 'raped', 'sexual assault', 'molestation', 'gangrape',
+  'arrest', 'arrested', 'fir', 'custodial death', 'lockup death', 'encounter',
+  'killed', 'lynching', 'honour killing', 'caste violence', 'dalit attack',
+  'kidnap', 'abduct', 'trafficking', 'pocso',
+  // Civic failures (concrete impact)
+  'power cut', 'blackout', 'power outage', 'water shortage', 'water crisis',
+  'sewage overflow', 'flooding', 'inundation', 'pothole accident', 'building collapse',
+  'oxygen shortage', 'medicine shortage', 'hospital death', 'medical negligence',
+  // Corruption / vigilance (specific cases)
+  'bribe', 'graft', 'kickback', 'embezzlement', 'fraud', 'vigilance arrest',
+  'tender scam', 'tender irregularity', 'cbi raid', 'ed raid', 'vigilance raid',
+  'fake degree', 'corruption case', 'disproportionate assets',
+  // Governance failure (specific decisions/incidents)
+  'scheme cancelled', 'scheme paused', 'scheme withdrawn', 'subsidy cut',
+  'fare hike', 'tariff hike', 'license revoked', 'permit denied',
+  'farmer protest', 'worker protest', 'labour strike',
+  'rebrands', 'rebranded', 'renamed', 'relaunched',  // credit-steal signals
+  // Press freedom (concrete)
+  'journalist arrested', 'journalist raided', 'media raid', 'sedition charge',
+  'press freedom', 'media blackout', 'channel banned',
+  // Communal / violence
+  'communal clash', 'riot', 'mob attack', 'lynched', 'mosque attack', 'church attack',
+  // Industrial flight (concrete)
+  'factory closure', 'plant shutdown', 'layoff', 'mass termination',
+  'company exits', 'investment withdrawn',
+  // Propaganda / fake news (concrete)
+  'fake news', 'fact check', 'debunked', 'edited video', 'morphed image',
+  'ai generated image', 'deepfake', 'altered photo',
+];
+
+// Stronger exclusion: titles dominated by these are pure politics
+// (we'd waste OpenRouter calls on them), so we exclude when ALL signal
+// words in the title are politics-only.
+const NOISE_KEYWORDS = [
+  'cabinet expansion', 'cabinet portfolio', 'sworn in', 'swearing in',
+  'alliance', 'joins party', 'exits party', 'quits party',
+  'oath', 'foundation day', 'birth anniversary', 'death anniversary',
+  'press meet', 'press conference',
 ];
 
 const WEBHOOK_URL = process.env.WEBHOOK_URL || '';
 const WEBHOOK_SECRET = process.env.WEBHOOK_SECRET || '';
 
 function isRelevant(title = '', text = '') {
+  const titleLower = title.toLowerCase();
   const combined = (title + ' ' + text).toLowerCase();
   const hasGeo = TN_KEYWORDS.some(kw => combined.includes(kw));
-  const hasIncident = POLITICAL_INCIDENT_KEYWORDS.some(kw => combined.includes(kw));
-  // Need BOTH a TN-geo signal AND a substantive incident signal.
-  // This catches "Madurai murder" (geo + incident) but skips "Madurai weather forecast".
-  return hasGeo && hasIncident;
+
+  // Title MUST contain at least one specific incident keyword.
+  // We check title (not full text) because article bodies often mention
+  // crime/corruption in unrelated tangents.
+  const hasIncidentInTitle = POLITICAL_INCIDENT_KEYWORDS.some(kw => titleLower.includes(kw));
+  if (!hasGeo || !hasIncidentInTitle) return false;
+
+  // Exclude when the title is dominated by political-noise words AND has
+  // no concrete incident signal beyond "rebrand/scheme/protest".
+  const noiseHits = NOISE_KEYWORDS.filter(kw => titleLower.includes(kw)).length;
+  if (noiseHits >= 1) {
+    // Allow only if there's a strong incident keyword like murder/bribe/scam/arrest
+    const STRONG = ['murder', 'rape', 'bribe', 'scam', 'arrest', 'fir', 'killed',
+                    'raid', 'power cut', 'protest', 'strike', 'closure', 'rebrand',
+                    'kickback', 'fraud', 'embezzle', 'corruption case'];
+    if (!STRONG.some(kw => titleLower.includes(kw))) return false;
+  }
+  return true;
 }
 
 function extractImageUrls($el) {

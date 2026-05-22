@@ -31,12 +31,15 @@ SYSTEM_PROMPT = f"""You are a fact-checking analyst for a Tamil Nadu accountabil
 
 CONTEXT:
 - The TVK (Tamilaga Vettri Kazhagam) government under CM Vijay took office on {GOVT_START}.
-- Everything happening in Tamil Nadu after that date falls under TVK's responsibility,
-  regardless of whether TVK is directly named in the article.
+- We track SPECIFIC INCIDENTS that count as governance failures, crimes, broken
+  promises, or credit stealing — NOT general political news or commentary.
 - The previous DMK government (under M.K. Stalin, 2021-2026) launched many welfare
-  schemes, infrastructure projects, and industrial investments. A pattern to flag is
-  "credit stealing" — when the TVK government renames, expands, or relaunches these
-  initiatives without acknowledgement.
+  schemes. Flag "credit stealing" when TVK renames, expands, or relaunches these
+  without acknowledgement.
+
+CRITICAL: be STRICT. Set is_relevant=false aggressively. Most articles are political
+narrative, not incidents. Only track articles describing a concrete event with a
+named victim/perpetrator/place OR a specific policy decision with concrete impact.
 
 Respond ONLY with valid JSON. No markdown fences, no explanation."""
 
@@ -80,14 +83,75 @@ Return JSON with these fields exactly:
   "reason": "one-sentence rationale for confidence + relevance"
 }}
 
-RELEVANCE RULES (apply liberally — when in doubt, set is_relevant=true):
-  - Any crime, governance failure, or civic issue in Tamil Nadu after {today}
-    is relevant — TVK is the ruling government and accountable.
-  - National political news (Modi, BJP, etc.) is NOT relevant unless it
-    directly impacts TN.
-  - Sports, entertainment, lifestyle, business deals outside TN: NOT relevant.
-  - Weather forecasts alone: NOT relevant. Weather causing failure (flood,
-    no power restoration): RELEVANT (civic_failure).
+RELEVANCE RULES (be STRICT — when in doubt, set is_relevant=FALSE):
+
+✅ TRACK these (is_relevant=true):
+  - Crime against a specific person/group with named victim or location
+    (murder, rape, assault, custodial death, communal/caste attack)
+  - Named corruption case: bribe demand, scam, FIR filed, vigilance arrest,
+    tender irregularity with named amount
+  - Specific civic failure with named place + measurable impact: power cut
+    > 3 hours in named area, water shortage, flooding, sewage backup,
+    hospital oxygen shortage
+  - Specific TVK policy decision with concrete impact: scheme launch,
+    scheme cancellation, budget cut, fare hike, license revocation
+  - Broken/delayed manifesto promise (named promise + deadline)
+  - Credit stealing: TVK announcing scheme that matches DMK registry above
+  - Press freedom: named journalist arrested/raided, named media outlet
+    sealed
+  - AI-generated or doctored image flagged in news with debunk
+
+❌ SKIP these (is_relevant=false):
+  - Cabinet appointments, portfolio allocations, swearing-in (NOT incidents)
+  - Party alliances forming/breaking (politics, not failure)
+  - Generic CM/Minister speeches at events or press conferences
+  - Opinion pieces, editorials, columnist takes
+  - "X criticised Y" / "X said Y said" — pure he-said-she-said
+  - Election commentary that's not a court ruling against TVK
+  - Stalin's or DMK's reactions (we track DMK-era proof, not DMK's words)
+  - Hindi-Tamil debates unless a specific imposition order exists
+  - Movie/celebrity/sports/entertainment (even if Vijay is mentioned)
+  - National news (Modi, BJP, RSS, parliament) unless directly affecting TN
+  - Weather forecasts alone (only flood/power-failure CONSEQUENCES count)
+  - VCK/Congress joining TVK = alliance news, NOT incident
+  - "AIADMK leader exits party" = party politics, NOT TVK incident
+  - General investment summits, MoU signings without delivery problems
+
+EXAMPLES (study these carefully):
+  EX 1: "TVK Cabinet Expansion to 33 Ministers; Congress Joins"
+    → is_relevant=FALSE. Cabinet news, no incident.
+
+  EX 2: "Erode contract employee suspended for demanding Rs 500 bribe"
+    → is_relevant=TRUE, category=corruption, location=Erode, severity=2.
+
+  EX 3: "CM Vijay's appeal to children invites Madras HC PIL"
+    → is_relevant=FALSE unless court has already ruled — currently just a
+    petition. Track when verdict comes.
+
+  EX 4: "Power cut for 6 hours in T. Nagar, residents protest"
+    → is_relevant=TRUE, category=power_cut, location=T. Nagar, severity=3.
+
+  EX 5: "Stalin urges DMK cadre to avoid harsh criticism of new govt"
+    → is_relevant=FALSE. Politics. Not a TVK incident.
+
+  EX 6: "TVK announces Rs 1500/month women's scheme, opposition flags
+        similarity to Magalir Urimai"
+    → is_relevant=TRUE, category=credit_stealing,
+    related_dmk_scheme=Kalaignar Magalir Urimai Thittam.
+
+  EX 7: "Foxconn announces new investment in Tamil Nadu"
+    → is_relevant=TRUE only if TVK is taking credit OR if it's a
+    cancellation/exit. Pure new MoU = false.
+
+  EX 8: "TASMAC workers protest 717 shop closures"
+    → is_relevant=TRUE, category=governance OR alcohol_menace
+    (TVK policy with concrete worker impact).
+
+  EX 9: "Honour killing in Tiruvannamalai: woman killed by family"
+    → is_relevant=TRUE, category=honour_killing, severity=5.
+
+  EX 10: "Vijay's Cabinet has record 7 SC community members"
+    → is_relevant=FALSE. Composition news, not incident.
 
 CREDIT-STEAL DETECTION:
   - If the article describes TVK announcing/expanding/relaunching/renaming
