@@ -271,9 +271,17 @@ async def process_article(item: ApifyWebhookItem) -> None:
         logger.info("Cross-reference: %s now at %d sources [%s]", signature, new_count, new_status)
         return
 
-    # ---- 4. First sighting of this event — insert as pending_verification ----
-    verification_status = "pending_verification"
-    publish_status = "pending_review"  # not yet shown publicly
+    # ---- 4. First sighting of this event — decide auto-publish vs queue ----
+    # Rule: high-tier outlet (primary/established_press) + AI confidence ≥ 0.7
+    # is good enough to auto-publish as single-source. Future articles from
+    # other outlets graduate it to multi_source_verified.
+    HIGH_TIER = {"primary", "established_press"}
+    if tier in HIGH_TIER and confidence >= 0.7:
+        verification_status = "pending_verification"  # waiting for cross-ref
+        publish_status = "approved"                    # but show publicly meanwhile
+    else:
+        verification_status = "pending_verification"
+        publish_status = "pending_review"  # held back from public view
 
     incident_payload = {
         "title": extracted["title"],

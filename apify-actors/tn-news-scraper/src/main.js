@@ -41,6 +41,18 @@ const RSS_FEEDS = [
 
   // User-requested
   { name: 'spark_plus',            tier: 'online_native',     url: 'https://www.sparkpluz.com/feed' },
+
+  // Crime-focused / district editions / specific beats
+  { name: 'hindu_cities',          tier: 'established_press', url: 'https://www.thehindu.com/news/cities/feeder/default.rss' },
+  { name: 'hindu_chennai',         tier: 'established_press', url: 'https://www.thehindu.com/news/cities/chennai/feeder/default.rss' },
+  { name: 'hindu_madurai',         tier: 'established_press', url: 'https://www.thehindu.com/news/cities/Madurai/feeder/default.rss' },
+  { name: 'hindu_coimbatore',      tier: 'established_press', url: 'https://www.thehindu.com/news/cities/Coimbatore/feeder/default.rss' },
+  { name: 'hindu_tiruchirappalli', tier: 'established_press', url: 'https://www.thehindu.com/news/cities/Tiruchirapalli/feeder/default.rss' },
+  { name: 'toi_madurai',           tier: 'established_press', url: 'https://timesofindia.indiatimes.com/rssfeeds/-2128670595.cms' },
+  { name: 'toi_coimbatore',        tier: 'established_press', url: 'https://timesofindia.indiatimes.com/rssfeeds/-2128710697.cms' },
+  { name: 'toi_trichy',            tier: 'established_press', url: 'https://timesofindia.indiatimes.com/rssfeeds/-2128820097.cms' },
+  { name: 'ndtv_offbeat',          tier: 'established_press', url: 'https://feeds.feedburner.com/ndtvnews-offbeat' },
+  { name: 'newsmobile',            tier: 'online_native',     url: 'https://newsmobile.in/articles/feed/' },
 ];
 
 /**
