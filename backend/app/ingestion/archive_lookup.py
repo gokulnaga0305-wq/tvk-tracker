@@ -54,18 +54,32 @@ def find_precedents(
     db = get_db()
     results: dict[str, dict] = {}  # id -> result
 
-    # ---- Stage 1: exact scheme link ----
+    # ---- Stage 1: exact scheme link (highest confidence) ----
     if related_scheme:
         try:
             scheme = (
                 db.table("dmk_schemes")
-                .select("id, name")
-                .ilike("name", related_scheme)
+                .select("id, name, aliases")
+                .eq("name", related_scheme)
                 .limit(1)
                 .execute()
             )
+            if not scheme.data:
+                scheme = (
+                    db.table("dmk_schemes")
+                    .select("id, name, aliases")
+                    .ilike("name", f"%{related_scheme}%")
+                    .limit(1)
+                    .execute()
+                )
+
             if scheme.data:
-                scheme_id = scheme.data[0]["id"]
+                row = scheme.data[0]
+                scheme_id = row["id"]
+                scheme_name = row["name"]
+                aliases = row.get("aliases") or []
+
+                # 1a. Pre-linked announcements (scheme_id column set by linker script)
                 linked = (
                     db.table("dmk_announcements")
                     .select("id, title, content, announcement_date, source, source_url")
@@ -77,8 +91,34 @@ def find_precedents(
                     results[a["id"]] = {
                         **a,
                         "match_score": 0.95,
-                        "match_reason": f"Linked to DMK scheme '{scheme.data[0]['name']}'",
+                        "match_reason": f"Linked to DMK scheme '{scheme_name}'",
                     }
+
+                # 1b. Text-search by scheme name + aliases (catches Tamil-script
+                # entries the linker script couldn't match)
+                terms = [scheme_name] + aliases
+                for t in terms:
+                    if not t or len(t) < 4:
+                        continue
+                    safe = t.replace("%", "")
+                    try:
+                        text_match = (
+                            db.table("dmk_announcements")
+                            .select("id, title, content, announcement_date, source, source_url")
+                            .or_(f"title.ilike.*{safe}*,content.ilike.*{safe}*")
+                            .limit(5)
+                            .execute()
+                        )
+                        for a in text_match.data or []:
+                            if a["id"] in results:
+                                continue
+                            results[a["id"]] = {
+                                **a,
+                                "match_score": 0.85,
+                                "match_reason": f"Mentions '{t}' (alias of {scheme_name})",
+                            }
+                    except Exception as e:
+                        logger.debug("Alias text-search failed for '%s': %s", t, e)
         except Exception as e:
             logger.debug("Scheme link lookup failed: %s", e)
 
