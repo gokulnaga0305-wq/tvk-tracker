@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.api.routes import stats, incidents, promises, members, ingest
+from app.api.routes import stats, incidents, promises, members, ingest, baselines, citizen
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -25,6 +25,8 @@ app.include_router(incidents.router, prefix="/api")
 app.include_router(promises.router, prefix="/api")
 app.include_router(members.router, prefix="/api")
 app.include_router(ingest.router, prefix="/api")
+app.include_router(baselines.router, prefix="/api")
+app.include_router(citizen.router, prefix="/api")
 
 
 @app.get("/health")

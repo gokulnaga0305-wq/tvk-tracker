@@ -1,7 +1,8 @@
 import StatCard from '@/components/StatCard';
 import TopBar from '@/components/TopBar';
 import IncidentCard from '@/components/IncidentCard';
-import { DashboardStats, Incident } from '@/lib/api';
+import BaselineDelta from '@/components/BaselineDelta';
+import { DashboardStats, Incident, BaselineRow } from '@/lib/api';
 import { CATEGORY_LABELS } from '@/lib/constants';
 import {
   DollarSign, Skull, ShieldAlert, Users, CheckSquare, Copy, AlertTriangle,
@@ -67,8 +68,25 @@ async function getRecentIncidents(): Promise<Incident[]> {
   }
 }
 
+async function getBaselines(): Promise<BaselineRow[]> {
+  try {
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/baselines/dashboard`,
+      { cache: 'no-store', signal: AbortSignal.timeout(10000) }
+    );
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
 export default async function DashboardPage() {
-  const [stats, incidents] = await Promise.all([getStats(), getRecentIncidents()]);
+  const [stats, incidents, baselines] = await Promise.all([
+    getStats(),
+    getRecentIncidents(),
+    getBaselines(),
+  ]);
 
   return (
     <>
@@ -96,6 +114,9 @@ export default async function DashboardPage() {
             color="text-green-400"
           />
         </div>
+
+        {/* DMK era vs TVK era delta panel */}
+        {baselines.length > 0 && <BaselineDelta rows={baselines} />}
 
         {/* Credit steal highlight */}
         {stats.credit_steal_count > 0 && (

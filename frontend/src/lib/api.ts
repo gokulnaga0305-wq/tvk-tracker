@@ -12,6 +12,27 @@ export interface DashboardStats {
   total_incidents: number;
 }
 
+export interface IncidentSource {
+  url: string;
+  outlet: string;
+  credibility_tier: string;
+  title?: string;
+}
+
+export interface DmkPrecedent {
+  match_score: number;
+  match_reason: string;
+  announcement: {
+    id: string;
+    title: string;
+    content: string | null;
+    source: string;
+    source_url: string | null;
+    announcement_date: string;
+    media_urls?: string[];
+  };
+}
+
 export interface Incident {
   id: string;
   title: string;
@@ -20,11 +41,44 @@ export interface Incident {
   incident_date: string;
   location: string | null;
   source_urls: string[];
+  sources?: IncidentSource[];
   is_credit_steal: boolean;
   original_credit: string | null;
+  related_dmk_scheme?: string | null;
   severity: number;
   ai_confidence: number;
   status: string;
+  verification_status?: string;
+  source_count?: number;
+  image_urls?: string[];
+  related_factchecks?: any[];
+  dmk_evidence?: DmkPrecedent[];
+  retraction_reason?: string | null;
+  created_at: string;
+}
+
+export interface BaselineRow {
+  category: string;
+  label: string;
+  dmk_monthly_avg: number;
+  dmk_source: string;
+  dmk_period: string;
+  tvk_count: number;
+  tvk_period_days: number;
+  expected_at_dmk_rate: number;
+  delta_pct: number | null;
+}
+
+export interface CitizenReport {
+  id: string;
+  title: string;
+  description: string;
+  category: string | null;
+  location: string | null;
+  incident_date: string | null;
+  image_urls: string[];
+  status: string;
+  reporter_name: string | null;
   created_at: string;
 }
 

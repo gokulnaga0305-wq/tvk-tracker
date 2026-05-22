@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, AlertTriangle, CheckSquare, Users,
-  ShieldAlert, EyeOff, Flag, Info, Copy,
+  ShieldAlert, EyeOff, Info, Copy, MessageSquarePlus, ShieldCheck,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -13,8 +13,8 @@ const NAV = [
   { href: '/credit-steals', label: 'Credit Steals', icon: Copy },
   { href: '/promises', label: 'Promises', icon: CheckSquare },
   { href: '/members', label: 'Members', icon: Users },
-  { href: '/censorship', label: 'Censorship Track', icon: EyeOff },
-  { href: '/fact-check', label: 'Fact Check', icon: ShieldAlert },
+  { href: '/report', label: 'Citizen Report', icon: MessageSquarePlus },
+  { href: '/methodology', label: 'Methodology', icon: ShieldCheck },
   { href: '/about', label: 'About', icon: Info },
 ];
 
