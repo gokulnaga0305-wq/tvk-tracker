@@ -21,6 +21,7 @@ from app.database import get_db
 from app.models.schemas import ApifyWebhookItem
 from app.ingestion.factcheck import lookup_factchecks
 from app.ingestion.image_check import enqueue_images
+from app.ingestion.archive_lookup import find_precedents, attach_evidence
 
 logger = logging.getLogger(__name__)
 
@@ -322,6 +323,24 @@ async def process_article(item: ApifyWebhookItem) -> None:
             enqueue_images(db, incident_id, image_urls)
         except Exception as e:
             logger.warning("Image check failed for %s: %s", incident_id, e)
+
+    # ---- 7. DMK archive cross-reference (only for credit-steal candidates) ----
+    if extracted.get("is_credit_steal") or extracted.get("related_dmk_scheme"):
+        try:
+            precedents = find_precedents(
+                incident_title=extracted["title"],
+                incident_summary=extracted["summary"],
+                related_scheme=extracted.get("related_dmk_scheme"),
+                limit=5,
+            )
+            attached = attach_evidence(incident_id, precedents)
+            if attached:
+                logger.info(
+                    "Cross-ref: attached %d DMK archive precedents to %s",
+                    attached, incident_id,
+                )
+        except Exception as e:
+            logger.warning("Archive cross-ref failed for %s: %s", incident_id, e)
 
     logger.info(
         "Saved [%s] conf=%.2f sig=%s: %s",

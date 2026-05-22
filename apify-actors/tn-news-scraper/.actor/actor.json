@@ -2,13 +2,11 @@
   "actorSpecification": 1,
   "name": "tn-news-scraper",
   "title": "Tamil Nadu News Scraper",
-  "description": "Scrapes TN political news via RSS feeds for TVK govt tracking",
+  "description": "Scrapes TN political + civic news via RSS for TVK accountability tracking",
   "version": "0.0",
   "buildTag": "latest",
   "environmentVariables": {
     "WEBHOOK_URL": "@WEBHOOK_URL",
     "WEBHOOK_SECRET": "@WEBHOOK_SECRET"
-  },
-  "dockerfile": "../Dockerfile",
-  "input": "./input_schema.json"
+  }
 }
