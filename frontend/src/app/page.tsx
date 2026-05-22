@@ -6,6 +6,7 @@ import { DashboardStats, Incident, BaselineRow } from '@/lib/api';
 import { CATEGORY_LABELS } from '@/lib/constants';
 import {
   DollarSign, Skull, ShieldAlert, Users, CheckSquare, Copy, AlertTriangle,
+  Zap, ZapOff, Wine, Megaphone, ShieldOff,
 } from 'lucide-react';
 
 // Fallback mock data — shown when API is not yet connected
@@ -100,7 +101,16 @@ export default async function DashboardPage() {
           </p>
         </div>
 
-        {/* Stat cards */}
+        {/* Trending / hot categories — Power Cut, EB Failure are top right now */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
+          <StatCard label="Power Cut" value={stats.power_cut_count ?? 0} icon={ZapOff} color="text-amber-400" />
+          <StatCard label="EB Failure" value={stats.eb_failure_count ?? 0} icon={Zap} color="text-yellow-400" />
+          <StatCard label="Alcohol Menace" value={stats.alcohol_menace_count ?? 0} icon={Wine} color="text-pink-400" />
+          <StatCard label="Police Excess" value={stats.police_excess_count ?? 0} icon={ShieldOff} color="text-red-400" />
+          <StatCard label="Fake News" value={stats.fake_news_count ?? 0} icon={Megaphone} color="text-fuchsia-400" />
+        </div>
+
+        {/* Crime stat cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
           <StatCard label="Corruption" value={stats.corruption_count} icon={DollarSign} color="text-yellow-400" />
           <StatCard label="Murders" value={stats.murders_count} icon={Skull} color="text-red-500" />

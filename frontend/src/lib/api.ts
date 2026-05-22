@@ -7,6 +7,15 @@ export interface DashboardStats {
   sexual_assault_count: number;
   crimes_women_kids_count: number;
   credit_steal_count: number;
+  power_cut_count?: number;
+  eb_failure_count?: number;
+  alcohol_menace_count?: number;
+  honour_killing_count?: number;
+  police_excess_count?: number;
+  broken_promise_count?: number;
+  attack_on_press_count?: number;
+  fake_news_count?: number;
+  custodial_death_count?: number;
   promises_kept: number;
   promises_total: number;
   total_incidents: number;
