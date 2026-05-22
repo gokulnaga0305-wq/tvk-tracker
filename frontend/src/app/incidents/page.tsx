@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useState, useEffect } from 'react';
 import IncidentCard from '@/components/IncidentCard';
 import { Incident } from '@/lib/api';
@@ -34,7 +34,7 @@ export default function IncidentsPage() {
     : incidents;
 
   return (
-    <div className="flex-1 p-6 max-w-7xl mx-auto w-full">
+    <div className="flex-1 p-3 sm:p-6 max-w-7xl mx-auto w-full">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Incidents</h1>
         <p className="text-gray-500 text-sm mt-1">All documented incidents by the TVK government</p>

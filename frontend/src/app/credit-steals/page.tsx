@@ -19,7 +19,7 @@ export default function CreditStealsPage() {
   }, []);
 
   return (
-    <div className="flex-1 p-6 max-w-7xl mx-auto w-full">
+    <div className="flex-1 p-3 sm:p-6 max-w-7xl mx-auto w-full">
       <div className="mb-2">
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Copy size={22} className="text-blue-400" />

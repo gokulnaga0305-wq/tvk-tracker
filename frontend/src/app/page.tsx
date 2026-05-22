@@ -92,7 +92,7 @@ export default async function DashboardPage() {
   return (
     <>
       <TopBar stats={stats} />
-      <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
+      <main className="flex-1 p-3 sm:p-6 max-w-7xl mx-auto w-full">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-white">Dashboard</h1>

@@ -142,7 +142,7 @@ export default function AdminPage() {
   ];
 
   return (
-    <div className="flex-1 p-6 max-w-5xl mx-auto w-full">
+    <div className="flex-1 p-3 sm:p-6 max-w-5xl mx-auto w-full">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <ShieldAlert size={22} className="text-orange-400" />

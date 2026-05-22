@@ -2,7 +2,7 @@ import { Info, Shield } from 'lucide-react';
 
 export default function AboutPage() {
   return (
-    <div className="flex-1 p-6 max-w-3xl mx-auto w-full">
+    <div className="flex-1 p-3 sm:p-6 max-w-3xl mx-auto w-full">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <Info size={22} className="text-orange-400" />

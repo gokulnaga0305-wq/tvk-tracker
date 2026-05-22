@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useState, useEffect } from 'react';
 import { Promise_ } from '@/lib/api';
 import { PROMISE_STATUS_COLORS } from '@/lib/constants';
@@ -65,7 +65,7 @@ export default function PromisesPage() {
   const pct = total > 0 ? Math.round((kept / total) * 100) : 0;
 
   return (
-    <div className="flex-1 p-6 max-w-5xl mx-auto w-full">
+    <div className="flex-1 p-3 sm:p-6 max-w-5xl mx-auto w-full">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white flex items-center gap-2">
           <CheckSquare size={22} className="text-green-400" />
