@@ -1,0 +1,29 @@
+{
+  "actorSpecification": 1,
+  "name": "tn-news-scraper",
+  "title": "Tamil Nadu News Scraper",
+  "description": "Scrapes TN political news from The Hindu, NDTV, Scroll, The Wire, TNM for TVK govt tracking",
+  "version": "1.0",
+  "input": {
+    "maxArticlesPerSource": {
+      "title": "Max articles per source",
+      "type": "integer",
+      "description": "How many articles to process per news source",
+      "default": 20,
+      "minimum": 5,
+      "maximum": 100
+    }
+  },
+  "environmentVariables": [
+    {
+      "name": "WEBHOOK_URL",
+      "description": "FastAPI backend webhook URL (e.g. https://your-api.com/api/ingest/apify-webhook)",
+      "isSecret": false
+    },
+    {
+      "name": "WEBHOOK_SECRET",
+      "description": "x-apify-secret header value matching ADMIN_SECRET in backend .env",
+      "isSecret": true
+    }
+  ]
+}

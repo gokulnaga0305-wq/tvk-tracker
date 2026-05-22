@@ -1,0 +1,14 @@
+{
+  "name": "tn-news-scraper",
+  "version": "1.0.0",
+  "description": "Scrapes Tamil Nadu political news for TVK government tracking",
+  "main": "src/main.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/main.js"
+  },
+  "dependencies": {
+    "apify": "^3.2.2",
+    "crawlee": "^3.9.0"
+  }
+}
