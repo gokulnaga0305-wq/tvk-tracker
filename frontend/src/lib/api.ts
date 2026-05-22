@@ -46,6 +46,7 @@ export interface Member {
   constituency: string | null;
   party: string;
   photo_url: string | null;
+  wiki_url?: string | null;
   incident_count?: number;
 }
 
