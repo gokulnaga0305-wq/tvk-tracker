@@ -3,23 +3,26 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, AlertTriangle, CheckSquare, Users,
-  ShieldAlert, EyeOff, Info, Copy, MessageSquarePlus, ShieldCheck,
+  Info, Copy, MessageSquarePlus, ShieldCheck,
 } from 'lucide-react';
 import clsx from 'clsx';
+import { useLocale } from './LocaleProvider';
+import { StringKey } from '@/lib/i18n';
 
-const NAV = [
-  { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/incidents', label: 'Incidents', icon: AlertTriangle },
-  { href: '/credit-steals', label: 'Credit Steals', icon: Copy },
-  { href: '/promises', label: 'Promises', icon: CheckSquare },
-  { href: '/members', label: 'Members', icon: Users },
-  { href: '/report', label: 'Citizen Report', icon: MessageSquarePlus },
-  { href: '/methodology', label: 'Methodology', icon: ShieldCheck },
-  { href: '/about', label: 'About', icon: Info },
+const NAV: { href: string; key: StringKey; icon: any }[] = [
+  { href: '/',              key: 'nav.dashboard',     icon: LayoutDashboard },
+  { href: '/incidents',     key: 'nav.incidents',     icon: AlertTriangle },
+  { href: '/credit-steals', key: 'nav.credit_steals', icon: Copy },
+  { href: '/promises',      key: 'nav.promises',      icon: CheckSquare },
+  { href: '/members',       key: 'nav.members',       icon: Users },
+  { href: '/report',        key: 'nav.report',        icon: MessageSquarePlus },
+  { href: '/methodology',   key: 'nav.methodology',   icon: ShieldCheck },
+  { href: '/about',         key: 'nav.about',         icon: Info },
 ];
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { t } = useLocale();
   return (
     <aside className="w-52 shrink-0 bg-[#111] border-r border-[#222] flex flex-col min-h-screen">
       <div className="px-4 py-5 border-b border-[#222]">
@@ -27,7 +30,7 @@ export default function Sidebar() {
         <span className="ml-2 text-[10px] bg-orange-600 text-white px-1.5 py-0.5 rounded font-semibold">BETA</span>
       </div>
       <nav className="flex-1 py-3 overflow-y-auto">
-        {NAV.map(({ href, label, icon: Icon }) => {
+        {NAV.map(({ href, key, icon: Icon }) => {
           const active = pathname === href || (href !== '/' && pathname.startsWith(href));
           return (
             <Link
@@ -41,13 +44,13 @@ export default function Sidebar() {
               )}
             >
               <Icon size={16} />
-              {label}
+              {t(key)}
             </Link>
           );
         })}
       </nav>
       <div className="px-4 py-3 border-t border-[#222] text-[11px] text-gray-600">
-        Tracking since May 11, 2026
+        {t('common.tracking_since')}
       </div>
     </aside>
   );
