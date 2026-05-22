@@ -11,7 +11,7 @@ router = APIRouter(prefix="/promises", tags=["promises"])
 async def list_promises(
     status: Optional[str] = None,
     category: Optional[str] = None,
-    limit: int = Query(100, le=200),
+    limit: int = Query(500, le=1000),
 ):
     db = get_db()
     query = db.table("promises").select("*")
