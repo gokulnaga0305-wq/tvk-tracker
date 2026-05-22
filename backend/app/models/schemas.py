@@ -129,6 +129,8 @@ class ApifyWebhookItem(BaseModel):
     text: str
     published_at: Optional[str] = None
     source: Optional[str] = None
+    tier: Optional[str] = None
+    image_urls: list[str] = []
 
 
 class ApifyWebhookPayload(BaseModel):

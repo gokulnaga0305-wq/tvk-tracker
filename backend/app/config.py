@@ -9,6 +9,8 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openrouter_api_key: str = ""
     apify_api_token: str = ""
+    google_fact_check_api_key: str = ""
+    huggingface_api_key: str = ""
     govt_start_date: date = date(2026, 5, 11)
     govt_name: str = "TVK"
     admin_secret: str = "change-this"
