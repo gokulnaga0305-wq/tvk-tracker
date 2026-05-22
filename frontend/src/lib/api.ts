@@ -45,6 +45,11 @@ export interface Incident {
   is_credit_steal: boolean;
   original_credit: string | null;
   related_dmk_scheme?: string | null;
+  tags?: string[];
+  flair?: string | null;
+  external_source_type?: string | null;
+  upvotes?: number;
+  comment_count?: number;
   severity: number;
   ai_confidence: number;
   status: string;

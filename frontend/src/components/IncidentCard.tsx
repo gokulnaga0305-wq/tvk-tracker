@@ -145,20 +145,32 @@ export default function IncidentCard({ incident }: { incident: Incident }) {
         isRetracted && 'opacity-50'
       )}
     >
-      {/* Top row: category + verification + severity */}
+      {/* Top row: tags + verification + severity */}
       <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
-        <div className="flex items-center gap-2 flex-wrap">
-          <span
-            className={clsx(
-              'text-[11px] font-semibold px-2 py-0.5 rounded border uppercase tracking-wider',
-              categoryColor
-            )}
-          >
-            {CATEGORY_LABELS[incident.category] || incident.category}
-          </span>
-          {incident.is_credit_steal && (
-            <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded border border-blue-500 text-blue-400 uppercase">
-              <Copy size={10} /> Credit Steal
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {/* Render every tag (multi-category) */}
+          {(incident.tags && incident.tags.length > 0 ? incident.tags : [incident.category]).map((t, i) => {
+            const color = CATEGORY_COLORS[t] || 'text-gray-400 border-gray-400';
+            return (
+              <span
+                key={i}
+                className={clsx(
+                  'text-[10px] font-semibold px-1.5 py-0.5 rounded border uppercase tracking-wider',
+                  color
+                )}
+              >
+                {CATEGORY_LABELS[t] || t.replace(/_/g, ' ')}
+              </span>
+            );
+          })}
+          {incident.is_credit_steal && (!incident.tags?.includes('credit_stealing')) && (
+            <span className="flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded border border-blue-500 text-blue-400 uppercase">
+              <Copy size={9} /> Credit Steal
+            </span>
+          )}
+          {incident.flair && (
+            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[#222] text-gray-300 italic">
+              {incident.flair}
             </span>
           )}
           <VerificationBadge incident={incident} />

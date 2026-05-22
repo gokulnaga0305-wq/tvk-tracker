@@ -23,6 +23,22 @@ def _enrich_sources(db, incidents: list[dict]) -> list[dict]:
     return incidents
 
 
+def _normalize_tags(incidents: list[dict]) -> list[dict]:
+    """Ensure every incident has a `tags` array. Falls back to [category]
+    if the DB doesn't have the column yet (pre-migration 008)."""
+    for inc in incidents:
+        if inc.get("tags") is None or inc.get("tags") == []:
+            cat = inc.get("category")
+            inc["tags"] = [cat] if cat else []
+        # Also pull extra tags out of ai_raw if present
+        raw = inc.get("ai_raw") or {}
+        extra = raw.get("tags_extra") or []
+        for t in extra:
+            if t not in inc["tags"]:
+                inc["tags"].append(t)
+    return incidents
+
+
 def _enrich_dmk_evidence(db, incidents: list[dict]) -> list[dict]:
     """Bulk-load top-3 DMK precedents for credit-steal incidents."""
     credit_steal_ids = [inc["id"] for inc in incidents if inc.get("is_credit_steal")]
@@ -76,6 +92,7 @@ async def list_incidents(
     data = res.data or []
     data = _enrich_sources(db, data)
     data = _enrich_dmk_evidence(db, data)
+    data = _normalize_tags(data)
     return data
 
 
