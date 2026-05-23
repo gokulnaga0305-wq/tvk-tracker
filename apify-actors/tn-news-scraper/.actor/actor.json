@@ -1,6 +1,6 @@
 {
   "actorSpecification": 1,
-  "name": "tn-news-scraper",
+  "name": "my-actor",
   "title": "Tamil Nadu News Scraper",
   "description": "Scrapes TN political + civic news via RSS for TVK accountability tracking",
   "version": "0.0",

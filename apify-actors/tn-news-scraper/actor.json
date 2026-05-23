@@ -1,6 +1,6 @@
 {
   "actorSpecification": 1,
-  "name": "tn-news-scraper",
+  "name": "my-actor",
   "title": "Tamil Nadu News Scraper",
   "description": "Scrapes TN political news from The Hindu, NDTV, Scroll, The Wire, TNM for TVK govt tracking",
   "version": "1.0",
