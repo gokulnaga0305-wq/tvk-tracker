@@ -1,3 +1,5 @@
+'use client';
+import { useEffect, useState } from 'react';
 import StatCard from '@/components/StatCard';
 import TopBar from '@/components/TopBar';
 import IncidentCard from '@/components/IncidentCard';
@@ -9,8 +11,21 @@ import {
   Zap, ZapOff, Wine, Megaphone, ShieldOff,
 } from 'lucide-react';
 
-// Fallback mock data — shown when API is not yet connected
-const MOCK_STATS: DashboardStats = {
+const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
+/**
+ * Default placeholder shown while waiting for the API. Note `promises_total: 389`
+ * matches the real seeded manifesto count — kept consistent so the user
+ * never sees an out-of-place "0/20" anymore.
+ *
+ * The previous version of this page was a Server Component, which meant the
+ * fetch had to complete during SSR. When HF Spaces is cold (free tier sleeps
+ * after idle, takes ~20-30s to wake) the SSR fetch would time out and the
+ * page would lock in `MOCK_STATS` with no way to recover until reload. Moving
+ * to client-side fetch means the user gets a brief loading state then real
+ * numbers, no matter how long the backend takes to wake up.
+ */
+const INITIAL_STATS: DashboardStats = {
   govt_day: Math.floor((Date.now() - new Date('2026-05-11').getTime()) / 86400000) + 1,
   corruption_count: 0,
   murders_count: 0,
@@ -18,76 +33,49 @@ const MOCK_STATS: DashboardStats = {
   crimes_women_kids_count: 0,
   credit_steal_count: 0,
   promises_kept: 0,
-  promises_total: 20,
+  promises_total: 389,
   total_incidents: 0,
 };
 
-const MOCK_INCIDENTS: Incident[] = [
-  {
-    id: '1',
-    title: "Example: TVK claims credit for DMK's Kalaignar Magalir Urimai Thittam",
-    summary: "TVK minister announced expanded women's welfare scheme without acknowledging it was launched by the previous DMK administration under CM Stalin in 2023 with ₹1000/month payout.",
-    category: 'credit_stealing',
-    incident_date: '2026-05-15',
-    location: 'Chennai',
-    source_urls: ['https://example.com'],
-    is_credit_steal: true,
-    original_credit: 'Kalaignar Magalir Urimai Thittam launched by DMK government in Sept 2023',
-    severity: 3,
-    ai_confidence: 0.91,
-    status: 'approved',
-    created_at: new Date().toISOString(),
-  },
-];
-
 const ALL_CATEGORIES = Object.entries(CATEGORY_LABELS);
 
-async function getStats(): Promise<DashboardStats> {
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/stats/dashboard`,
-      { cache: 'no-store', signal: AbortSignal.timeout(10000) }
-    );
-    if (!res.ok) return MOCK_STATS;
-    return res.json();
-  } catch {
-    return MOCK_STATS;
-  }
-}
+export default function DashboardPage() {
+  const [stats, setStats] = useState<DashboardStats>(INITIAL_STATS);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [baselines, setBaselines] = useState<BaselineRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [backendDown, setBackendDown] = useState(false);
 
-async function getRecentIncidents(): Promise<Incident[]> {
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/incidents/?limit=6`,
-      { cache: 'no-store', signal: AbortSignal.timeout(10000) }
-    );
-    if (!res.ok) return MOCK_INCIDENTS;
-    const data = await res.json();
-    return data.length ? data : MOCK_INCIDENTS;
-  } catch {
-    return MOCK_INCIDENTS;
-  }
-}
+  useEffect(() => {
+    let cancelled = false;
 
-async function getBaselines(): Promise<BaselineRow[]> {
-  try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/baselines/dashboard`,
-      { cache: 'no-store', signal: AbortSignal.timeout(10000) }
-    );
-    if (!res.ok) return [];
-    return res.json();
-  } catch {
-    return [];
-  }
-}
+    // Long timeout (60s) to ride out HF Spaces cold starts (~20-30s typical).
+    // AbortController so we don't update state after unmount.
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 60_000);
 
-export default async function DashboardPage() {
-  const [stats, incidents, baselines] = await Promise.all([
-    getStats(),
-    getRecentIncidents(),
-    getBaselines(),
-  ]);
+    Promise.all([
+      fetch(`${API}/api/stats/dashboard`, { signal: ctrl.signal, cache: 'no-store' }).then(r => r.ok ? r.json() : null),
+      fetch(`${API}/api/incidents/?limit=6`, { signal: ctrl.signal, cache: 'no-store' }).then(r => r.ok ? r.json() : []),
+      fetch(`${API}/api/baselines/dashboard`, { signal: ctrl.signal, cache: 'no-store' }).then(r => r.ok ? r.json() : []),
+    ])
+      .then(([s, inc, bl]) => {
+        if (cancelled) return;
+        if (s) setStats(s);
+        setIncidents(Array.isArray(inc) ? inc : []);
+        setBaselines(Array.isArray(bl) ? bl : []);
+        setBackendDown(!s);
+      })
+      .catch(() => {
+        if (!cancelled) setBackendDown(true);
+      })
+      .finally(() => {
+        clearTimeout(timer);
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; ctrl.abort(); clearTimeout(timer); };
+  }, []);
 
   return (
     <>
@@ -99,9 +87,17 @@ export default async function DashboardPage() {
           <p className="text-gray-500 text-sm mt-1">
             Track incidents, promises, and governance signals from the TVK government.
           </p>
+          {loading && stats.total_incidents === 0 && (
+            <p className="text-gray-700 text-xs mt-2 italic">Loading live data — backend may be warming up…</p>
+          )}
+          {backendDown && (
+            <p className="text-red-500 text-xs mt-2">
+              Cannot reach backend. Some counters may be outdated. Will retry on next load.
+            </p>
+          )}
         </div>
 
-        {/* Trending / hot categories — Power Cut, EB Failure are top right now */}
+        {/* Trending / hot categories */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
           <StatCard label="Power Cut" value={stats.power_cut_count ?? 0} icon={ZapOff} color="text-amber-400" />
           <StatCard label="EB Failure" value={stats.eb_failure_count ?? 0} icon={Zap} color="text-yellow-400" />
@@ -166,16 +162,18 @@ export default async function DashboardPage() {
           </a>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {incidents.map(incident => (
-            <IncidentCard key={incident.id} incident={incident} />
-          ))}
-        </div>
-
-        {incidents === MOCK_INCIDENTS && (
-          <p className="text-center text-gray-700 text-xs mt-8">
-            Showing demo data — connect your Supabase backend to see live incidents
-          </p>
+        {loading && incidents.length === 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 h-40 animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {incidents.map(incident => (
+              <IncidentCard key={incident.id} incident={incident} />
+            ))}
+          </div>
         )}
       </main>
     </>
