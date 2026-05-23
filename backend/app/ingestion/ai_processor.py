@@ -334,8 +334,15 @@ async def process_article(item: ApifyWebhookItem) -> None:
     }).execute()
 
     # ---- 3. Multi-source verification gate ----
+    # Signature = category:location:incident_date. Two articles about the same
+    # event (e.g. a Reddit post and a Hindu article) get the same signature.
+    #
+    # Window extended from 48h → 30 DAYS so that an old single-source
+    # pending_verification incident (e.g. a Reddit post from 2 weeks ago)
+    # gets AUTO-PROMOTED to multi_source_verified when a press source today
+    # reports the same event. This is the "truth-first" cross-reference loop.
     signature = _event_signature(extracted)
-    cutoff = (datetime.now(timezone.utc) - timedelta(hours=48)).isoformat()
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
 
     similar = (
         db.table("incidents")

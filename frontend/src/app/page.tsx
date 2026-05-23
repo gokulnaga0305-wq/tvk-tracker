@@ -97,21 +97,43 @@ export default function DashboardPage() {
           )}
         </div>
 
+        {/* Trust transparency banner — show the overall verified/pending split */}
+        {(stats.total_incidents ?? 0) > 0 && (
+          <div className="bg-[#15161c] border border-[#262833] rounded-lg px-4 py-3 mb-5 flex items-center gap-4 flex-wrap text-sm">
+            <span className="text-gray-400">
+              Tracking <strong className="text-white">{stats.total_incidents}</strong> incidents:
+            </span>
+            <span className="flex items-center gap-1.5 text-emerald-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
+              <strong>{stats.verified_incidents ?? 0}</strong>
+              <span className="text-emerald-400/70">multi-source verified</span>
+            </span>
+            <span className="flex items-center gap-1.5 text-amber-400">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
+              <strong>{stats.unverified_incidents ?? 0}</strong>
+              <span className="text-amber-400/70">single-source, pending corroboration</span>
+            </span>
+            <a href="/methodology" className="ml-auto text-xs text-gray-500 hover:text-white underline-offset-2 hover:underline">
+              How we verify →
+            </a>
+          </div>
+        )}
+
         {/* Trending / hot categories */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
-          <StatCard label="Power Cut" value={stats.power_cut_count ?? 0} icon={ZapOff} color="text-amber-400" />
-          <StatCard label="EB Failure" value={stats.eb_failure_count ?? 0} icon={Zap} color="text-yellow-400" />
-          <StatCard label="Alcohol Menace" value={stats.alcohol_menace_count ?? 0} icon={Wine} color="text-pink-400" />
-          <StatCard label="Police Excess" value={stats.police_excess_count ?? 0} icon={ShieldOff} color="text-red-400" />
-          <StatCard label="Fake News" value={stats.fake_news_count ?? 0} icon={Megaphone} color="text-fuchsia-400" />
+          <StatCard label="Power Cut"      value={stats.power_cut_count ?? 0}      verified={stats.power_cut_verified}     icon={ZapOff}     color="text-amber-400" />
+          <StatCard label="EB Failure"     value={stats.eb_failure_count ?? 0}     verified={stats.eb_failure_verified}    icon={Zap}        color="text-yellow-400" />
+          <StatCard label="Alcohol Menace" value={stats.alcohol_menace_count ?? 0} verified={stats.alcohol_menace_verified} icon={Wine}      color="text-pink-400" />
+          <StatCard label="Police Excess"  value={stats.police_excess_count ?? 0}  verified={stats.police_excess_verified} icon={ShieldOff}  color="text-red-400" />
+          <StatCard label="Fake News"      value={stats.fake_news_count ?? 0}      verified={stats.fake_news_verified}     icon={Megaphone}  color="text-fuchsia-400" />
         </div>
 
         {/* Crime stat cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-          <StatCard label="Corruption" value={stats.corruption_count} icon={DollarSign} color="text-yellow-400" />
-          <StatCard label="Murders" value={stats.murders_count} icon={Skull} color="text-red-500" />
-          <StatCard label="Sexual Assaults" value={stats.sexual_assault_count} icon={ShieldAlert} color="text-red-400" />
-          <StatCard label="Crimes vs Children" value={stats.crimes_women_kids_count} icon={Users} color="text-orange-400" />
+          <StatCard label="Corruption"          value={stats.corruption_count}        verified={stats.corruption_verified}        icon={DollarSign}  color="text-yellow-400" />
+          <StatCard label="Murders"             value={stats.murders_count}           verified={stats.murders_verified}           icon={Skull}       color="text-red-500" />
+          <StatCard label="Sexual Assaults"     value={stats.sexual_assault_count}    verified={stats.sexual_assault_verified}    icon={ShieldAlert} color="text-red-400" />
+          <StatCard label="Crimes vs Children"  value={stats.crimes_women_kids_count} verified={stats.crimes_women_kids_verified} icon={Users}       color="text-orange-400" />
           <StatCard
             label="Promises Kept"
             value={stats.promises_kept}

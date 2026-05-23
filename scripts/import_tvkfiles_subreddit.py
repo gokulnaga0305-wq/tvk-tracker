@@ -272,9 +272,14 @@ def main():
             "source_count": 1,
             "is_credit_steal": "credit_stealing" in all_tags or flair == "Sticker Politics",
             "severity": severity_for(category, all_tags),
-            "ai_confidence": 1.0,
+            # Honest label: this came from a community-curated subreddit, not
+            # admin review. ai_confidence reflects the flair-based heuristic
+            # we used, not actual AI judgement. Cards will display
+            # "Single source · pending verification" until a press source
+            # corroborates and the cross-reference auto-promotes it.
+            "ai_confidence": 0.5,
             "status": "approved",
-            "verification_status": "admin_verified",
+            "verification_status": "pending_verification",
             "image_urls": images[:5],
             "ai_raw": ai_raw_blob,
         }

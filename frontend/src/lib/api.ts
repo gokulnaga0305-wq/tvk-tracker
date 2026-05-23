@@ -2,6 +2,7 @@ const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export interface DashboardStats {
   govt_day: number;
+  // Total (verified + unverified) counts per category
   corruption_count: number;
   murders_count: number;
   sexual_assault_count: number;
@@ -16,9 +17,27 @@ export interface DashboardStats {
   attack_on_press_count?: number;
   fake_news_count?: number;
   custodial_death_count?: number;
+  // Verified-only counts (multi-source-verified or admin-verified)
+  corruption_verified?: number;
+  murders_verified?: number;
+  sexual_assault_verified?: number;
+  crimes_women_kids_verified?: number;
+  credit_steal_verified?: number;
+  power_cut_verified?: number;
+  eb_failure_verified?: number;
+  alcohol_menace_verified?: number;
+  honour_killing_verified?: number;
+  police_excess_verified?: number;
+  broken_promise_verified?: number;
+  attack_on_press_verified?: number;
+  fake_news_verified?: number;
+  custodial_death_verified?: number;
+  // Overall totals
   promises_kept: number;
   promises_total: number;
   total_incidents: number;
+  verified_incidents?: number;
+  unverified_incidents?: number;
 }
 
 export interface IncidentSource {
