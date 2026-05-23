@@ -1,7 +1,11 @@
+'use client';
+import { useState } from 'react';
+import Link from 'next/link';
 import { Incident } from '@/lib/api';
 import { CATEGORY_LABELS, CATEGORY_COLORS } from '@/lib/constants';
-import { ExternalLink, MapPin, Copy, AlertCircle, ShieldCheck, ShieldAlert, ShieldX } from 'lucide-react';
+import { ExternalLink, MapPin, Copy, AlertCircle, ShieldCheck, ShieldAlert, ShieldX, Share2 } from 'lucide-react';
 import clsx from 'clsx';
+import ShareCardModal from './ShareCardModal';
 
 const TIER_LABEL: Record<string, string> = {
   primary: 'Govt source',
@@ -136,8 +140,11 @@ export default function IncidentCard({ incident }: { incident: Incident }) {
   const categoryColor = CATEGORY_COLORS[incident.category] || 'text-gray-400 border-gray-400';
   const severityDots = Array.from({ length: 5 }, (_, i) => i < incident.severity);
   const isRetracted = incident.verification_status === 'retracted';
+  const [shareOpen, setShareOpen] = useState(false);
 
   return (
+    <>
+    {shareOpen && <ShareCardModal incident={incident} onClose={() => setShareOpen(false)} />}
     <div
       className={clsx(
         'bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 hover:border-[#3a3a3a] transition-all',
@@ -187,7 +194,9 @@ export default function IncidentCard({ incident }: { incident: Incident }) {
 
       {/* Title + summary */}
       <h3 className={clsx('text-white font-semibold text-sm mb-1.5 leading-snug', isRetracted && 'line-through')}>
-        {incident.title}
+        <Link href={`/incidents/${incident.id}`} className="hover:text-orange-300 transition-colors">
+          {incident.title}
+        </Link>
       </h3>
       <p className="text-gray-400 text-xs leading-relaxed mb-3">{incident.summary}</p>
 
@@ -230,7 +239,19 @@ export default function IncidentCard({ incident }: { incident: Incident }) {
           )}
           <span className="text-gray-700">AI conf: {Math.round(incident.ai_confidence * 100)}%</span>
         </div>
+        {/* Share button */}
+        {!isRetracted && (
+          <button
+            onClick={() => setShareOpen(true)}
+            title="Share as image"
+            className="flex items-center gap-1 text-gray-600 hover:text-orange-400 transition-colors px-1.5 py-1 rounded hover:bg-[#222]"
+          >
+            <Share2 size={12} />
+            <span className="text-[10px]">Share</span>
+          </button>
+        )}
       </div>
     </div>
+    </>
   );
 }

@@ -69,6 +69,14 @@ export interface Incident {
   dmk_evidence?: DmkPrecedent[];
   retraction_reason?: string | null;
   created_at: string;
+  audit_log?: Array<{
+    action: string;
+    from_value?: string | null;
+    to_value?: string | null;
+    actor?: string;
+    reason?: string | null;
+    created_at: string;
+  }>;
 }
 
 export interface BaselineRow {
