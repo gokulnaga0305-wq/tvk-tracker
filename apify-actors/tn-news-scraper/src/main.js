@@ -79,14 +79,6 @@ const HTML_LISTINGS = [
     articleSelector: 'body',
   },
   {
-    name: 'chennai_police',
-    tier: 'primary',
-    listingUrl: 'https://www.chennaipolice.gov.in/news.html',
-    linkSelector: 'a[href*="news"], a[href*="press"], a[href*=".pdf"]',
-    dateSelector: '.date, time, td:nth-child(1)',
-    articleSelector: 'body',
-  },
-  {
     // TN State Police citizen portal — news/announcements
     name: 'tn_police_portal',
     tier: 'primary',
@@ -95,6 +87,7 @@ const HTML_LISTINGS = [
     dateSelector: '.news-date, .date',
     articleSelector: 'article, .news-content, .post-content',
   },
+  // Note: chennaipolice.gov.in DNS does not resolve — re-add if/when it comes back.
 ];
 
 /**
@@ -255,12 +248,9 @@ const crawler = new CheerioCrawler({
     RSS_FEEDS.length
     + HTML_LISTINGS.length
     + (RSS_FEEDS.length + HTML_LISTINGS.length) * maxArticlesPerSource,
-  additionalMimeTypes: ['application/rss+xml', 'application/xml', 'text/xml', 'application/atom+xml', 'application/pdf'],
-  // TN govt sites have flaky TLS — don't abort the whole crawl on SSL errors
+  additionalMimeTypes: ['application/rss+xml', 'application/xml', 'text/xml', 'application/atom+xml'],
+  // TN govt sites have flaky TLS / self-signed certs — don't abort the crawl on SSL errors.
   ignoreSslErrors: true,
-  // Retry settings for unreliable govt servers
-  maxRequestRetries: 2,
-  requestHandlerTimeoutSecs: 45,
   async requestHandler({ request, $ }) {
     const { type, sourceName, tier } = request.userData;
 
