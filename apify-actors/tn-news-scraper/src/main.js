@@ -87,6 +87,17 @@ const POLITICAL_INCIDENT_KEYWORDS = [
   'power cut', 'blackout', 'power outage', 'water shortage', 'water crisis',
   'sewage overflow', 'flooding', 'inundation', 'pothole accident', 'building collapse',
   'oxygen shortage', 'medicine shortage', 'hospital death', 'medical negligence',
+  // Electricity / TANGEDCO specifically
+  'tangedco', 'tneb', 'eb tariff', 'electricity tariff', 'transformer failure',
+  'voltage fluctuation', 'unannounced outage', 'load shedding', 'feeder fault',
+  'eb meter', 'smart meter', 'free electricity', 'electricity subsidy',
+  // CAG / audit findings
+  'cag report', 'cag audit', 'cag finding', 'cag tamil nadu', 'audit report',
+  'audit finding', 'audit irregularity', 'audit observation',
+  // NCRB / official data
+  'ncrb data', 'ncrb report', 'crime in india', 'cbi probe', 'ed probe',
+  // GO (Government Order)
+  'g.o.', 'government order', 'g.o. ms',
   // Corruption / vigilance (specific cases)
   'bribe', 'graft', 'kickback', 'embezzlement', 'fraud', 'vigilance arrest',
   'tender scam', 'tender irregularity', 'cbi raid', 'ed raid', 'vigilance raid',
