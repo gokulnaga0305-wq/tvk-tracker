@@ -228,6 +228,53 @@ def _record_audit(db, incident_id: str, action: str, **fields) -> None:
         logger.warning("Failed to write audit log: %s", e)
 
 
+def analyze_only(*, url: str, source: str, title: str, text: str) -> dict:
+    """Run the Claude extractor against an article WITHOUT writing anything
+    to the database. Used by the admin quick-add form so the human can edit
+    the AI's output before publishing.
+
+    Raises RuntimeError if no AI provider is configured.
+    Returns the raw `extracted` dict from the model.
+    """
+    client, model = _get_client_and_model()
+    if client is None:
+        raise RuntimeError("No AI provider configured (set OPENROUTER_API_KEY or ANTHROPIC_API_KEY)")
+
+    db = get_db()
+    schemes_block = _load_dmk_schemes_for_prompt(db)
+    prompt = EXTRACTION_PROMPT.format(
+        url=url,
+        source=source or "unknown",
+        published=date.today().isoformat(),
+        title=title,
+        text=(text or "")[:8000],
+        dmk_schemes=schemes_block,
+        today=date.today().isoformat(),
+    )
+
+    response = client.chat.completions.create(
+        model=model,
+        max_tokens=1024,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": prompt},
+        ],
+    )
+    raw = _strip_code_fences(response.choices[0].message.content)
+    extracted = json.loads(raw)
+
+    # Best-effort: also attach fact-check matches so admin sees them in the form
+    try:
+        fc = lookup_factchecks(extracted.get("title") or title,
+                                (extracted.get("people_mentioned") or [])[:3])
+        if fc:
+            extracted["related_factchecks"] = fc
+    except Exception:
+        pass
+
+    return extracted
+
+
 async def process_article(item: ApifyWebhookItem) -> None:
     client, model = _get_client_and_model()
     if client is None:

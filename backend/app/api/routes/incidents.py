@@ -140,19 +140,37 @@ async def create_incident(body: IncidentCreate, x_admin_secret: str = Header(...
     if x_admin_secret != settings.admin_secret:
         raise HTTPException(status_code=403, detail="Forbidden")
     db = get_db()
-    payload = body.model_dump()
+    payload = body.model_dump(exclude_none=True)
     payload["status"] = "approved"
     payload["verification_status"] = "admin_verified"
     payload["incident_date"] = payload["incident_date"].isoformat()
+    payload["source_count"] = len(payload.get("source_urls") or []) or 1
     res = db.table("incidents").insert(payload).execute()
+    incident_id = res.data[0]["id"]
+
     # Audit log
     db.table("incident_audit").insert({
-        "incident_id": res.data[0]["id"],
+        "incident_id": incident_id,
         "action": "created",
         "to_value": "admin_verified",
         "actor": "admin",
         "reason": "manual creation via API",
     }).execute()
+
+    # Credit-steal incidents get DMK archive cross-reference
+    if payload.get("is_credit_steal") or payload.get("related_dmk_scheme"):
+        try:
+            from app.ingestion.archive_lookup import find_precedents, attach_evidence
+            precedents = find_precedents(
+                incident_title=payload["title"],
+                incident_summary=payload["summary"],
+                related_scheme=payload.get("related_dmk_scheme"),
+                limit=5,
+            )
+            attach_evidence(incident_id, precedents)
+        except Exception:
+            pass  # Non-fatal — admin can re-trigger later if needed
+
     return res.data[0]
 
 

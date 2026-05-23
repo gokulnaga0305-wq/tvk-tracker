@@ -39,13 +39,15 @@ class PromiseStatus(str, Enum):
 class IncidentCreate(BaseModel):
     title: str
     summary: str
-    category: IncidentCategory
+    category: str  # Free-form — broader than IncidentCategory enum (legacy)
     incident_date: date
     location: Optional[str] = None
     source_urls: list[str] = []
     member_ids: list[str] = []
+    tags: Optional[list[str]] = None
     is_credit_steal: bool = False
     original_credit: Optional[str] = None  # e.g. "DMK scheme from 2023"
+    related_dmk_scheme: Optional[str] = None
     ai_confidence: float = 0.0
     severity: int = 1  # 1-5
 
@@ -60,11 +62,12 @@ class IncidentOut(IncidentCreate):
 class IncidentUpdate(BaseModel):
     title: Optional[str] = None
     summary: Optional[str] = None
-    category: Optional[IncidentCategory] = None
+    category: Optional[str] = None
     status: Optional[IncidentStatus] = None
     is_credit_steal: Optional[bool] = None
     original_credit: Optional[str] = None
     severity: Optional[int] = None
+    tags: Optional[list[str]] = None
 
 
 # --- Promises ---

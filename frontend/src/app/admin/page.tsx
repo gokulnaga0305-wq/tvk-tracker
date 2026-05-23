@@ -5,18 +5,19 @@ import { Incident, CitizenReport } from '@/lib/api';
 import { CATEGORY_LABELS } from '@/lib/constants';
 import {
   ShieldAlert, Check, X, ExternalLink, ShieldCheck, AlertTriangle,
-  MessageSquarePlus, ArrowUpRight, Trash2,
+  MessageSquarePlus, ArrowUpRight, Trash2, Sparkles,
 } from 'lucide-react';
 import clsx from 'clsx';
+import QuickAddForm from '@/components/QuickAddForm';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-type AdminTab = 'pending_verification' | 'pending_review' | 'citizen_reports';
+type AdminTab = 'quick_add' | 'pending_verification' | 'pending_review' | 'citizen_reports';
 
 export default function AdminPage() {
   const [secret, setSecret] = useState('');
   const [authed, setAuthed] = useState(false);
-  const [tab, setTab] = useState<AdminTab>('pending_verification');
+  const [tab, setTab] = useState<AdminTab>('quick_add');
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [reports, setReports] = useState<CitizenReport[]>([]);
   const [loading, setLoading] = useState(false);
@@ -26,7 +27,15 @@ export default function AdminPage() {
     setLoading(true);
     setMessage('');
     try {
-      if (t === 'citizen_reports') {
+      if (t === 'quick_add') {
+        // Quick-add tab needs auth but doesn't pre-load any data.
+        // Use a cheap ping to validate the secret.
+        const ping = await fetch(`${API}/api/incidents/?limit=1`, {
+          headers: { 'x-admin-secret': s },
+        });
+        if (ping.status === 403) { setMessage('Wrong secret'); return; }
+        setAuthed(true);
+      } else if (t === 'citizen_reports') {
         const res = await fetch(`${API}/api/citizen-reports/?status=pending_moderation`, {
           headers: { 'x-admin-secret': s },
         });
@@ -136,6 +145,7 @@ export default function AdminPage() {
   }
 
   const tabs: { key: AdminTab; label: string; icon: any; count?: number }[] = [
+    { key: 'quick_add', label: 'Quick Add (AI assist)', icon: Sparkles },
     { key: 'pending_verification', label: 'Pending Verification', icon: ShieldAlert },
     { key: 'pending_review', label: 'Pending Review (Low Conf)', icon: AlertTriangle },
     { key: 'citizen_reports', label: 'Citizen Reports', icon: MessageSquarePlus },
@@ -172,6 +182,8 @@ export default function AdminPage() {
 
       {loading && <div className="text-gray-600 text-sm">Loading…</div>}
 
+      {!loading && tab === 'quick_add' && <QuickAddForm secret={secret} />}
+
       {!loading && tab === 'citizen_reports' && (
         <CitizenList
           reports={reports}
@@ -181,7 +193,7 @@ export default function AdminPage() {
         />
       )}
 
-      {!loading && tab !== 'citizen_reports' && (
+      {!loading && (tab === 'pending_verification' || tab === 'pending_review') && (
         <IncidentList
           incidents={incidents}
           onVerify={verifyIncident}
