@@ -1,0 +1,58 @@
+name: Keep HF Spaces warm
+
+# Hugging Face Spaces free tier sleeps after a few minutes of inactivity, and
+# cold-start adds ~20-30s to the first request. We ping /health on a 5-minute
+# cron to keep the container warm — the user always hits a hot backend.
+#
+# Cost: ~3 seconds per run × 12 runs/hour × 24 hours × 30 days = ~36 minutes
+# of GitHub Actions runtime per month. Free tier is 2,000 min/month for public
+# repos (unlimited for private), so this is well within budget.
+#
+# Caveats:
+# - GitHub Actions cron has a 5-minute minimum and may be delayed by up to a
+#   few minutes during high load. There's a small window where HF could still
+#   go cold; in practice this is rare.
+# - Workflow only triggers on the default branch (main). PR branches do not
+#   schedule.
+
+on:
+  schedule:
+    # Every 5 minutes — minimum allowed by GitHub Actions cron
+    - cron: '*/5 * * * *'
+  workflow_dispatch:  # allow manual ping from the Actions tab for debugging
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+
+    steps:
+      - name: Ping /health
+        run: |
+          set -e
+          URL="https://goknaga-tvk-tracker-backend.hf.space/health"
+          echo "Pinging $URL"
+          # -f fails on HTTP 4xx/5xx, -sS keeps output quiet but shows errors,
+          # --max-time 45 rides through a cold start (HF takes ~20-30s).
+          # Retry 3× with backoff in case HF is genuinely down for a moment.
+          for i in 1 2 3; do
+            if curl -fsS --max-time 45 "$URL" -o /tmp/health.json; then
+              echo "OK on attempt $i:"
+              cat /tmp/health.json
+              exit 0
+            fi
+            echo "Attempt $i failed, retrying in ${i}0s…"
+            sleep ${i}0
+          done
+          echo "All retries failed"
+          exit 1
+
+      - name: Warm cache by hitting stats endpoint (best-effort)
+        if: success()
+        continue-on-error: true
+        run: |
+          # /api/stats/dashboard touches Supabase, keeping that connection pool
+          # warm too. We don't fail the job if this one errors.
+          curl -fsS --max-time 30 \
+            "https://goknaga-tvk-tracker-backend.hf.space/api/stats/dashboard" \
+            -o /dev/null && echo "Stats endpoint also warm"
