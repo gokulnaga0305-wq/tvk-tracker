@@ -44,6 +44,7 @@ const RSS_FEEDS = [
 
   // Crime-focused / district editions / specific beats
   { name: 'hindu_cities',          tier: 'established_press', url: 'https://www.thehindu.com/news/cities/feeder/default.rss' },
+  // Note: HTML_LISTINGS below covers govt press releases (tn.gov.in, chennaipolice.gov.in)
   { name: 'hindu_chennai',         tier: 'established_press', url: 'https://www.thehindu.com/news/cities/chennai/feeder/default.rss' },
   { name: 'hindu_madurai',         tier: 'established_press', url: 'https://www.thehindu.com/news/cities/Madurai/feeder/default.rss' },
   { name: 'hindu_coimbatore',      tier: 'established_press', url: 'https://www.thehindu.com/news/cities/Coimbatore/feeder/default.rss' },
@@ -53,6 +54,47 @@ const RSS_FEEDS = [
   { name: 'toi_trichy',            tier: 'established_press', url: 'https://timesofindia.indiatimes.com/rssfeeds/-2128820097.cms' },
   { name: 'ndtv_offbeat',          tier: 'established_press', url: 'https://feeds.feedburner.com/ndtvnews-offbeat' },
   { name: 'newsmobile',            tier: 'online_native',     url: 'https://newsmobile.in/articles/feed/' },
+];
+
+/**
+ * Direct HTML listings — government portals that don't expose RSS.
+ * Each entry tells the crawler:
+ *  - listingUrl: page that lists press releases / orders / news
+ *  - linkSelector: CSS selector to find each item's <a>
+ *  - dateSelector: optional CSS selector relative to each link's container
+ *  - articleSelector: CSS selector for the article body on the detail page
+ *
+ * Tier is 'primary' (highest credibility) because these are govt sources.
+ * The crawler is tolerant of SSL/cert errors (TN govt sites are known flaky).
+ */
+const HTML_LISTINGS = [
+  {
+    name: 'tn_gov_press_release',
+    tier: 'primary',
+    listingUrl: 'https://www.tn.gov.in/press_release.php',
+    // The PR table on tn.gov.in: <a href="press_release/pr_XX.pdf">Title</a>
+    // For PDFs we record metadata only; backend AI works on title.
+    linkSelector: 'a[href*="press_release"], a[href*=".pdf"]',
+    dateSelector: 'td:nth-child(2), .date, time',
+    articleSelector: 'body',
+  },
+  {
+    name: 'chennai_police',
+    tier: 'primary',
+    listingUrl: 'https://www.chennaipolice.gov.in/news.html',
+    linkSelector: 'a[href*="news"], a[href*="press"], a[href*=".pdf"]',
+    dateSelector: '.date, time, td:nth-child(1)',
+    articleSelector: 'body',
+  },
+  {
+    // TN State Police citizen portal — news/announcements
+    name: 'tn_police_portal',
+    tier: 'primary',
+    listingUrl: 'https://www.police.tn.gov.in/news',
+    linkSelector: 'a.news-link, .news-list a, article a, a[href*="/news/"]',
+    dateSelector: '.news-date, .date',
+    articleSelector: 'article, .news-content, .post-content',
+  },
 ];
 
 /**
@@ -191,10 +233,34 @@ for (const feed of RSS_FEEDS) {
   });
 }
 
+// Queue HTML listing pages (govt portals — no RSS, must scrape HTML)
+for (const html of HTML_LISTINGS) {
+  await requestQueue.addRequest({
+    url: html.listingUrl,
+    userData: {
+      type: 'html_listing',
+      sourceName: html.name,
+      tier: html.tier,
+      linkSelector: html.linkSelector,
+      dateSelector: html.dateSelector,
+      articleSelector: html.articleSelector,
+    },
+  });
+}
+
 const crawler = new CheerioCrawler({
   requestQueue,
-  maxRequestsPerCrawl: RSS_FEEDS.length + (RSS_FEEDS.length * maxArticlesPerSource),
-  additionalMimeTypes: ['application/rss+xml', 'application/xml', 'text/xml', 'application/atom+xml'],
+  // Budget for RSS + HTML listings + their child articles
+  maxRequestsPerCrawl:
+    RSS_FEEDS.length
+    + HTML_LISTINGS.length
+    + (RSS_FEEDS.length + HTML_LISTINGS.length) * maxArticlesPerSource,
+  additionalMimeTypes: ['application/rss+xml', 'application/xml', 'text/xml', 'application/atom+xml', 'application/pdf'],
+  // TN govt sites have flaky TLS — don't abort the whole crawl on SSL errors
+  ignoreSslErrors: true,
+  // Retry settings for unreliable govt servers
+  maxRequestRetries: 2,
+  requestHandlerTimeoutSecs: 45,
   async requestHandler({ request, $ }) {
     const { type, sourceName, tier } = request.userData;
 
@@ -244,9 +310,75 @@ const crawler = new CheerioCrawler({
       }
       console.log(`[${sourceName}] ${queued} relevant articles queued`);
 
+    } else if (type === 'html_listing') {
+      // Govt portal listing page — extract press release links and queue them.
+      // We DON'T pre-filter govt PRs by incident keyword because the listing
+      // titles are often terse (e.g. "Order: 2026-05-22"); the AI processor
+      // will decide relevance after fetching the detail page.
+      const { linkSelector, dateSelector, articleSelector } = request.userData;
+      const baseUrl = new URL(request.url);
+      const links = [];
+
+      $(linkSelector).each((_, el) => {
+        const $a = $(el);
+        const href = ($a.attr('href') || '').trim();
+        const title = ($a.text() || '').replace(/\s+/g, ' ').trim();
+        if (!href || !title || title.length < 8) return;
+
+        // Resolve relative URLs against the listing page
+        let absUrl;
+        try { absUrl = new URL(href, baseUrl).toString(); }
+        catch { return; }
+
+        // Skip obvious non-articles (image assets, fragment-only links)
+        if (/\.(jpg|jpeg|png|gif|svg|css|js|ico)(\?|$)/i.test(absUrl)) return;
+        if (absUrl.startsWith('mailto:') || absUrl.startsWith('javascript:')) return;
+
+        // Try to pull a date sibling/parent if a date selector was provided
+        let pubDate = '';
+        if (dateSelector) {
+          pubDate = $a.closest('tr, li, .item, .news-item').find(dateSelector).first().text().trim()
+                 || $a.parent().find(dateSelector).first().text().trim();
+        }
+
+        links.push({ url: absUrl, title, pubDate });
+      });
+
+      // Dedup by URL
+      const seen = new Set();
+      const uniq = links.filter(l => { if (seen.has(l.url)) return false; seen.add(l.url); return true; });
+      console.log(`[${sourceName}] HTML listing has ${uniq.length} candidate links`);
+
+      let queued = 0;
+      for (const it of uniq.slice(0, maxArticlesPerSource)) {
+        await requestQueue.addRequest({
+          url: it.url,
+          uniqueKey: it.url,
+          userData: {
+            type: 'article',
+            sourceName,
+            tier,
+            rssTitle: it.title,
+            rssDescription: '',
+            rssPubDate: it.pubDate,
+            rssImageUrls: [],
+            customArticleSelector: articleSelector,
+            // Govt sources skip the incident-keyword pre-filter; the
+            // backend AI decides. Note the listing already has signal.
+            skipRelevanceFilter: true,
+          },
+        });
+        queued++;
+      }
+      console.log(`[${sourceName}] ${queued} press releases queued`);
+
     } else if (type === 'article') {
       $('nav, footer, .advertisement, .ad, script, style, .related, aside').remove();
-      const text = $('article, .article-body, .story-body, [class*="article-body"], main, .post-content')
+
+      // Prefer custom selector (from HTML_LISTINGS) if set
+      const customSel = request.userData.customArticleSelector;
+      const defaultSel = 'article, .article-body, .story-body, [class*="article-body"], main, .post-content';
+      const text = $(customSel || defaultSel)
         .first()
         .text()
         .replace(/\s+/g, ' ')
