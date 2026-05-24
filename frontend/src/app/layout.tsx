@@ -13,9 +13,47 @@ const notoTamil = Noto_Sans_Tamil({
   weight: ["400", "500", "600", "700"],
 });
 
+const SITE_URL = "https://tvk-tracker.vercel.app";
+
 export const metadata: Metadata = {
-  title: "TVK Files — Tamil Nadu Government Tracker",
-  description: "Real-time fact-checking and accountability tracker for the TVK government in Tamil Nadu",
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: "TVK Files — Tamil Nadu Government Tracker",
+    template: "%s · TVK Files",
+  },
+  description:
+    "Real-time fact-checking and accountability tracker for the TVK government in Tamil Nadu. " +
+    "Cross-referenced with DMK government archive (2021-2026) — every credit-steal claim gets receipts.",
+  keywords: [
+    "TVK", "Tamilaga Vettri Kazhagam", "CM Vijay", "Tamil Nadu government",
+    "DMK", "fact check", "accountability", "credit stealing", "TVK Files",
+    "Stalin", "Kalaignar",
+  ],
+  authors: [{ name: "TVK Files" }],
+  openGraph: {
+    type: "website",
+    locale: "en_IN",
+    alternateLocale: "ta_IN",
+    url: SITE_URL,
+    siteName: "TVK Files",
+    title: "TVK Files — Tamil Nadu Government Tracker",
+    description:
+      "Real-time fact-checking and accountability tracker for the TVK government in Tamil Nadu",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "TVK Files — Tamil Nadu Government Tracker",
+    description:
+      "Real-time fact-checking and accountability tracker for the TVK government in Tamil Nadu",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  alternates: {
+    canonical: SITE_URL,
+    languages: { "en-IN": SITE_URL, "ta-IN": SITE_URL },
+  },
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
