@@ -1,7 +1,9 @@
-from fastapi import APIRouter, HTTPException, Header, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Header, BackgroundTasks, Query
 from pydantic import BaseModel
 from app.models.schemas import ApifyWebhookPayload
 from app.ingestion.ai_processor import process_article, analyze_only
+from app.ingestion.corroboration import sweep_pending, attempt_corroborate
+from app.database import get_db
 from app.config import settings
 from urllib.parse import urlparse
 import httpx
@@ -124,3 +126,49 @@ async def manual_ingest(
     item = ApifyWebhookItem(url=url, title=title, text=text)
     background_tasks.add_task(process_article, item)
     return {"status": "queued"}
+
+
+@router.post("/sweep-verify")
+async def sweep_verify(
+    max_age_days: int = Query(45, ge=1, le=365,
+        description="Only scan pending incidents whose incident_date is within this window"),
+    limit: int | None = Query(None, ge=1, le=500,
+        description="Cap the number of incidents scanned this call (omit for all)"),
+    x_admin_secret: str = Header(...),
+):
+    """Sweep pending_verification incidents and try to auto-promote them
+    using Google News RSS. For each pending incident:
+      - Search Google News for press articles about the same event
+      - If 2+ DISTINCT press outlets are found within ±7 days → promote
+        to multi_source_verified, attach the corroborating URLs as sources
+
+    Returns a summary: {candidates_scanned, promoted, failed, avg_outlets_per_promote}
+
+    Hit this manually from the admin UI, or schedule via GitHub Actions cron.
+    """
+    if x_admin_secret != settings.admin_secret:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    summary = sweep_pending(max_age_days=max_age_days, limit=limit)
+    return summary
+
+
+@router.post("/verify-one/{incident_id}")
+async def verify_one(
+    incident_id: str,
+    x_admin_secret: str = Header(...),
+):
+    """Try to auto-corroborate a single incident on demand.
+    Useful when you've just added something and want to find press coverage
+    immediately rather than waiting for the nightly sweep."""
+    if x_admin_secret != settings.admin_secret:
+        raise HTTPException(status_code=403, detail="Forbidden")
+
+    db = get_db()
+    res = db.table("incidents").select(
+        "id, title, summary, location, incident_date, source_urls, verification_status"
+    ).eq("id", incident_id).single().execute()
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    return attempt_corroborate(res.data)

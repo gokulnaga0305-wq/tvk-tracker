@@ -1,0 +1,59 @@
+name: Corroboration sweep (auto-verify pending incidents)
+
+# Hits the backend's /api/ingest/sweep-verify endpoint nightly. The endpoint
+# searches Google News for each pending_verification incident and promotes
+# any that have 2+ distinct press outlets covering them. Fully automated —
+# the user never has to manually verify.
+#
+# Sweep is also safe to run hourly if we want fresher verification, but
+# nightly 3 AM IST (21:30 UTC) is a reasonable default that avoids
+# competing with the daily 9 AM IST Apify scrape.
+
+on:
+  schedule:
+    - cron: '30 21 * * *'   # 03:00 IST every day
+  workflow_dispatch:
+    inputs:
+      max_age_days:
+        description: 'Only scan incidents whose incident_date is within N days'
+        required: false
+        default: '45'
+      limit:
+        description: 'Cap on incidents scanned this run (blank = no cap)'
+        required: false
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Sweep verification via Google News
+        env:
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+          BACKEND: https://goknaga-tvk-tracker-backend.hf.space
+          MAX_AGE: ${{ inputs.max_age_days || '45' }}
+          LIMIT: ${{ inputs.limit }}
+        run: |
+          set -e
+          if [ -z "$ADMIN_SECRET" ]; then
+            echo "::error::ADMIN_SECRET repo secret not set. Add it under Settings → Secrets and variables → Actions"
+            exit 1
+          fi
+
+          URL="${BACKEND}/api/ingest/sweep-verify?max_age_days=${MAX_AGE}"
+          if [ -n "$LIMIT" ]; then
+            URL="${URL}&limit=${LIMIT}"
+          fi
+          echo "POST $URL"
+
+          # The sweep can take several minutes for hundreds of incidents
+          # (each search ~1-3s × maybe 200 candidates). 20-minute timeout
+          # absorbs the worst case.
+          curl -fsS --max-time 1200 -X POST \
+            -H "x-admin-secret: ${ADMIN_SECRET}" \
+            "$URL" \
+            -o /tmp/result.json
+
+          echo "Result:"
+          cat /tmp/result.json | python3 -m json.tool
