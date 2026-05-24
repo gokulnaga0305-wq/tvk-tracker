@@ -6,9 +6,10 @@ import IncidentCard from '@/components/IncidentCard';
 import BaselineDelta from '@/components/BaselineDelta';
 import { DashboardStats, Incident, BaselineRow } from '@/lib/api';
 import { CATEGORY_LABELS } from '@/lib/constants';
+import Link from 'next/link';
 import {
   DollarSign, Skull, ShieldAlert, Users, CheckSquare, Copy, AlertTriangle,
-  Zap, ZapOff, Wine, Megaphone, ShieldOff,
+  Zap, ZapOff, Wine, Megaphone, ShieldOff, Flame, Clock,
 } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -42,6 +43,7 @@ const ALL_CATEGORIES = Object.entries(CATEGORY_LABELS);
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>(INITIAL_STATS);
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [pending, setPending] = useState<Incident[]>([]);
   const [baselines, setBaselines] = useState<BaselineRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [backendDown, setBackendDown] = useState(false);
@@ -56,14 +58,18 @@ export default function DashboardPage() {
 
     Promise.all([
       fetch(`${API}/api/stats/dashboard`, { signal: ctrl.signal, cache: 'no-store' }).then(r => r.ok ? r.json() : null),
-      fetch(`${API}/api/incidents/?limit=6`, { signal: ctrl.signal, cache: 'no-store' }).then(r => r.ok ? r.json() : []),
+      // Verified+recent only — these are the bulletproof headline incidents
+      fetch(`${API}/api/incidents/?limit=6&verification_status=multi_source_verified`, { signal: ctrl.signal, cache: 'no-store' }).then(r => r.ok ? r.json() : []),
       fetch(`${API}/api/baselines/dashboard`, { signal: ctrl.signal, cache: 'no-store' }).then(r => r.ok ? r.json() : []),
+      // Single-source pending — the "breaking but wait" feed
+      fetch(`${API}/api/incidents/?limit=5&verification_status=pending_verification`, { signal: ctrl.signal, cache: 'no-store' }).then(r => r.ok ? r.json() : []),
     ])
-      .then(([s, inc, bl]) => {
+      .then(([s, inc, bl, pn]) => {
         if (cancelled) return;
         if (s) setStats(s);
         setIncidents(Array.isArray(inc) ? inc : []);
         setBaselines(Array.isArray(bl) ? bl : []);
+        setPending(Array.isArray(pn) ? pn : []);
         setBackendDown(!s);
       })
       .catch(() => {
@@ -173,11 +179,60 @@ export default function DashboardPage() {
           ))}
         </div>
 
+        {/* === BREAKING — UNCONFIRMED feed ===
+            Single-source pending items. The "wait before sharing" warning
+            counters the WhatsApp-virality problem: people would otherwise
+            see something in their timeline, take it as fact, and amplify
+            before press confirms. Here it's labeled honestly. */}
+        {pending.length > 0 && (
+          <div className="mb-8 bg-gradient-to-br from-amber-950/40 to-yellow-950/20 border border-amber-700/30 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <h2 className="text-amber-300 font-semibold flex items-center gap-2">
+                <Flame size={16} className="text-amber-400" />
+                Breaking — Unconfirmed
+              </h2>
+              <div className="flex items-center gap-2 text-amber-400/80 text-xs">
+                <Clock size={11} />
+                <span>Single source · Wait before sharing</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              {pending.slice(0, 5).map(p => (
+                <Link
+                  key={p.id}
+                  href={`/incidents/${p.id}`}
+                  className="block bg-black/30 border border-amber-900/30 hover:border-amber-700/50 rounded-md px-3 py-2 transition-colors"
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="shrink-0 w-1.5 h-1.5 rounded-full bg-amber-400 mt-2" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-amber-100 text-sm leading-snug line-clamp-2">
+                        {p.title}
+                      </div>
+                      <div className="text-amber-500/70 text-[11px] mt-1 flex items-center gap-3 flex-wrap">
+                        <span className="uppercase tracking-wider">
+                          {(p.category || '').replace(/_/g, ' ')}
+                        </span>
+                        {p.location && <span>· {p.location}</span>}
+                        <span>· {new Date(p.incident_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}</span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+            <div className="text-amber-500/60 text-[11px] mt-3 italic">
+              These will auto-promote to verified within 24-72h if press outlets corroborate.
+              Until then, share only if you can independently verify.
+            </div>
+          </div>
+        )}
+
         {/* Recent incidents */}
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-white font-semibold flex items-center gap-2">
             <AlertTriangle size={16} className="text-orange-400" />
-            Recent Incidents
+            Verified Incidents · Latest
           </h2>
           <a href="/incidents" className="text-xs text-orange-400 hover:text-orange-300 transition-colors">
             View all →

@@ -267,3 +267,63 @@ async def delete_incident(incident_id: str, x_admin_secret: str = Header(...)):
         raise HTTPException(status_code=403, detail="Forbidden")
     db = get_db()
     db.table("incidents").delete().eq("id", incident_id).execute()
+
+
+# --- Coordinated amplification flagging (admin-driven for now) ---
+# When admin spots a TVK narrative being pushed by a bot/troll army, they
+# can flag the incident with a pattern note. The flag is stored in ai_raw
+# under 'amplification_flags' since the schema doesn't have a dedicated
+# column yet (avoids migration risk).
+#
+# Frontend renders a 'Coordinated amplification suspected' badge when
+# this field exists. Future: extend to ingest follower-graph data,
+# posting-pattern fingerprints, account-creation-date analysis.
+from pydantic import BaseModel
+
+
+class AmplificationFlag(BaseModel):
+    pattern: str            # e.g. "100+ accounts pushed same text within 1h"
+    suspect_accounts: list[str] = []
+    evidence_urls: list[str] = []
+    note: str | None = None
+
+
+@router.post("/{incident_id}/amplification-flag", response_model=dict)
+async def flag_amplification(
+    incident_id: str,
+    body: AmplificationFlag,
+    x_admin_secret: str = Header(...),
+):
+    """Mark an incident as showing signs of coordinated amplification —
+    bot army, troll network, or paid promotion pushing a narrative."""
+    if x_admin_secret != settings.admin_secret:
+        raise HTTPException(status_code=403, detail="Forbidden")
+    db = get_db()
+    cur = db.table("incidents").select("ai_raw").eq("id", incident_id).single().execute()
+    if not cur.data:
+        raise HTTPException(status_code=404, detail="Incident not found")
+
+    raw = cur.data.get("ai_raw") or {}
+    flags = raw.get("amplification_flags") or []
+    from datetime import datetime, timezone
+    flags.append({
+        "pattern": body.pattern,
+        "suspect_accounts": body.suspect_accounts,
+        "evidence_urls": body.evidence_urls,
+        "note": body.note,
+        "flagged_at": datetime.now(timezone.utc).isoformat(),
+    })
+    raw["amplification_flags"] = flags
+
+    db.table("incidents").update({"ai_raw": raw}).eq("id", incident_id).execute()
+    db.table("incident_audit").insert({
+        "incident_id": incident_id,
+        "action": "amplification_flagged",
+        "actor": "admin",
+        "reason": body.pattern,
+        "metadata": {
+            "suspect_count": len(body.suspect_accounts),
+            "evidence_count": len(body.evidence_urls),
+        },
+    }).execute()
+    return {"id": incident_id, "amplification_flags": flags}
