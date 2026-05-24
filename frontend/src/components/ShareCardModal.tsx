@@ -8,10 +8,11 @@
  */
 import { useRef, useCallback, useState } from 'react';
 import { toPng } from 'html-to-image';
-import { X, Download, Share2, Copy, Check } from 'lucide-react';
+import { X, Download, Share2, Copy, Check, AlertCircle, FileImage } from 'lucide-react';
 import { Incident } from '@/lib/api';
 import { CATEGORY_LABELS, CATEGORY_COLORS } from '@/lib/constants';
 import clsx from 'clsx';
+import CounterNarrativeCard from './CounterNarrativeCard';
 
 const SITE_URL = 'tvkfiles.vercel.app';
 
@@ -141,10 +142,17 @@ interface Props {
   onClose: () => void;
 }
 
+type CardVariant = 'incident' | 'counter';
+
 export default function ShareCardModal({ incident, onClose }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // Credit-steal incidents default to the receipts-card (counter-narrative).
+  // Other incidents only get the standard incident card.
+  const canShowCounter = !!incident.is_credit_steal;
+  const [variant, setVariant] = useState<CardVariant>(canShowCounter ? 'counter' : 'incident');
 
   const handleDownload = useCallback(async () => {
     if (!cardRef.current) return;
@@ -155,7 +163,8 @@ export default function ShareCardModal({ incident, onClose }: Props) {
         pixelRatio: 1, // card is already 1080px, no need to scale
       });
       const link = document.createElement('a');
-      link.download = `tvkfiles-${incident.id}.png`;
+      const suffix = variant === 'counter' ? 'counter-receipts' : 'card';
+      link.download = `tvkfiles-${suffix}-${incident.id.slice(0, 8)}.png`;
       link.href = dataUrl;
       link.click();
     } catch (err) {
@@ -163,7 +172,7 @@ export default function ShareCardModal({ incident, onClose }: Props) {
     } finally {
       setDownloading(false);
     }
-  }, [incident.id]);
+  }, [incident.id, variant]);
 
   const handleShare = useCallback(async () => {
     if (!cardRef.current) return;
@@ -201,8 +210,14 @@ export default function ShareCardModal({ incident, onClose }: Props) {
         {/* Modal header */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#222]">
           <div>
-            <h2 className="text-white font-semibold text-sm">Share as Image</h2>
-            <p className="text-gray-500 text-xs mt-0.5">Download or share this incident card</p>
+            <h2 className="text-white font-semibold text-sm">
+              {variant === 'counter' ? 'Counter-Narrative Card' : 'Share as Image'}
+            </h2>
+            <p className="text-gray-500 text-xs mt-0.5">
+              {variant === 'counter'
+                ? 'TVK claim above, DMK government receipts below — share to bust the narrative'
+                : 'Download or share this incident card'}
+            </p>
           </div>
           <button
             onClick={onClose}
@@ -212,13 +227,45 @@ export default function ShareCardModal({ incident, onClose }: Props) {
           </button>
         </div>
 
+        {/* Variant switcher — only when both variants are applicable (credit-steals) */}
+        {canShowCounter && (
+          <div className="flex gap-1 px-5 pt-3">
+            <button
+              onClick={() => setVariant('counter')}
+              className={clsx(
+                'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors',
+                variant === 'counter'
+                  ? 'bg-yellow-600/20 border border-yellow-600/60 text-yellow-300'
+                  : 'bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 hover:text-white'
+              )}
+            >
+              <AlertCircle size={12} /> Counter-Narrative
+            </button>
+            <button
+              onClick={() => setVariant('incident')}
+              className={clsx(
+                'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-md transition-colors',
+                variant === 'incident'
+                  ? 'bg-orange-600/20 border border-orange-600/60 text-orange-300'
+                  : 'bg-[#1a1a1a] border border-[#2a2a2a] text-gray-400 hover:text-white'
+              )}
+            >
+              <FileImage size={12} /> Standard Incident
+            </button>
+          </div>
+        )}
+
         {/* Card preview — scaled down from 1080 to ~480px display */}
         <div className="p-4 flex justify-center bg-[#0a0a0a]">
           <div style={{ width: 480, height: 480, overflow: 'hidden', borderRadius: 8, position: 'relative' }}>
             {/* The real 1080px card — scaled down visually via transform */}
             <div style={{ transform: 'scale(0.4444)', transformOrigin: 'top left', width: 1080, height: 1080 }}>
               <div ref={cardRef}>
-                <InstaCard incident={incident} />
+                {variant === 'counter' ? (
+                  <CounterNarrativeCard incident={incident} />
+                ) : (
+                  <InstaCard incident={incident} />
+                )}
               </div>
             </div>
           </div>
