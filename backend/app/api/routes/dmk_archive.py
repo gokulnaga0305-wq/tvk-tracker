@@ -12,6 +12,56 @@ from typing import Optional
 router = APIRouter(prefix="/dmk-archive", tags=["dmk-archive"])
 
 
+@router.get("/schemes")
+async def list_schemes(
+    q: Optional[str] = Query(None, description="Free-text search in name/description"),
+    category: Optional[str] = Query(None, description="Curated category filter"),
+):
+    """The curated DMK schemes registry — Kalaignar Magalir Urimai, Pudhumai
+    Penn, Free Electricity, etc. Each row is a structured receipt: launch
+    date, beneficiary count, key features.
+
+    Used by the /receipts page — the public-facing "what DMK actually did"
+    counter-evidence library.
+    """
+    db = get_db()
+    query = db.table("dmk_schemes").select(
+        "id, name, aliases, launch_date, description, key_features, "
+        "beneficiaries_count, evidence_urls"
+    )
+    if q:
+        query = query.or_(f"name.ilike.*{q}*,description.ilike.*{q}*")
+    res = query.order("launch_date", desc=False).execute()
+    data = res.data or []
+
+    # Auto-categorize each scheme based on name/description keywords
+    # (we don't have a category column yet — derive it for the UI grouping)
+    CATEGORY_RULES = [
+        ("women",       ("magalir", "penn", "women", "pengal")),
+        ("education",   ("kalvi", "school", "student", "naan mudhalvan", "education", "breakfast")),
+        ("health",      ("kaapom", "kaakkum", "hospital", "aiims", "health", "medical")),
+        ("welfare",     ("welfare", "uravum", "benefit")),
+        ("electricity", ("electricity", "tangedco", "meter", "power")),
+        ("transport",   ("metro", "bus", "road", "transit", "outer ring")),
+        ("industry",    ("foxconn", "pegatron", "investors", "industries", "aerospace", "iphone")),
+        ("language",    ("tamil", "periyar", "tamilukku")),
+        ("agriculture", ("agriculture", "farmer", "fishermen", "pasumai")),
+    ]
+    def categorize(scheme: dict) -> str:
+        haystack = (scheme.get("name", "") + " " + (scheme.get("description") or "")).lower()
+        for cat, kws in CATEGORY_RULES:
+            if any(kw in haystack for kw in kws):
+                return cat
+        return "governance"
+
+    for s in data:
+        s["derived_category"] = categorize(s)
+
+    if category:
+        data = [s for s in data if s["derived_category"] == category]
+    return data
+
+
 @router.get("/timeline")
 async def timeline(
     source: Optional[str] = None,       # dmk_website / cmo_tamil_nadu / tn_dipr / manual

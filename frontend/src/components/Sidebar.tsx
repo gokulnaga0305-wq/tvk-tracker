@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, AlertTriangle, CheckSquare, Users,
-  Info, Copy, MessageSquarePlus, ShieldCheck, Menu, X, Database,
+  Info, Copy, MessageSquarePlus, ShieldCheck, Menu, X, Database, ScrollText,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useLocale } from './LocaleProvider';
@@ -14,6 +14,7 @@ const NAV: { href: string; key: StringKey; icon: any }[] = [
   { href: '/',              key: 'nav.dashboard',     icon: LayoutDashboard },
   { href: '/incidents',     key: 'nav.incidents',     icon: AlertTriangle },
   { href: '/credit-steals', key: 'nav.credit_steals', icon: Copy },
+  { href: '/receipts',      key: 'nav.receipts',      icon: ScrollText },
   { href: '/dmk-timeline',  key: 'nav.dmk_timeline',  icon: Database },
   { href: '/promises',      key: 'nav.promises',      icon: CheckSquare },
   { href: '/members',       key: 'nav.members',       icon: Users },
