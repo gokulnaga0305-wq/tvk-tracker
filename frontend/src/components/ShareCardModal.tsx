@@ -143,6 +143,7 @@ interface Props {
 }
 
 type CardVariant = 'incident' | 'counter';
+type CardLocale = 'en' | 'ta';
 
 export default function ShareCardModal({ incident, onClose }: Props) {
   const cardRef = useRef<HTMLDivElement>(null);
@@ -153,6 +154,7 @@ export default function ShareCardModal({ incident, onClose }: Props) {
   // Other incidents only get the standard incident card.
   const canShowCounter = !!incident.is_credit_steal;
   const [variant, setVariant] = useState<CardVariant>(canShowCounter ? 'counter' : 'incident');
+  const [cardLocale, setCardLocale] = useState<CardLocale>('en');
 
   const handleDownload = useCallback(async () => {
     if (!cardRef.current) return;
@@ -164,7 +166,8 @@ export default function ShareCardModal({ incident, onClose }: Props) {
       });
       const link = document.createElement('a');
       const suffix = variant === 'counter' ? 'counter-receipts' : 'card';
-      link.download = `tvkfiles-${suffix}-${incident.id.slice(0, 8)}.png`;
+      const locSuffix = (variant === 'counter' && cardLocale === 'ta') ? '-ta' : '';
+      link.download = `tvkfiles-${suffix}${locSuffix}-${incident.id.slice(0, 8)}.png`;
       link.href = dataUrl;
       link.click();
     } catch (err) {
@@ -172,7 +175,7 @@ export default function ShareCardModal({ incident, onClose }: Props) {
     } finally {
       setDownloading(false);
     }
-  }, [incident.id, variant]);
+  }, [incident.id, variant, cardLocale]);
 
   const handleShare = useCallback(async () => {
     if (!cardRef.current) return;
@@ -229,7 +232,7 @@ export default function ShareCardModal({ incident, onClose }: Props) {
 
         {/* Variant switcher — only when both variants are applicable (credit-steals) */}
         {canShowCounter && (
-          <div className="flex gap-1 px-5 pt-3">
+          <div className="flex items-center gap-1 px-5 pt-3 flex-wrap">
             <button
               onClick={() => setVariant('counter')}
               className={clsx(
@@ -252,6 +255,30 @@ export default function ShareCardModal({ incident, onClose }: Props) {
             >
               <FileImage size={12} /> Standard Incident
             </button>
+
+            {/* Language switcher — visible only on counter variant */}
+            {variant === 'counter' && (
+              <div className="flex gap-0 ml-auto rounded-md overflow-hidden border border-[#2a2a2a]">
+                <button
+                  onClick={() => setCardLocale('en')}
+                  className={clsx(
+                    'text-xs px-2.5 py-1.5 transition-colors',
+                    cardLocale === 'en' ? 'bg-yellow-600/30 text-yellow-200 font-semibold' : 'bg-[#1a1a1a] text-gray-400 hover:text-white'
+                  )}
+                >
+                  EN
+                </button>
+                <button
+                  onClick={() => setCardLocale('ta')}
+                  className={clsx(
+                    'text-xs px-2.5 py-1.5 transition-colors',
+                    cardLocale === 'ta' ? 'bg-yellow-600/30 text-yellow-200 font-semibold' : 'bg-[#1a1a1a] text-gray-400 hover:text-white'
+                  )}
+                >
+                  தமிழ்
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -262,7 +289,7 @@ export default function ShareCardModal({ incident, onClose }: Props) {
             <div style={{ transform: 'scale(0.4444)', transformOrigin: 'top left', width: 1080, height: 1080 }}>
               <div ref={cardRef}>
                 {variant === 'counter' ? (
-                  <CounterNarrativeCard incident={incident} />
+                  <CounterNarrativeCard incident={incident} locale={cardLocale} />
                 ) : (
                   <InstaCard incident={incident} />
                 )}

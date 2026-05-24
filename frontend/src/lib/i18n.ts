@@ -106,6 +106,32 @@ export const STRINGS = {
   "common.view_all":  { en: "View all",         ta: "அனைத்தையும்" },
   "common.refresh":   { en: "Refresh",          ta: "புதுப்பி" },
   "common.loading":   { en: "Loading…",         ta: "ஏற்றுகிறது…" },
+
+  // ---- Counter-Narrative Card (bilingual receipts card) ----
+  "card.cs_banner":   { en: "Credit Steal — Verified Against DMK Archive",
+                        ta: "திருட்டு சாதனை — திமுக ஆவணகத்தில் சரிபார்க்கப்பட்டது" },
+  "card.tvk_claim":   { en: "TVK Claim",         ta: "தவெக கூற்று" },
+  "card.dmk_record":  { en: "DMK Government Record", ta: "திமுக ஆட்சி பதிவு" },
+  "card.dmk_launch":  { en: "Originally Launched", ta: "முதலில் தொடங்கப்பட்டது" },
+  "card.dmk_era":     { en: "DMK era (2021-2026)", ta: "திமுக காலம் (2021-2026)" },
+  "card.receipt":     { en: "Receipt",           ta: "ஆதாரம்" },
+  "card.archive_match": { en: "Archive match",   ta: "ஆவண பொருத்தம்" },
+  "card.dont_be_fooled": { en: "Don't be fooled.", ta: "ஏமாறாதீர்கள்." },
+  "card.dmk_work":    { en: "This was DMK government's work.",
+                        ta: "இது திமுக ஆட்சியின் வேலை." },
+  "card.proof_count": { en: "more proof",         ta: "மேலும் ஆதாரம்" },
+
+  // ---- Receipts page ----
+  "receipts.title":   { en: "DMK Receipts (2021-2026)",
+                        ta: "திமுக ஆதாரங்கள் (2021-2026)" },
+  "receipts.subtitle": { en: "What the DMK government actually delivered. The reference record for every credit-steal detection.",
+                        ta: "திமுக ஆட்சி உண்மையில் என்ன வழங்கியது. ஒவ்வொரு திருட்டு சாதனையையும் கண்டறிய இதுவே ஆதாரம்." },
+
+  // ---- Trending Unverified ----
+  "trending.title":   { en: "Breaking — Unconfirmed",
+                        ta: "தற்காலிக செய்தி — உறுதிசெய்யப்படவில்லை" },
+  "trending.warn":    { en: "Single source. Wait before sharing.",
+                        ta: "ஒரே ஆதாரம். பகிர்வதற்கு முன் காத்திருங்கள்." },
 } as const;
 
 export type StringKey = keyof typeof STRINGS;
