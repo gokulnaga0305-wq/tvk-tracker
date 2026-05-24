@@ -22,6 +22,7 @@ from app.models.schemas import ApifyWebhookItem
 from app.ingestion.factcheck import lookup_factchecks
 from app.ingestion.image_check import enqueue_images
 from app.ingestion.archive_lookup import find_precedents, attach_evidence
+from app.ingestion.corroboration import attempt_corroborate
 
 logger = logging.getLogger(__name__)
 
@@ -472,3 +473,30 @@ async def process_article(item: ApifyWebhookItem) -> None:
         "Saved [%s] conf=%.2f sig=%s: %s",
         verification_status, confidence, signature, extracted["title"],
     )
+
+    # ---- 8. IMMEDIATE corroboration attempt (no waiting for nightly sweep) ----
+    # As soon as we save a pending incident, search Google News for press
+    # coverage. If 2+ press outlets are already reporting the same event,
+    # the incident graduates to multi_source_verified before the user even
+    # refreshes the dashboard. This is what makes the dashboard 'live truth'
+    # instead of 'truth at 9 AM tomorrow'.
+    if verification_status == "pending_verification":
+        try:
+            # Re-fetch the row so attempt_corroborate has the canonical source_urls
+            fresh = (
+                db.table("incidents")
+                .select("id, title, summary, location, incident_date, source_urls, verification_status")
+                .eq("id", incident_id)
+                .single()
+                .execute()
+            )
+            if fresh.data:
+                outcome = attempt_corroborate(fresh.data)
+                if outcome.get("promoted"):
+                    logger.info(
+                        "Live-corroborated [%s] via %s",
+                        incident_id, ",".join(outcome.get("matched_outlets") or [])
+                    )
+        except Exception as e:
+            # Never let corroboration failure break the ingestion path
+            logger.warning("Live corroboration failed for %s: %s", incident_id, e)

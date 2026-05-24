@@ -171,7 +171,21 @@ async def create_incident(body: IncidentCreate, x_admin_secret: str = Header(...
         except Exception:
             pass  # Non-fatal — admin can re-trigger later if needed
 
-    return res.data[0]
+    # Immediate Google News corroboration: pull press coverage RIGHT NOW
+    # so the new incident lands already-verified when possible.
+    try:
+        from app.ingestion.corroboration import attempt_corroborate
+        fresh = db.table("incidents").select(
+            "id, title, summary, location, incident_date, source_urls, verification_status"
+        ).eq("id", incident_id).single().execute()
+        if fresh.data:
+            attempt_corroborate(fresh.data)
+    except Exception:
+        pass  # Live verification is best-effort
+
+    # Return the latest row (corroboration may have updated it)
+    refresh = db.table("incidents").select("*").eq("id", incident_id).single().execute()
+    return refresh.data or res.data[0]
 
 
 @router.patch("/{incident_id}", response_model=dict)
