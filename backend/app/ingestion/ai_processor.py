@@ -325,11 +325,24 @@ async def process_article(item: ApifyWebhookItem) -> None:
         return
 
     # ---- 2. Record source ----
-    tier = getattr(item, "tier", None) or "established_press"
+    # Outlet detection: if the URL host matches a known press outlet, use
+    # that as the outlet name (Hindu, ToI, etc.) regardless of which RSS
+    # feed it came from. This is important for Google News aggregator
+    # entries where item.source='gnews_tvk_govt' but the actual URL is
+    # thehindu.com/... — we want it counted as "the_hindu" for the 2+
+    # distinct outlets verification gate.
+    from app.ingestion.corroboration import _identify_outlet, PRESS_TIERS
+    detected_outlet, detected_tier = _identify_outlet(item.url, item.source or "")
+    if detected_tier in PRESS_TIERS:
+        outlet = detected_outlet
+        tier = detected_tier
+    else:
+        outlet = item.source or "unknown"
+        tier = getattr(item, "tier", None) or "established_press"
     image_urls = getattr(item, "image_urls", None) or []
     db.table("sources").insert({
         "url": item.url,
-        "outlet": item.source or "unknown",
+        "outlet": outlet,
         "title": item.title,
         "credibility_tier": tier,
     }).execute()

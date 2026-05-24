@@ -54,6 +54,25 @@ const RSS_FEEDS = [
   { name: 'toi_trichy',            tier: 'established_press', url: 'https://timesofindia.indiatimes.com/rssfeeds/-2128820097.cms' },
   { name: 'ndtv_offbeat',          tier: 'established_press', url: 'https://feeds.feedburner.com/ndtvnews-offbeat' },
   { name: 'newsmobile',            tier: 'online_native',     url: 'https://newsmobile.in/articles/feed/' },
+
+  // ---- Google News active-mention watch ----
+  // Each entry below is a Google News RSS search for a TVK-related term.
+  // Google indexes the entire press web (Hindu, ToI, NDTV, regional Tamil
+  // press, niche outlets, fact-checkers, etc.), so we catch press mentions
+  // that our direct-feed list above might miss. The article URLs are
+  // Google's redirector — the article handler follows redirects to get
+  // the real outlet URL, and our backend's outlet-detection (corroboration
+  // module) tags each by its real publisher (Hindu, ToI, etc.) for the
+  // 2+ distinct outlets verification gate.
+  //
+  // Marked 'online_native' just as a default RSS-feed-level tag; the real
+  // tier comes from the URL host once the article is fetched.
+  { name: 'gnews_tvk_govt',     tier: 'online_native', url: 'https://news.google.com/rss/search?q=%22TVK+government%22+OR+%22TVK+regime%22+Tamil+Nadu&hl=en-IN&gl=IN&ceid=IN:en' },
+  { name: 'gnews_cm_vijay',     tier: 'online_native', url: 'https://news.google.com/rss/search?q=%22CM+Vijay%22+OR+%22Chief+Minister+Vijay%22+Tamil+Nadu&hl=en-IN&gl=IN&ceid=IN:en' },
+  { name: 'gnews_tvk_party',    tier: 'online_native', url: 'https://news.google.com/rss/search?q=%22Tamilaga+Vettri+Kazhagam%22&hl=en-IN&gl=IN&ceid=IN:en' },
+  { name: 'gnews_tvk_credit',   tier: 'online_native', url: 'https://news.google.com/rss/search?q=TVK+%28%22credit+steal%22+OR+%22rebranded%22+OR+%22DMK+scheme%22%29&hl=en-IN&gl=IN&ceid=IN:en' },
+  { name: 'gnews_tvk_scandal',  tier: 'online_native', url: 'https://news.google.com/rss/search?q=TVK+%28scam+OR+corruption+OR+arrest+OR+probe+OR+raid%29+Tamil+Nadu&hl=en-IN&gl=IN&ceid=IN:en' },
+  { name: 'gnews_tvk_minister', tier: 'online_native', url: 'https://news.google.com/rss/search?q=TVK+minister+Tamil+Nadu&hl=en-IN&gl=IN&ceid=IN:en' },
 ];
 
 /**
@@ -280,9 +299,14 @@ const crawler = new CheerioCrawler({
 
       console.log(`[${sourceName}] RSS has ${items.length} items`);
 
+      // Google News searches are already topic-restricted by the query;
+      // skip the title-keyword pre-filter for those feeds so we don't
+      // accidentally drop press hits that don't contain our crime-vocab.
+      const skipFilter = sourceName.startsWith('gnews_');
+
       let queued = 0;
       for (const it of items.slice(0, maxArticlesPerSource)) {
-        if (!isRelevant(it.title, it.description)) continue;
+        if (!skipFilter && !isRelevant(it.title, it.description)) continue;
         await requestQueue.addRequest({
           url: it.link,
           uniqueKey: it.link,
@@ -298,7 +322,7 @@ const crawler = new CheerioCrawler({
         });
         queued++;
       }
-      console.log(`[${sourceName}] ${queued} relevant articles queued`);
+      console.log(`[${sourceName}] ${queued} ${skipFilter ? 'gnews' : 'relevant'} articles queued`);
 
     } else if (type === 'html_listing') {
       // Govt portal listing page — extract press release links and queue them.
@@ -385,8 +409,14 @@ const crawler = new CheerioCrawler({
 
       const allImages = [...new Set([...(request.userData.rssImageUrls || []), ...articleImages])];
 
+      // For Google News results, request.url is the redirector
+      // (https://news.google.com/...); request.loadedUrl is the real outlet
+      // URL after redirects. Use the real one so outlet detection in the
+      // backend tags by actual publisher (Hindu, ToI, etc.), not "google".
+      const realUrl = request.loadedUrl || request.url;
+
       const item = {
-        url: request.url,
+        url: realUrl,
         title: request.userData.rssTitle,
         text: text || fallbackText,
         published_at: request.userData.rssPubDate || null,
