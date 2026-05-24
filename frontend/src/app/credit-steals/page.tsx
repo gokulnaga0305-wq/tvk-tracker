@@ -109,13 +109,15 @@ export default function CreditStealsPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {sorted.map(i => (
-          <div key={i.id} className="relative group">
+          <div key={i.id} className="relative">
             <IncidentCard incident={i} />
-            {/* Counter-card quick action */}
+            {/* Counter-card quick action — always visible (mobile has no hover).
+                Positioned to avoid clashing with the existing share button in
+                the IncidentCard footer. */}
             <button
               onClick={() => setCounterFor(i)}
               title="Download Counter-Narrative Card"
-              className="absolute top-3 right-3 flex items-center gap-1.5 bg-yellow-600 hover:bg-yellow-500 text-black text-xs font-bold px-3 py-1.5 rounded-md shadow-lg opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute top-3 right-3 flex items-center gap-1.5 bg-yellow-500 hover:bg-yellow-400 text-black text-xs font-bold px-3 py-1.5 rounded-md shadow-md transition-colors"
             >
               <Download size={12} /> Receipts card
             </button>
