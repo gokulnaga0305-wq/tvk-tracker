@@ -68,7 +68,7 @@ SUMMARY: {summary}
 JSON:"""
 
 
-def main(apply: bool, limit: int | None):
+def main(apply: bool, limit: int | None, include_with_location: bool):
     db = get_db()
     client, model = _get_client_and_model()
     if client is None:
@@ -80,10 +80,19 @@ def main(apply: bool, limit: int | None):
     ).eq("status", "approved").eq("verification_status", "pending_verification").execute()
     pending = res.data or []
 
-    # Focus on the location-less ones — those are the most likely commentary
-    candidates = [p for p in pending if not (p.get("location") or "").strip()]
-    print(f"Pending incidents: {len(pending)}")
-    print(f"Candidates (no location): {len(candidates)}")
+    if include_with_location:
+        # Classify ALL pending incidents — even those with a location set.
+        # Many Reddit posts have locations attached but are still commentary
+        # ("In Chennai, Vijay's speech was disappointing").
+        candidates = pending
+        print(f"Pending incidents: {len(pending)}")
+        print(f"Candidates (ALL pending): {len(candidates)}")
+    else:
+        # Default: only location-less. These are highest-probability commentary.
+        candidates = [p for p in pending if not (p.get("location") or "").strip()]
+        print(f"Pending incidents: {len(pending)}")
+        print(f"Candidates (no location): {len(candidates)}")
+
     if limit:
         candidates = candidates[:limit]
         print(f"Limited to: {len(candidates)}")
@@ -160,5 +169,8 @@ if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--limit", type=int, default=None)
+    ap.add_argument("--all", action="store_true",
+        help="Classify ALL pending incidents, including those with location set "
+             "(default: only location-less)")
     args = ap.parse_args()
-    main(apply=args.apply, limit=args.limit)
+    main(apply=args.apply, limit=args.limit, include_with_location=args.all)
