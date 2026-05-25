@@ -329,7 +329,34 @@ async def get_incumbency_meter():
             # Each +0.1 of net = ~0.5pt of pro, cap at 5pts (net = +1.0)
             sentiment_pro_boost = min(sentiment_net_pct * 5.0, 5.0)
 
-    # --- 7) Economic pressure (sectoral CAGR vs DMK) -----------------------
+    # --- 7) Horse-trading pressure (opposition defections to TVK) ----------
+    # Each verified defection signals the incumbent is manufacturing a
+    # majority via inducements rather than winning hearts. We count
+    # verified + pending (pending is shown publicly with a badge) and
+    # weight verified 2× pending.
+    defection_pressure_pts = 0.0
+    defection_count_verified = 0
+    defection_count_pending = 0
+    try:
+        d_res = (
+            db.table("defections")
+            .select("status, to_party")
+            .neq("status", "retracted")
+            .eq("to_party", "TVK")
+            .execute()
+        )
+        for d in (d_res.data or []):
+            if d.get("status") == "verified":
+                defection_count_verified += 1
+            elif d.get("status") == "pending":
+                defection_count_pending += 1
+    except Exception:
+        pass
+    weighted_defections = defection_count_verified * 1.0 + defection_count_pending * 0.5
+    # 2 pts per weighted defection, cap at 10 pts (~5 verified or 10 pending)
+    defection_pressure_pts = min(weighted_defections * 2.0, 10.0)
+
+    # --- 8) Economic pressure (sectoral CAGR vs DMK) -----------------------
     # Gated: only active once we have observations for at least 3 distinct
     # metric_keys. A single noisy quarter shouldn't swing the meter ±20 pts.
     # Compares each TVK observation to the DMK CAGR for that metric and
@@ -403,6 +430,7 @@ async def get_incumbency_meter():
         + max(0.0, trend_pts)
         + economic_pressure_pts
         + sentiment_pressure_pts
+        + defection_pressure_pts
     )
 
     delivery_bonus = delivery_ratio * 20.0
@@ -446,6 +474,8 @@ async def get_incumbency_meter():
         ("trend_rising",      max(0.0, trend_pts), "anti",
          f"Rising incident rate ({recent_count} last 14d vs {prior_count} prior)"),
         ("economic_pressure", economic_pressure_pts, "anti", econ_label_anti),
+        ("horse_trading", defection_pressure_pts, "anti",
+         f"{defection_count_verified} confirmed + {defection_count_pending} unconfirmed MLAs poached to TVK"),
         ("press_sentiment",   sentiment_pressure_pts, "anti",
          f"Press tone last 14d: {sentiment_counts['negative_for_govt']} negative vs "
          f"{sentiment_counts['positive_for_govt']} positive ({sentiment_counts['neutral']} neutral)"),
@@ -491,6 +521,7 @@ async def get_incumbency_meter():
             "economic_pro_boost":    round(economic_pro_boost, 1),
             "sentiment_pressure":    round(sentiment_pressure_pts, 1),
             "sentiment_pro_boost":   round(sentiment_pro_boost, 1),
+            "defection_pressure":    round(defection_pressure_pts, 1),
         },
         "raw_inputs": {
             "total_incidents":       len(incidents),
@@ -513,6 +544,8 @@ async def get_incumbency_meter():
             "press_sentiment_neutral":  sentiment_counts["neutral"],
             "press_sentiment_net_pct": sentiment_net_pct,
             "press_sentiment_meter_active": sentiment_total >= 5,
+            "defections_verified":   defection_count_verified,
+            "defections_pending":    defection_count_pending,
         },
     }
 

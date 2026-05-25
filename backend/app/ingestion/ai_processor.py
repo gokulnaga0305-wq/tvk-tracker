@@ -87,7 +87,21 @@ Return JSON with these fields exactly:
     "negative_for_govt",   // article reads as criticism / failure attribution
     "neutral",             // factual reporting with no clear lean
     null                   // not applicable (not from a press outlet)
-  ]
+  ],
+  "defection": null OR {{
+    // Only populate when the article describes an MLA / leader switching
+    // parties (resignation from one + joining another). Otherwise null.
+    "mla_name":          "named individual who crossed over",
+    "constituency":      "their assembly constituency, or null",
+    "from_party":        "AIADMK | Congress | DMK | BJP | etc.",
+    "to_party":          "TVK (in almost all cases right now)",
+    "resignation_date":  "YYYY-MM-DD or null",
+    "joined_date":       "YYYY-MM-DD or null",
+    "stated_reason":     "their public PR reason for switching",
+    "alleged_reason":    "what the article hints is the actual reason — cabinet seat promised, CBI/ED case dropped, money exchange alleged",
+    "pending_cases":     [{{"court": "...", "case_no": "...", "status": "..."}}],
+    "confidence":        0.0-1.0
+  }}
 }}
 
 RELEVANCE RULES (be STRICT — when in doubt, set is_relevant=FALSE):
@@ -159,6 +173,19 @@ EXAMPLES (study these carefully):
 
   EX 10: "Vijay's Cabinet has record 7 SC community members"
     → is_relevant=FALSE. Composition news, not incident.
+
+  EX 11: "AIADMK MLA from Madurai resigns, joins TVK — cites philosophical
+         alignment with CM Vijay"
+    → is_relevant=TRUE, category=governance, severity=4.
+    Set defection = {{mla_name: "...", from_party: "AIADMK", to_party: "TVK",
+      stated_reason: "philosophical alignment with TVK", alleged_reason: "..."}}.
+    If the article mentions pending corruption case dropped or cabinet seat
+    promised, capture that in alleged_reason / pending_cases.
+
+  EX 12: "Three Congress MLAs cross over to TVK, take oath next week"
+    → is_relevant=TRUE, category=governance, severity=4.
+    Defection object should reflect the most-named MLA; if multiple, prefer
+    the one with most coverage in the article.
 
 CREDIT-STEAL DETECTION:
   - If the article describes TVK announcing/expanding/relaunching/renaming
@@ -519,6 +546,62 @@ async def process_article(item: ApifyWebhookItem) -> None:
         "Saved [%s] conf=%.2f sig=%s: %s",
         verification_status, confidence, signature, extracted["title"],
     )
+
+    # ---- 7b. Defection record (horse-trading tracker) -----------------
+    # When the article describes an MLA / leader switching parties, also
+    # persist a defection row so the /horse-trading page + meter can
+    # consume it. We never block on this — failure logs only.
+    defection_payload = extracted.get("defection")
+    if isinstance(defection_payload, dict) and defection_payload.get("mla_name"):
+        try:
+            mla_name = (defection_payload.get("mla_name") or "").strip()
+            from_party = (defection_payload.get("from_party") or "").strip()
+            # Dedup: same person + same from/to party = same defection
+            existing = (
+                db.table("defections")
+                .select("id")
+                .eq("mla_name", mla_name)
+                .eq("from_party", from_party)
+                .limit(1)
+                .execute()
+            )
+            if not (existing.data or []):
+                drec = {
+                    "mla_name":         mla_name,
+                    "constituency":     defection_payload.get("constituency"),
+                    "from_party":       from_party or "AIADMK",
+                    "to_party":         defection_payload.get("to_party") or "TVK",
+                    "resignation_date": defection_payload.get("resignation_date"),
+                    "joined_date":      defection_payload.get("joined_date"),
+                    "stated_reason":    defection_payload.get("stated_reason"),
+                    "alleged_reason":   defection_payload.get("alleged_reason"),
+                    "pending_cases":    defection_payload.get("pending_cases") or [],
+                    "evidence_urls":    [item.url],
+                    "severity":         extracted.get("severity", 3),
+                    "ai_confidence":    float(defection_payload.get("confidence") or confidence),
+                    # Mirror the incident's verification gate: tier+confidence
+                    # high enough → publish as 'pending' (visible w/ badge),
+                    # else hold as 'pending' anyway (still visible) but UI
+                    # will show "single source" warning.
+                    "status":           "pending",
+                    "ai_raw":           defection_payload,
+                }
+                db.table("defections").insert(drec).execute()
+                logger.info("Horse-trading: recorded defection of %s (%s → %s)",
+                            mla_name, drec["from_party"], drec["to_party"])
+            else:
+                # Already on file — append this URL as additional evidence
+                drow_id = existing.data[0]["id"]
+                drow_res = db.table("defections").select("evidence_urls").eq("id", drow_id).single().execute()
+                cur_urls = (drow_res.data or {}).get("evidence_urls") or []
+                if item.url not in cur_urls:
+                    db.table("defections").update({
+                        "evidence_urls": list(set(cur_urls + [item.url])),
+                        "updated_at": datetime.now(timezone.utc).isoformat(),
+                    }).eq("id", drow_id).execute()
+                    logger.info("Horse-trading: added URL to existing defection %s", mla_name)
+        except Exception as e:
+            logger.warning("Defection persistence failed for %s: %s", item.url, e)
 
     # ---- 8. IMMEDIATE corroboration attempt (no waiting for nightly sweep) ----
     # As soon as we save a pending incident, search Google News for press

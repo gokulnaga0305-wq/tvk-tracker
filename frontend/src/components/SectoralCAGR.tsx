@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import {
   TrendingUp, TrendingDown, Minus, Info, Building2, Tractor, Coins,
   Briefcase, Activity as ActivityIcon,
@@ -158,15 +159,28 @@ function SectorBlock({ sector, rows }: { sector: CAGRRow['sector']; rows: CAGRRo
   const Icon = meta.icon;
   return (
     <div className="mb-5">
-      <h3 className={`text-[11px] uppercase tracking-wider font-medium mb-2 flex items-center gap-1.5 ${meta.color}`}>
-        <Icon size={12} />
-        {meta.label}
-        <span className="text-gray-700 text-[10px] font-normal normal-case">
-          · {rows.length} metric{rows.length === 1 ? '' : 's'}
-        </span>
-      </h3>
+      <div className="flex items-baseline justify-between mb-2">
+        <h3 className={`text-[11px] uppercase tracking-wider font-medium flex items-center gap-1.5 ${meta.color}`}>
+          <Icon size={12} />
+          {meta.label}
+          <span className="text-gray-700 text-[10px] font-normal normal-case">
+            · {rows.length} metric{rows.length === 1 ? '' : 's'}
+          </span>
+        </h3>
+        <Link
+          href={`/economy/${sector}`}
+          className="text-[10px] text-gray-600 hover:text-orange-400 transition-colors"
+        >
+          See details →
+        </Link>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
-        {rows.map(r => <CAGRCard key={r.key} row={r} />)}
+        {rows.map(r => (
+          <Link key={r.key} href={`/economy/${sector}#${r.key}`}
+                className="block hover:scale-[1.01] transition-transform">
+            <CAGRCard row={r} />
+          </Link>
+        ))}
       </div>
     </div>
   );

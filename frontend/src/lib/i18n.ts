@@ -18,6 +18,7 @@ export const STRINGS = {
   "nav.dashboard":    { en: "Dashboard",        ta: "முகப்பு" },
   "nav.incidents":    { en: "Incidents",        ta: "சம்பவங்கள்" },
   "nav.credit_steals":{ en: "Credit Steals",    ta: "திருட்டு சாதனைகள்" },
+  "nav.horse_trading":{ en: "Horse Trading",    ta: "MLA விற்பனை" },
   "nav.dmk_timeline": { en: "DMK 2021-2026",    ta: "திமுக 2021-2026" },
   "nav.receipts":     { en: "Receipts",          ta: "ஆதாரங்கள்" },
   "nav.promises":     { en: "Promises",         ta: "வாக்குறுதிகள்" },

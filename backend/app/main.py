@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.api.routes import stats, incidents, promises, members, ingest, baselines, citizen, dmk_archive, economic
+from app.api.routes import stats, incidents, promises, members, ingest, baselines, citizen, dmk_archive, economic, defections
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -29,6 +29,7 @@ app.include_router(baselines.router, prefix="/api")
 app.include_router(citizen.router, prefix="/api")
 app.include_router(dmk_archive.router, prefix="/api")
 app.include_router(economic.router, prefix="/api")
+app.include_router(defections.router, prefix="/api")
 
 
 @app.get("/health")
