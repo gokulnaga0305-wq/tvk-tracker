@@ -40,14 +40,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "backend"))
 from app.config import settings
 
 
-# Official TVK accounts to monitor. Update as you confirm handles.
+# Tamil-press X/Twitter handles monitoring TVK coverage.
 # Each tuple: (handle, friendly_label, default_tier)
+#
+# tier="online_native" or "regional_press" rather than "social_media" since
+# these are established Tamil press outlets, not random accounts. That means
+# a single tweet from them DOES count as a press source toward the 2+
+# distinct outlets verification gate (unlike random social_media).
 HANDLES: list[tuple[str, str, str]] = [
-    ("ttvkofficial",  "TVK Party HQ",            "social_media"),
-    ("actorvijay",    "TVK CM Vijay (personal)", "social_media"),
-    # Add as confirmed:
-    # ("ttvkofficial_eng", "TVK English handle", "social_media"),
-    # ("cmtnofficial",     "CM Tamil Nadu office (TVK era)", "primary"),
+    # Established Tamil news on X
+    ("SparkPluz_",        "Spark+ (TVK-skeptical Tamil)", "online_native"),
+    ("PttvNewsX",         "Puthiya Thalaimurai TV",        "regional_press"),
+    ("youturn_in",        "YouTurn (Tamil fact-checker)",  "online_native"),
+    ("News18TamilNadu",   "News18 Tamil Nadu",             "established_press"),
+    ("sunnewstamil",      "Sun News Tamil",                "established_press"),
+    # TVK official handles (uncomment when user confirms exact spellings)
+    # ("ttvkofficial",   "TVK Party HQ",                  "social_media"),
+    # ("actorvijay",     "TVK CM Vijay (personal)",       "social_media"),
 ]
 
 APIFY_ACTOR = "kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest"

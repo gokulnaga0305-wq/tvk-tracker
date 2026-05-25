@@ -81,7 +81,8 @@ OUTLET_REGISTRY: dict[str, tuple[str, str]] = {
     "theekkathir":           ("theekkathir",            "regional_press"),
     "thanthi":               ("thanthi_tv",             "regional_press"),
     "polimer":               ("polimer_news",           "regional_press"),
-    "sun news":              ("sun_news",               "regional_press"),
+    "sun news":              ("sun_news_tamil",         "established_press"),
+    "sunnewstamil":          ("sun_news_tamil",         "established_press"),
     # ---- Regional English (TN-focused) ----
     "dt next":               ("dt_next",                "regional_press"),
     "dtnext":                ("dt_next",                "regional_press"),

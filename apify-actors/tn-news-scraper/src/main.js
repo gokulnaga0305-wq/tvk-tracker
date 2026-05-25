@@ -73,6 +73,11 @@ const RSS_FEEDS = [
   { name: 'gnews_tvk_credit',   tier: 'online_native', url: 'https://news.google.com/rss/search?q=TVK+%28%22credit+steal%22+OR+%22rebranded%22+OR+%22DMK+scheme%22%29&hl=en-IN&gl=IN&ceid=IN:en' },
   { name: 'gnews_tvk_scandal',  tier: 'online_native', url: 'https://news.google.com/rss/search?q=TVK+%28scam+OR+corruption+OR+arrest+OR+probe+OR+raid%29+Tamil+Nadu&hl=en-IN&gl=IN&ceid=IN:en' },
   { name: 'gnews_tvk_minister', tier: 'online_native', url: 'https://news.google.com/rss/search?q=TVK+minister+Tamil+Nadu&hl=en-IN&gl=IN&ceid=IN:en' },
+  // Tamil-language searches. 'தவெக' = TVK in Tamil. Returns Tamil press
+  // outlets (Vikatan, Dinamani, Dinamalar, etc.) that index Tamil content.
+  { name: 'gnews_tvk_tamil',         tier: 'online_native', url: 'https://news.google.com/rss/search?q=%E0%AE%A4%E0%AE%B5%E0%AF%86%E0%AE%95&hl=ta&gl=IN&ceid=IN:ta' },
+  { name: 'gnews_vijay_tamil',       tier: 'online_native', url: 'https://news.google.com/rss/search?q=%E0%AE%B5%E0%AE%BF%E0%AE%9C%E0%AE%AF%E0%AF%8D+%E0%AE%85%E0%AE%B0%E0%AE%9A%E0%AF%81&hl=ta&gl=IN&ceid=IN:ta' },
+  { name: 'gnews_tvk_credit_tamil',  tier: 'online_native', url: 'https://news.google.com/rss/search?q=%E0%AE%A4%E0%AE%B5%E0%AF%86%E0%AE%95+%E0%AE%A4%E0%AE%BF%E0%AE%AE%E0%AF%81%E0%AE%95&hl=ta&gl=IN&ceid=IN:ta' },
 ];
 
 /**
