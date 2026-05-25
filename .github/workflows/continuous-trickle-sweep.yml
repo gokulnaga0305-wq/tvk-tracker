@@ -1,0 +1,58 @@
+name: Continuous trickle sweep (every 30 min)
+
+# Near-realtime corroboration: every 30 minutes, hit the backend's
+# /api/ingest/sweep-verify endpoint with a small limit (10) so we
+# process the oldest-pending items continuously rather than once at
+# nightly batch.
+#
+# Why this exists:
+#   The nightly sweep processes the ENTIRE backlog (~80 items at ~3-5s
+#   each = 8 minutes). Pending incidents wait up to 24h before re-check.
+#   This trickle keeps re-checking continuously so a pending incident
+#   that gets press coverage at 11 AM gets promoted by 11:30 AM, not
+#   the next morning.
+#
+# Cost: 30 min × 48 = ~144 runs/day. Each takes ~30s. Daily GH Actions
+# usage = ~72 minutes = ~2100/month. Within 2000-min free tier? Tight.
+# If it becomes a problem we can switch to hourly (1050 min/month).
+
+on:
+  schedule:
+    - cron: '*/30 * * * *'   # every 30 minutes
+  workflow_dispatch:
+
+concurrency:
+  # Don't queue overlapping runs — if one is still going, skip the next.
+  group: corroboration-trickle
+  cancel-in-progress: false
+
+jobs:
+  trickle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Sweep 10 oldest-pending via Google News
+        env:
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+          BACKEND: https://goknaga-tvk-tracker-backend.hf.space
+        run: |
+          set -e
+          if [ -z "$ADMIN_SECRET" ]; then
+            echo "::warning::ADMIN_SECRET not set — trickle sweep skipped"
+            exit 0
+          fi
+
+          # Process 10 incidents per run. With 48 runs/day = 480 attempts
+          # per day, plenty to cycle the ~80-item backlog ~6 times daily.
+          curl -fsS --max-time 180 -X POST \
+            -H "x-admin-secret: ${ADMIN_SECRET}" \
+            "${BACKEND}/api/ingest/sweep-verify?max_age_days=45&limit=10" \
+            -o /tmp/result.json
+
+          echo "Result:"
+          cat /tmp/result.json | python3 -m json.tool
+
+          # Surface promotions in the Actions log header
+          promoted=$(python3 -c "import json; print(json.load(open('/tmp/result.json')).get('promoted', 0))")
+          echo "::notice::Trickle sweep promoted $promoted incident(s)"
