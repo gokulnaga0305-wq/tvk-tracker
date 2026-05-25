@@ -29,6 +29,13 @@ import sys
 import time
 from pathlib import Path
 
+try:
+    # Windows cp1252 console chokes on Tamil/emoji chars in print() — switch
+    # stdout to UTF-8 so progress logs don't crash mid-loop and lose writes.
+    sys.stdout.reconfigure(encoding="utf-8")
+except Exception:
+    pass
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
