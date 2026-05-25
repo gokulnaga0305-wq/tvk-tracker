@@ -1,0 +1,51 @@
+name: Daily meter snapshot
+
+# Captures the incumbency-meter score once per day so the dashboard can
+# render a trend sparkline. Idempotent — re-running the same day upserts
+# on snapshot_date (no duplicates).
+#
+# Time chosen: 18:00 UTC = 23:30 IST. Picks up the full day's incident
+# ingestion (Apify scrapes run earlier in the day, corroboration sweeps
+# every 30 min, monitor_tvk_handles.py whenever called).
+#
+# Cost: ~2s of runner time × 365 = 12 minutes/year. Trivial.
+
+on:
+  schedule:
+    - cron: '0 18 * * *'  # 18:00 UTC daily (23:30 IST)
+  workflow_dispatch:
+
+concurrency:
+  group: meter-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Capture meter snapshot
+        env:
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+          BACKEND: https://goknaga-tvk-tracker-backend.hf.space
+        run: |
+          set -e
+          if [ -z "$ADMIN_SECRET" ]; then
+            echo "::warning::ADMIN_SECRET not set — meter snapshot skipped"
+            exit 0
+          fi
+
+          # POST hits the live meter endpoint internally, then upserts
+          # one row keyed by today's date. --max-time 180 absorbs HF cold
+          # starts on the free tier.
+          curl -fsS --max-time 180 -X POST \
+            -H "x-admin-secret: ${ADMIN_SECRET}" \
+            "${BACKEND}/api/stats/meter-snapshot" \
+            -o /tmp/snapshot.json
+
+          echo "Snapshot result:"
+          cat /tmp/snapshot.json | python3 -m json.tool
+
+          score=$(python3 -c "import json; print(json.load(open('/tmp/snapshot.json')).get('score', 'n/a'))")
+          echo "::notice::Snapshot captured — score = $score"

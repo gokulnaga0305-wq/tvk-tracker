@@ -1,5 +1,6 @@
-from datetime import date, timedelta
-from fastapi import APIRouter
+from datetime import date, datetime, timedelta, timezone
+from typing import Optional
+from fastapi import APIRouter, Header, HTTPException
 from app.database import get_db
 from app.config import settings
 
@@ -514,3 +515,84 @@ async def get_incumbency_meter():
             "press_sentiment_meter_active": sentiment_total >= 5,
         },
     }
+
+
+# ---------- METER SNAPSHOT HISTORY ----------------------------------------
+#
+# Daily cron stores one row per day so the dashboard can render a trend
+# sparkline. Endpoint is admin-gated for writes (so random callers can't
+# poison the history); reads are public.
+
+def _verify_admin(secret: Optional[str]):
+    if secret != settings.admin_secret:
+        raise HTTPException(status_code=403, detail="admin secret required")
+
+
+@router.post("/meter-snapshot")
+async def capture_meter_snapshot(x_admin_secret: Optional[str] = Header(None)):
+    """Capture the current meter score + breakdown as a daily snapshot.
+
+    Idempotent per day — re-running the same day upserts on snapshot_date.
+    Designed to be hit by the daily GH Action cron.
+    """
+    _verify_admin(x_admin_secret)
+
+    # Reuse the live computation so the snapshot can't drift from what
+    # the dashboard would show at the same moment.
+    meter = await get_incumbency_meter()
+
+    db = get_db()
+    today_iso = date.today().isoformat()
+    payload = {
+        "snapshot_date":       today_iso,
+        "score":               meter["score"],
+        "zone":                meter["zone"],
+        "zone_label":          meter["zone_label"],
+        "govt_day":            meter["govt_day"],
+        "anti_pressure_total": meter["anti_pressure_total"],
+        "pro_boost_total":     meter["pro_boost_total"],
+        "honeymoon_softener":  meter["honeymoon_softener"],
+        "breakdown":           meter.get("breakdown"),
+        "raw_inputs":          meter.get("raw_inputs"),
+        "factors":             meter.get("factors"),
+        "captured_at":         datetime.now(timezone.utc).isoformat(),
+    }
+    try:
+        res = (
+            db.table("meter_snapshots")
+            .upsert(payload, on_conflict="snapshot_date")
+            .execute()
+        )
+        return {"ok": True, "snapshot_date": today_iso, "score": meter["score"], "data": res.data}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                f"Insert failed (table 'meter_snapshots' may not exist yet). "
+                f"Run migration 012. Underlying: {e}"
+            ),
+        )
+
+
+@router.get("/meter-history")
+async def get_meter_history(days: int = 90):
+    """Return the last N daily snapshots, oldest first (for line chart).
+
+    Defaults to 90 days. Public read.
+    """
+    db = get_db()
+    cutoff = (date.today() - timedelta(days=days)).isoformat()
+    try:
+        res = (
+            db.table("meter_snapshots")
+            .select("snapshot_date, score, zone, govt_day, anti_pressure_total, "
+                    "pro_boost_total, honeymoon_softener")
+            .gte("snapshot_date", cutoff)
+            .order("snapshot_date")
+            .execute()
+        )
+        return res.data or []
+    except Exception:
+        # Table missing — degrade cleanly so the dashboard sparkline just
+        # hides itself rather than erroring out.
+        return []

@@ -34,6 +34,13 @@ interface MeterResponse {
   raw_inputs: Record<string, number>;
 }
 
+interface SnapshotPoint {
+  snapshot_date: string;
+  score: number;
+  zone: string;
+  govt_day: number;
+}
+
 // Zone styling. Each zone gets its own card chrome + needle color so the
 // meter's "mood" is readable at a glance even before the user looks at the
 // number itself.
@@ -138,8 +145,61 @@ function Gauge({ score, needleColor }: { score: number; needleColor: string }) {
   );
 }
 
+/**
+ * TrendSparkline — tiny SVG line chart of the score over time.
+ * Renders nothing if there are fewer than 2 snapshots (not enough to draw
+ * a line). Inline-only — designed to live above the gauge.
+ */
+function TrendSparkline({ history }: { history: SnapshotPoint[] }) {
+  if (history.length < 2) return null;
+  const W = 280, H = 36, PAD = 4;
+  // Y axis: hard-pin 0-100 so the slope is honest (no scale games)
+  const xStep = (W - 2 * PAD) / (history.length - 1);
+  const points = history.map((p, i) => {
+    const x = PAD + i * xStep;
+    const y = PAD + (1 - p.score / 100) * (H - 2 * PAD);
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  });
+  const first = history[0].score;
+  const last = history[history.length - 1].score;
+  const delta = +(last - first).toFixed(1);
+  const arrow = delta > 0 ? '↑' : delta < 0 ? '↓' : '→';
+  const deltaColor = delta > 0.5 ? 'text-emerald-400' : delta < -0.5 ? 'text-red-400' : 'text-gray-500';
+
+  return (
+    <div className="flex items-center gap-3 mb-3">
+      <svg viewBox={`0 0 ${W} ${H}`} className="flex-1 h-9">
+        {/* Neutral baseline at 50 */}
+        <line x1={0} y1={H / 2} x2={W} y2={H / 2}
+              stroke="#374151" strokeWidth="0.5" strokeDasharray="2 3" />
+        <polyline
+          points={points.join(' ')}
+          fill="none"
+          stroke="#fb923c"
+          strokeWidth="1.6"
+          strokeLinejoin="round"
+          strokeLinecap="round"
+        />
+        <circle
+          cx={points[points.length - 1].split(',')[0]}
+          cy={points[points.length - 1].split(',')[1]}
+          r="2.2"
+          fill="#fb923c"
+        />
+      </svg>
+      <div className="text-[10px] text-gray-500 leading-tight shrink-0">
+        <div>{history.length}d trend</div>
+        <div className={`font-mono ${deltaColor}`}>
+          {arrow} {delta > 0 ? '+' : ''}{delta}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function IncumbencyMeter() {
   const [data, setData] = useState<MeterResponse | null>(null);
+  const [history, setHistory] = useState<SnapshotPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
@@ -151,15 +211,17 @@ export default function IncumbencyMeter() {
       try {
         const ctrl = new AbortController();
         const timer = setTimeout(() => ctrl.abort(), 60_000); // ride HF cold starts
-        const r = await fetch(`${API}/api/stats/incumbency-meter`, {
-          cache: 'no-store',
-          signal: ctrl.signal,
-        });
+        const [meterRes, histRes] = await Promise.all([
+          fetch(`${API}/api/stats/incumbency-meter`, { cache: 'no-store', signal: ctrl.signal }),
+          fetch(`${API}/api/stats/meter-history?days=90`, { cache: 'no-store', signal: ctrl.signal }),
+        ]);
         clearTimeout(timer);
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        const j = (await r.json()) as MeterResponse;
+        if (!meterRes.ok) throw new Error(`HTTP ${meterRes.status}`);
+        const j = (await meterRes.json()) as MeterResponse;
+        const h: SnapshotPoint[] = histRes.ok ? await histRes.json() : [];
         if (!cancelled) {
           setData(j);
+          setHistory(Array.isArray(h) ? h : []);
           setLastUpdated(new Date());
           setError(false);
         }
@@ -210,6 +272,10 @@ export default function IncumbencyMeter() {
           )}
         </span>
       </div>
+
+      {/* Trend sparkline — renders only when 2+ snapshots exist.
+          Sits above the gauge so the eye reads "trajectory then current". */}
+      <TrendSparkline history={history} />
 
       <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-6 md:gap-8 items-center">
         {/* Gauge + score */}
