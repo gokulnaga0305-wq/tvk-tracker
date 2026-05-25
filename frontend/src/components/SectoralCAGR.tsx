@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   TrendingUp, TrendingDown, Minus, Info, Building2, Tractor, Coins,
-  Briefcase, Activity as ActivityIcon,
+  Briefcase, Activity as ActivityIcon, Wallet,
 } from 'lucide-react';
 
 /**
@@ -25,12 +25,13 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 interface CAGRRow {
   key: string;
   label: string;
-  sector: 'headline' | 'agriculture' | 'industry' | 'services' | 'investment';
+  sector: 'headline' | 'agriculture' | 'industry' | 'services' | 'investment' | 'fiscal_health';
   dmk_cagr_pct: number;
   dmk_period: string;
   dmk_source: string;
   dmk_source_url: string | null;
   nominal: boolean;
+  lower_is_better?: boolean;
   confidence: 'verified' | 'estimate';
   tvk_observed_pct: number | null;
   tvk_value_type: 'cagr_pct' | 'yoy_pct' | 'level' | null;
@@ -58,11 +59,12 @@ interface CAGRResponse {
 }
 
 const SECTOR_META: Record<CAGRRow['sector'], { label: string; icon: any; color: string }> = {
-  headline:    { label: 'Headline',       icon: ActivityIcon, color: 'text-orange-400'  },
-  agriculture: { label: 'Agriculture',    icon: Tractor,      color: 'text-lime-400'    },
-  industry:    { label: 'Industry',       icon: Building2,    color: 'text-sky-400'     },
-  services:    { label: 'Services',       icon: Briefcase,    color: 'text-fuchsia-400' },
-  investment:  { label: 'Investment & Trade', icon: Coins,    color: 'text-amber-400'   },
+  headline:      { label: 'Headline',           icon: ActivityIcon, color: 'text-orange-400'  },
+  agriculture:   { label: 'Agriculture',        icon: Tractor,      color: 'text-lime-400'    },
+  industry:      { label: 'Industry',           icon: Building2,    color: 'text-sky-400'     },
+  services:      { label: 'Services',           icon: Briefcase,    color: 'text-fuchsia-400' },
+  investment:    { label: 'Investment & Trade', icon: Coins,        color: 'text-amber-400'   },
+  fiscal_health: { label: 'Govt Finances',      icon: Wallet,       color: 'text-rose-400'    },
 };
 
 function CAGRCard({ row }: { row: CAGRRow }) {
@@ -119,7 +121,9 @@ function CAGRCard({ row }: { row: CAGRRow }) {
         <span className="text-2xl font-bold text-white tabular-nums">
           {row.dmk_cagr_pct.toFixed(1)}<span className="text-base text-gray-500">%</span>
         </span>
-        <span className="text-[10px] text-gray-600">DMK CAGR · {row.dmk_period}</span>
+        <span className="text-[10px] text-gray-600">
+          {row.lower_is_better ? 'DMK level' : 'DMK CAGR'} · {row.dmk_period}
+        </span>
       </div>
 
       {noData ? (
@@ -210,7 +214,7 @@ export default function SectoralCAGR() {
 
   // Bucket rows by sector for grouped rendering.
   const bySector: Record<CAGRRow['sector'], CAGRRow[]> = {
-    headline: [], agriculture: [], industry: [], services: [], investment: [],
+    headline: [], agriculture: [], industry: [], services: [], investment: [], fiscal_health: [],
   };
   data.rows.forEach(r => bySector[r.sector].push(r));
 
@@ -266,11 +270,12 @@ export default function SectoralCAGR() {
       </div>
 
       {/* Sectors */}
-      <SectorBlock sector="headline"    rows={bySector.headline}    />
-      <SectorBlock sector="agriculture" rows={bySector.agriculture} />
-      <SectorBlock sector="industry"    rows={bySector.industry}    />
-      <SectorBlock sector="services"    rows={bySector.services}    />
-      <SectorBlock sector="investment"  rows={bySector.investment}  />
+      <SectorBlock sector="headline"      rows={bySector.headline}      />
+      <SectorBlock sector="agriculture"   rows={bySector.agriculture}   />
+      <SectorBlock sector="industry"      rows={bySector.industry}      />
+      <SectorBlock sector="services"      rows={bySector.services}      />
+      <SectorBlock sector="investment"    rows={bySector.investment}    />
+      <SectorBlock sector="fiscal_health" rows={bySector.fiscal_health} />
     </section>
   );
 }

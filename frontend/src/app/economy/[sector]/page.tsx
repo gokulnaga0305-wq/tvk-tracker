@@ -4,7 +4,7 @@ import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft, ExternalLink, TrendingUp, TrendingDown, Minus,
-  Building2, Tractor, Coins, Briefcase, Activity, Info,
+  Building2, Tractor, Coins, Briefcase, Activity, Info, Wallet,
 } from 'lucide-react';
 
 /**
@@ -21,7 +21,7 @@ import {
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-type SectorKey = 'headline' | 'agriculture' | 'industry' | 'services' | 'investment';
+type SectorKey = 'headline' | 'agriculture' | 'industry' | 'services' | 'investment' | 'fiscal_health';
 
 const SECTOR_META: Record<SectorKey, { label: string; icon: any; color: string; intro: string }> = {
   headline: {
@@ -54,6 +54,12 @@ const SECTOR_META: Record<SectorKey, { label: string; icon: any; color: string; 
     color: 'text-amber-400',
     intro: 'Foreign investment flowing in, exports going out, state tax revenue collected. Indicators of investor confidence.',
   },
+  fiscal_health: {
+    label: 'Govt Finances',
+    icon: Wallet,
+    color: 'text-rose-400',
+    intro: 'How healthy is the state\'s budget? Tracks how much the government owes (debt), how much it overspends each year (fiscal deficit), how much tax it collects on its own, and how much of its budget goes to people-facing services (education, health, welfare).',
+  },
 };
 
 interface DashboardRow {
@@ -65,6 +71,7 @@ interface DashboardRow {
   dmk_source: string;
   dmk_source_url: string | null;
   nominal: boolean;
+  lower_is_better?: boolean;
   confidence: 'verified' | 'estimate';
   tvk_observed_pct: number | null;
   tvk_value_type: string | null;
@@ -82,15 +89,36 @@ interface CAGRResponse {
   rows: DashboardRow[];
 }
 
-function plainVerdict(v: DashboardRow['verdict'], delta: number | null): { label: string; color: string; icon: any } {
-  if (v === 'ahead')    return { label: `TVK doing better — ${(delta ?? 0) > 0 ? '+' : ''}${delta?.toFixed(1)}% above DMK pace`, color: 'text-emerald-400', icon: TrendingUp };
-  if (v === 'behind')   return { label: `TVK falling behind — ${delta?.toFixed(1)}% below DMK pace`, color: 'text-red-400', icon: TrendingDown };
-  if (v === 'tracking') return { label: 'Tracking close to DMK pace', color: 'text-yellow-400', icon: Minus };
-  return { label: 'No TVK data yet', color: 'text-gray-500', icon: Minus };
+function plainVerdict(row: DashboardRow): { label: string; color: string; icon: any } {
+  const v = row.verdict;
+  const delta = row.delta_pp;
+  if (v === 'no_data') return { label: 'No TVK data yet', color: 'text-gray-500', icon: Minus };
+  if (v === 'tracking') return {
+    label: row.lower_is_better ? 'Holding near DMK\'s level' : 'Tracking close to DMK pace',
+    color: 'text-yellow-400', icon: Minus,
+  };
+  // For "lower is better" (debt, deficit), delta_pp > 0 means TVK is WORSE
+  // (number went up). For "higher is better" (growth, tax revenue), delta > 0 means TVK is BETTER.
+  const sign = (delta ?? 0) > 0 ? '+' : '';
+  if (v === 'ahead') {
+    return {
+      label: row.lower_is_better
+        ? `TVK improved this — ${delta?.toFixed(1)}% (lower is better here)`
+        : `TVK doing better — ${sign}${delta?.toFixed(1)}% above DMK pace`,
+      color: 'text-emerald-400', icon: TrendingUp,
+    };
+  }
+  // behind
+  return {
+    label: row.lower_is_better
+      ? `TVK made it worse — ${sign}${delta?.toFixed(1)}% (higher = bad here)`
+      : `TVK falling behind — ${delta?.toFixed(1)}% below DMK pace`,
+    color: 'text-red-400', icon: TrendingDown,
+  };
 }
 
 function MetricRow({ row }: { row: DashboardRow }) {
-  const verdict = plainVerdict(row.verdict, row.delta_pp);
+  const verdict = plainVerdict(row);
   const Icon = verdict.icon;
   return (
     <article id={row.key} className="bg-[#15161c] border border-[#262833] rounded-lg p-5 mb-4 scroll-mt-24">
@@ -121,13 +149,15 @@ function MetricRow({ row }: { row: DashboardRow }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
         <div className="bg-black/30 border border-[#262833] rounded p-3">
           <div className="text-[10px] uppercase tracking-wider text-gray-500 mb-1">
-            How fast it grew per year under DMK
+            {row.lower_is_better ? "DMK's level (end of tenure)" : 'How fast it grew per year under DMK'}
           </div>
           <div className="text-3xl font-bold text-white tabular-nums">
             {row.dmk_cagr_pct.toFixed(1)}<span className="text-base text-gray-500">%</span>
           </div>
           <p className="text-[10px] text-gray-500 mt-1 leading-snug">
-            Compound growth rate ({row.dmk_period}). Higher is better.
+            {row.lower_is_better
+              ? `Ratio of state output (${row.dmk_period}). Lower is better.`
+              : `Compound growth rate (${row.dmk_period}). Higher is better.`}
           </p>
         </div>
         <div className={`border rounded p-3 ${

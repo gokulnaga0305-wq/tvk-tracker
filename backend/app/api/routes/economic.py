@@ -308,11 +308,104 @@ DMK_CAGR_BASELINES: list[dict] = [
         "source_url": "https://tnbudget.tn.gov.in/",
         "notes": "Reflects buoyant GSDP + improved GST compliance. Verify against final Budget docs.",
     },
+    # ------ FISCAL HEALTH (NITI Aayog Macro & Fiscal Landscape, Mar 2025) ----
+    #
+    # These metrics aren't growth rates but RATIOS of total state output, so
+    # the comparison shape is "TVK's number vs DMK's last-year number" rather
+    # than CAGR vs CAGR.  We use the same delta_pp framework — anything
+    # moving the wrong direction adds anti-pressure when wired into the
+    # meter.  Lower is BETTER for deficits and debt; higher is BETTER for
+    # social spend.  The UI per-card already explains direction in plain
+    # English on the drill-down pages.
+    {
+        "key": "debt_to_gsdp",
+        "label": "Total Public Debt / GSDP",
+        "sector": "fiscal_health",
+        "dmk_cagr_pct": 31.4,        # FY23 end-of-year ratio under DMK Y1
+        "dmk_period": "FY23 (NITI Aayog)",
+        "unit": "%",
+        "nominal": True,
+        "confidence": "verified",
+        "lower_is_better": True,     # used by drill-down + meter
+        "source": "NITI Aayog Macro & Fiscal Landscape, TN (Mar 2025)",
+        "source_url": "https://www.niti.gov.in/sites/default/files/2025-03/Macro-and-Fiscal-Landscape-of-the-State-of-Tamil-Nadu.pdf",
+        "notes": "DMK inherited 27% in FY21; rose to 31.4% by FY23. State Fiscal Responsibility Act caps at 25.2% — TN is structurally over.",
+    },
+    {
+        "key": "fiscal_deficit_gsdp",
+        "label": "Fiscal Deficit / GSDP",
+        "sector": "fiscal_health",
+        "dmk_cagr_pct": 3.2,
+        "dmk_period": "FY23 (NITI Aayog)",
+        "unit": "%",
+        "nominal": True,
+        "confidence": "verified",
+        "lower_is_better": True,
+        "source": "NITI Aayog Macro & Fiscal Landscape, TN (RBI SFR underlying)",
+        "source_url": "https://www.niti.gov.in/sites/default/files/2025-03/Macro-and-Fiscal-Landscape-of-the-State-of-Tamil-Nadu.pdf",
+        "notes": "TN FRA mandates ≤3.0% by Mar 2025. DMK got it to 3.2% (under median state).",
+    },
+    {
+        "key": "primary_deficit_gsdp",
+        "label": "Primary Deficit / GSDP",
+        "sector": "fiscal_health",
+        "dmk_cagr_pct": 1.2,
+        "dmk_period": "FY23 (NITI Aayog)",
+        "unit": "%",
+        "nominal": True,
+        "confidence": "verified",
+        "lower_is_better": True,
+        "source": "NITI Aayog Macro & Fiscal Landscape (RBI SFR derived)",
+        "source_url": "https://www.niti.gov.in/sites/default/files/2025-03/Macro-and-Fiscal-Landscape-of-the-State-of-Tamil-Nadu.pdf",
+        "notes": "Fiscal deficit minus interest payments. Lower than median state's 1.9%.",
+    },
+    {
+        "key": "revenue_deficit_gsdp",
+        "label": "Revenue Deficit / GSDP",
+        "sector": "fiscal_health",
+        "dmk_cagr_pct": 1.3,
+        "dmk_period": "FY23 (NITI Aayog)",
+        "unit": "%",
+        "nominal": True,
+        "confidence": "verified",
+        "lower_is_better": True,
+        "source": "NITI Aayog Macro & Fiscal Landscape, TN",
+        "source_url": "https://www.niti.gov.in/sites/default/files/2025-03/Macro-and-Fiscal-Landscape-of-the-State-of-Tamil-Nadu.pdf",
+        "notes": "TN FRA mandates ELIMINATION of revenue deficit by FY26. DMK reduced it from 3.5% to 1.3% — on track. TVK must finish the job.",
+    },
+    {
+        "key": "own_tax_revenue_gsdp",
+        "label": "Own Tax Revenue / GSDP",
+        "sector": "fiscal_health",
+        "dmk_cagr_pct": 6.4,
+        "dmk_period": "FY23 (NITI Aayog)",
+        "unit": "%",
+        "nominal": True,
+        "confidence": "verified",
+        "lower_is_better": False,    # higher = more self-reliant fiscally
+        "source": "NITI Aayog Macro & Fiscal Landscape, TN",
+        "source_url": "https://www.niti.gov.in/sites/default/files/2025-03/Macro-and-Fiscal-Landscape-of-the-State-of-Tamil-Nadu.pdf",
+        "notes": "Self-collected tax (GST + state taxes). On par with median state (6.3%). Falling = bad.",
+    },
+    {
+        "key": "social_spend_share",
+        "label": "Social Sector Spend / Total Spend",
+        "sector": "fiscal_health",
+        "dmk_cagr_pct": 36.3,
+        "dmk_period": "FY23 (NITI Aayog)",
+        "unit": "%",
+        "nominal": True,
+        "confidence": "verified",
+        "lower_is_better": False,    # higher = more for people
+        "source": "NITI Aayog Macro & Fiscal Landscape, TN",
+        "source_url": "https://www.niti.gov.in/sites/default/files/2025-03/Macro-and-Fiscal-Landscape-of-the-State-of-Tamil-Nadu.pdf",
+        "notes": "Education+health+welfare share. Below median state's 43.9% — TN has historically been welfare-strong but the ratio has FALLEN under DMK from ~43% (FY13) to 36.3% (FY23). Drop reflects rising debt service crowding out social spend.",
+    },
 ]
 
 DMK_CAGR_LOOKUP = {b["key"]: b for b in DMK_CAGR_BASELINES}
 
-SECTOR_ORDER = ["headline", "agriculture", "industry", "services", "investment"]
+SECTOR_ORDER = ["headline", "agriculture", "industry", "services", "investment", "fiscal_health"]
 
 
 # ---------- TVK QUARTERLY TRACKER ----------------------------------------
@@ -428,9 +521,13 @@ async def economic_dashboard():
         verdict = "no_data"
         if tvk_pct is not None:
             delta_pp = round(tvk_pct - float(b["dmk_cagr_pct"]), 2)
-            if delta_pp > 0.5:
+            # For "lower_is_better" metrics (deficits, debt) the sign flips —
+            # an increase is bad, a decrease is good. We normalize so
+            # verdict='ahead' always means TVK is doing better than DMK.
+            effective = -delta_pp if b.get("lower_is_better") else delta_pp
+            if effective > 0.5:
                 verdict = "ahead"
-            elif delta_pp < -0.5:
+            elif effective < -0.5:
                 verdict = "behind"
             else:
                 verdict = "tracking"
@@ -449,6 +546,7 @@ async def economic_dashboard():
             "dmk_source_url": b.get("source_url"),
             "nominal": b.get("nominal", False),
             "confidence": b.get("confidence", "estimate"),
+            "lower_is_better": b.get("lower_is_better", False),
             "tvk_observed_pct": tvk_pct,
             "tvk_value_type": obs.get("value_type") if obs else None,
             "tvk_period_label": period_label,
