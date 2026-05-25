@@ -184,8 +184,9 @@ async def get_incumbency_meter():
           + pro_boost     (delivery + baseline_beats + falling_trend)
           + honeymoon_softener (fades from 10 → 0 by day 100)
     """
-    # Local import dodges circular: baselines.py also imports from stats path.
+    # Local imports dodge circular: baselines + economic both share stats path.
     from app.api.routes.baselines import BASELINES
+    from app.api.routes.economic import DMK_CAGR_BASELINES, _annualise
 
     db = get_db()
     today = date.today()
@@ -282,6 +283,71 @@ async def get_incumbency_meter():
         elif ratio < 0.8:
             trend_pts = -min((1.0 - ratio) * 5.0, 3.0)       # falling → pro
 
+    # --- 6) Economic pressure (sectoral CAGR vs DMK) -----------------------
+    # Gated: only active once we have observations for at least 3 distinct
+    # metric_keys. A single noisy quarter shouldn't swing the meter ±20 pts.
+    # Compares each TVK observation to the DMK CAGR for that metric and
+    # accumulates pp-deltas weighted by sector electoral importance.
+    economic_pressure_pts = 0.0       # anti-incumbency push (positive value)
+    economic_pro_boost = 0.0          # pro-incumbency push (positive value)
+    econ_obs_count = 0
+    econ_metrics_compared = 0
+    econ_avg_delta_pp: float | None = None
+    try:
+        eco_res = (
+            db.table("economic_quarterly_data")
+            .select("metric_key, fy, quarter, value, value_type, ingested_at")
+            .order("fy", desc=True)
+            .order("quarter", desc=True)
+            .order("ingested_at", desc=True)
+            .execute()
+        )
+        eco_observations = eco_res.data or []
+    except Exception:
+        eco_observations = []
+
+    # Pick latest observation per metric (already sorted desc)
+    latest_by_metric: dict[str, dict] = {}
+    for obs in eco_observations:
+        k = obs.get("metric_key")
+        if k and k not in latest_by_metric:
+            latest_by_metric[k] = obs
+    econ_obs_count = len(latest_by_metric)
+
+    if econ_obs_count >= 3:
+        dmk_lookup = {b["key"]: b for b in DMK_CAGR_BASELINES}
+        # Sector weights — headline + manufacturing matter most electorally
+        ECON_SECTOR_WEIGHT = {
+            "headline":    2.0,
+            "industry":    1.5,
+            "services":    1.0,
+            "agriculture": 1.5,  # politically charged in TN
+            "investment":  1.0,
+        }
+        weighted_delta_sum = 0.0
+        weight_sum = 0.0
+        for key, obs in latest_by_metric.items():
+            dmk = dmk_lookup.get(key)
+            tvk_pct = _annualise(obs)
+            if not dmk or tvk_pct is None:
+                continue
+            sector_w = ECON_SECTOR_WEIGHT.get(dmk["sector"], 1.0)
+            delta_pp = tvk_pct - float(dmk["dmk_cagr_pct"])
+            weighted_delta_sum += delta_pp * sector_w
+            weight_sum += sector_w
+            econ_metrics_compared += 1
+
+        if weight_sum > 0:
+            econ_avg_delta_pp = round(weighted_delta_sum / weight_sum, 2)
+            # Convert weighted avg pp-delta into meter points.
+            # Each 1pp under DMK CAGR = ~2.5 anti pts (cap 20).
+            # Each 1pp over DMK CAGR = ~2.5 pro pts (cap 15).
+            pts_per_pp = 2.5
+            if econ_avg_delta_pp < 0:
+                economic_pressure_pts = min(abs(econ_avg_delta_pp) * pts_per_pp, 20.0)
+            elif econ_avg_delta_pp > 0:
+                economic_pro_boost = min(econ_avg_delta_pp * pts_per_pp, 15.0)
+
     # --- Total anti / pro ---------------------------------------------------
     anti_pressure = (
         baseline_pressure_pts
@@ -289,12 +355,13 @@ async def get_incumbency_meter():
         + promise_failure_pts
         + credit_pressure_pts
         + max(0.0, trend_pts)
+        + economic_pressure_pts
     )
 
     delivery_bonus = delivery_ratio * 20.0
     baseline_beats_bonus = min(baseline_beats * 3.0, 15.0)
     trend_bonus = max(0.0, -trend_pts)
-    pro_boost = delivery_bonus + baseline_beats_bonus + trend_bonus
+    pro_boost = delivery_bonus + baseline_beats_bonus + trend_bonus + economic_pro_boost
 
     # First-100-days honeymoon softens the meter — voters give a new govt
     # some benefit of the doubt. Fades linearly to 0 by day 100.
@@ -311,6 +378,15 @@ async def get_incumbency_meter():
            if len(baseline_worse_categories) > 3 else "")
     ) if baseline_worse_categories else "categories above DMK pace"
 
+    econ_label_anti = (
+        f"Economy: avg {econ_avg_delta_pp:+.1f}pp under DMK CAGR across {econ_metrics_compared} sectors"
+        if econ_avg_delta_pp is not None else "Economic underperformance vs DMK CAGR"
+    )
+    econ_label_pro = (
+        f"Economy: avg {econ_avg_delta_pp:+.1f}pp above DMK CAGR across {econ_metrics_compared} sectors"
+        if econ_avg_delta_pp is not None else "Economic outperformance vs DMK CAGR"
+    )
+
     contributors = [
         ("baseline_pressure", baseline_pressure_pts, "anti",
          f"Above DMK pace: {worse_cat_str}"),
@@ -322,12 +398,14 @@ async def get_incumbency_meter():
          f"{credit_steals} credit-stealing incidents documented"),
         ("trend_rising",      max(0.0, trend_pts), "anti",
          f"Rising incident rate ({recent_count} last 14d vs {prior_count} prior)"),
+        ("economic_pressure", economic_pressure_pts, "anti", econ_label_anti),
         ("delivery_bonus",    delivery_bonus, "pro",
          f"{kept_promises} of {total_promises} promises delivered"),
         ("baseline_beats",    baseline_beats_bonus, "pro",
          f"{baseline_beats} categories outperform DMK pace"),
         ("trend_falling",     max(0.0, -trend_pts), "pro",
          f"Falling incident rate ({recent_count} last 14d vs {prior_count} prior)"),
+        ("economic_pro",      economic_pro_boost, "pro", econ_label_pro),
         ("honeymoon",         honeymoon_softener, "pro",
          f"Day {days} of {settings.govt_name} govt — first-100-days honeymoon"),
     ]
@@ -356,6 +434,8 @@ async def get_incumbency_meter():
             "trend":                 round(trend_pts, 1),
             "delivery_bonus":        round(delivery_bonus, 1),
             "baseline_beats_bonus":  round(baseline_beats_bonus, 1),
+            "economic_pressure":     round(economic_pressure_pts, 1),
+            "economic_pro_boost":    round(economic_pro_boost, 1),
         },
         "raw_inputs": {
             "total_incidents":       len(incidents),
@@ -368,5 +448,9 @@ async def get_incumbency_meter():
             "categories_worse_than_dmk": len(baseline_worse_categories),
             "recent_14d_incidents":  recent_count,
             "prior_14d_incidents":   prior_count,
+            "economic_obs_count":    econ_obs_count,
+            "economic_metrics_compared": econ_metrics_compared,
+            "economic_avg_delta_pp": econ_avg_delta_pp,
+            "economic_meter_active": econ_obs_count >= 3,
         },
     }

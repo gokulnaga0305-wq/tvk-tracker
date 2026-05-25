@@ -30,6 +30,7 @@ interface CAGRRow {
   dmk_source: string;
   dmk_source_url: string | null;
   nominal: boolean;
+  confidence: 'verified' | 'estimate';
   tvk_observed_pct: number | null;
   tvk_value_type: 'cagr_pct' | 'yoy_pct' | 'level' | null;
   tvk_period_label: string | null;
@@ -93,7 +94,24 @@ function CAGRCard({ row }: { row: CAGRRow }) {
             </span>
           )}
         </div>
-        <Icon size={14} className="opacity-70 shrink-0" />
+        <div className="flex items-center gap-1 shrink-0">
+          {row.confidence === 'verified' ? (
+            <span
+              title={`Sourced from: ${row.dmk_source}`}
+              className="text-[8px] uppercase tracking-wider px-1 py-0.5 rounded bg-emerald-950/60 text-emerald-400 border border-emerald-800/40"
+            >
+              cited
+            </span>
+          ) : (
+            <span
+              title={`Estimate, pending verification: ${row.dmk_source}`}
+              className="text-[8px] uppercase tracking-wider px-1 py-0.5 rounded bg-gray-900 text-gray-500 border border-gray-700"
+            >
+              est.
+            </span>
+          )}
+          <Icon size={14} className="opacity-70" />
+        </div>
       </div>
 
       <div className="flex items-baseline gap-2 mb-2">
