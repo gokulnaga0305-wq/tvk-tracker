@@ -4,7 +4,7 @@ import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft, ExternalLink, TrendingUp, TrendingDown, Minus,
-  Building2, Tractor, Coins, Briefcase, Activity, Info, Wallet,
+  Building2, Tractor, Coins, Briefcase, Activity, Info, Wallet, HeartPulse,
 } from 'lucide-react';
 
 /**
@@ -21,7 +21,7 @@ import {
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
-type SectorKey = 'headline' | 'agriculture' | 'industry' | 'services' | 'investment' | 'fiscal_health';
+type SectorKey = 'headline' | 'agriculture' | 'industry' | 'services' | 'investment' | 'fiscal_health' | 'human_development';
 
 const SECTOR_META: Record<SectorKey, { label: string; icon: any; color: string; intro: string }> = {
   headline: {
@@ -59,6 +59,12 @@ const SECTOR_META: Record<SectorKey, { label: string; icon: any; color: string; 
     icon: Wallet,
     color: 'text-rose-400',
     intro: 'How healthy is the state\'s budget? Tracks how much the government owes (debt), how much it overspends each year (fiscal deficit), how much tax it collects on its own, and how much of its budget goes to people-facing services (education, health, welfare).',
+  },
+  human_development: {
+    label: 'People & Welfare',
+    icon: HeartPulse,
+    color: 'text-pink-300',
+    intro: 'How well people in Tamil Nadu are actually doing — literacy, life expectancy, jobs, women in the workforce, infant mortality. These shift slowly, but they\'re the real test of whether the government is improving lives.',
   },
 };
 

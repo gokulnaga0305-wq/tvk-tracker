@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   TrendingUp, TrendingDown, Minus, Info, Building2, Tractor, Coins,
-  Briefcase, Activity as ActivityIcon, Wallet,
+  Briefcase, Activity as ActivityIcon, Wallet, HeartPulse,
 } from 'lucide-react';
 
 /**
@@ -25,7 +25,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 interface CAGRRow {
   key: string;
   label: string;
-  sector: 'headline' | 'agriculture' | 'industry' | 'services' | 'investment' | 'fiscal_health';
+  sector: 'headline' | 'agriculture' | 'industry' | 'services' | 'investment' | 'fiscal_health' | 'human_development';
   dmk_cagr_pct: number;
   dmk_period: string;
   dmk_source: string;
@@ -65,6 +65,7 @@ const SECTOR_META: Record<CAGRRow['sector'], { label: string; icon: any; color: 
   services:      { label: 'Services',           icon: Briefcase,    color: 'text-fuchsia-400' },
   investment:    { label: 'Investment & Trade', icon: Coins,        color: 'text-amber-400'   },
   fiscal_health: { label: 'Govt Finances',      icon: Wallet,       color: 'text-rose-400'    },
+  human_development: { label: 'People & Welfare', icon: HeartPulse, color: 'text-pink-300' },
 };
 
 function CAGRCard({ row }: { row: CAGRRow }) {
@@ -214,7 +215,7 @@ export default function SectoralCAGR() {
 
   // Bucket rows by sector for grouped rendering.
   const bySector: Record<CAGRRow['sector'], CAGRRow[]> = {
-    headline: [], agriculture: [], industry: [], services: [], investment: [], fiscal_health: [],
+    headline: [], agriculture: [], industry: [], services: [], investment: [], fiscal_health: [], human_development: [],
   };
   data.rows.forEach(r => bySector[r.sector].push(r));
 
@@ -274,8 +275,9 @@ export default function SectoralCAGR() {
       <SectorBlock sector="agriculture"   rows={bySector.agriculture}   />
       <SectorBlock sector="industry"      rows={bySector.industry}      />
       <SectorBlock sector="services"      rows={bySector.services}      />
-      <SectorBlock sector="investment"    rows={bySector.investment}    />
-      <SectorBlock sector="fiscal_health" rows={bySector.fiscal_health} />
+      <SectorBlock sector="investment"        rows={bySector.investment}        />
+      <SectorBlock sector="fiscal_health"     rows={bySector.fiscal_health}     />
+      <SectorBlock sector="human_development" rows={bySector.human_development} />
     </section>
   );
 }
