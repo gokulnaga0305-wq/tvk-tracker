@@ -4,6 +4,7 @@ import StatCard from '@/components/StatCard';
 import TopBar from '@/components/TopBar';
 import IncidentCard from '@/components/IncidentCard';
 import BaselineDelta from '@/components/BaselineDelta';
+import IncumbencyMeter from '@/components/IncumbencyMeter';
 import { DashboardStats, Incident, BaselineRow } from '@/lib/api';
 import { CATEGORY_LABELS } from '@/lib/constants';
 import Link from 'next/link';
@@ -102,6 +103,12 @@ export default function DashboardPage() {
             </p>
           )}
         </div>
+
+        {/* Incumbency meter — realtime, evidence-weighted accountability gauge.
+            Placed above the trust banner so it's the first visual the user
+            sees after the header. Self-fetches + 5-min polls — never blocks
+            the rest of the dashboard render. */}
+        <IncumbencyMeter />
 
         {/* Trust transparency banner — show the overall verified/pending split */}
         {(stats.total_incidents ?? 0) > 0 && (
