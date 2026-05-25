@@ -5,6 +5,7 @@ import TopBar from '@/components/TopBar';
 import IncidentCard from '@/components/IncidentCard';
 import BaselineDelta from '@/components/BaselineDelta';
 import IncumbencyMeter from '@/components/IncumbencyMeter';
+import SectoralCAGR from '@/components/SectoralCAGR';
 import { DashboardStats, Incident, BaselineRow } from '@/lib/api';
 import { CATEGORY_LABELS } from '@/lib/constants';
 import Link from 'next/link';
@@ -156,8 +157,13 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* DMK era vs TVK era delta panel */}
+        {/* DMK era vs TVK era delta panel — crime/governance event counts */}
         {baselines.length > 0 && <BaselineDelta rows={baselines} />}
+
+        {/* Sectoral economy: DMK 5yr CAGR vs latest TVK observation.
+            Self-fetches /api/economic/dashboard. Renders even when there's
+            no TVK data yet (cards just show DMK baseline as the anchor). */}
+        <SectoralCAGR />
 
         {/* Credit steal highlight */}
         {stats.credit_steal_count > 0 && (

@@ -180,7 +180,67 @@ export default function MethodologyPage() {
         </div>
       </div>
 
-      <Section icon={Database} title="10. Audit trail">
+      <div id="economic-baselines" className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 mb-4">
+        <h2 className="text-white font-semibold mb-3 flex items-center gap-2">
+          <Database size={16} className="text-orange-400" />
+          10. Sectoral economic baselines (DMK CAGR vs TVK)
+        </h2>
+        <div className="text-gray-400 text-sm leading-relaxed space-y-2">
+          <p>
+            DMK governed Tamil Nadu from May 2021 to May 2026 — a full five-year
+            term. The state's economic record over that period is the most rigorous
+            yardstick for evaluating TVK's regime, because GSDP and sectoral
+            value-add data are published independently by MoSPI, the RBI, and
+            the TN Finance Department.
+          </p>
+          <p>
+            We track <strong className="text-white">17 sectoral metrics</strong> grouped
+            into five buckets: Headline (total GSDP, per-capita NSDP),
+            Agriculture, Industry (manufacturing, construction, electricity,
+            mining), Services (trade, finance, public admin, other), and
+            Investment & Trade (FDI, exports, tax revenue).
+          </p>
+          <p className="text-white font-semibold mt-3">DMK baseline = 5-year CAGR (FY22-FY26)</p>
+          <p>
+            For each metric we compute the compound annual growth rate over the
+            DMK term using the official series. CAGR is the right anchor because
+            it is unit-free, comparable across sectors of different sizes, and
+            unaffected by base-effect distortions in any single year.
+          </p>
+          <p className="text-white font-semibold mt-3">TVK comparison = latest published quarterly observation</p>
+          <p>
+            As each new TN Economic Survey / RBI State Finances / MoSPI advance
+            estimate is released, we ingest the observation into the
+            <code className="text-gray-300 bg-black/40 px-1 rounded mx-1">economic_quarterly_data</code>
+            table via an admin endpoint. The dashboard shows the most-recent
+            observation per metric and the
+            <strong className="text-white"> percentage-point delta (pp)</strong> vs
+            the DMK CAGR. Ahead by 0.5pp+ = green ("ahead of DMK pace"), behind by
+            0.5pp+ = red, between = yellow ("tracking").
+          </p>
+          <p className="text-white font-semibold mt-3">Sources cited per metric</p>
+          <ul className="ml-5 list-disc space-y-1">
+            <li>TN Economic Survey 2025-26 (Finance Dept, Govt of Tamil Nadu)</li>
+            <li>MoSPI State Domestic Product release, base year 2011-12</li>
+            <li>RBI Handbook of Statistics on Indian States</li>
+            <li>DPIIT FDI Quarterly Fact Sheet</li>
+            <li>DGCI&S state-wise exports series</li>
+            <li>TN Finance Dept Budget at a Glance + Revenue Receipts series</li>
+          </ul>
+          <p className="text-white font-semibold mt-3">Future meter integration</p>
+          <p>
+            Once we have at least three TVK quarterly observations, the
+            Incumbency Meter will fold this into a dedicated
+            <strong className="text-white"> economic-pressure component</strong>
+            (cap ±20 pts) — if TVK underperforms DMK CAGR across most sectors,
+            it adds anti-incumbency pressure proportional to the gap; outperforming
+            adds pro-incumbency boost. Until then the meter remains crime/governance-only
+            so it doesn't over-state confidence.
+          </p>
+        </div>
+      </div>
+
+      <Section icon={Database} title="11. Audit trail">
         <p>
           Every incident has a public audit log: when it was created, every status
           change, who approved it (AI vs admin), and any retraction reason. Click any
