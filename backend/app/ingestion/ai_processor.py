@@ -81,7 +81,13 @@ Return JSON with these fields exactly:
   "people_mentioned": ["names of officials, ministers, accused, etc."],
   "severity": 1-5 (1=minor procedural, 5=loss-of-life/major scandal),
   "confidence": 0.0-1.0,
-  "reason": "one-sentence rationale for confidence + relevance"
+  "reason": "one-sentence rationale for confidence + relevance",
+  "press_sentiment": one of [
+    "positive_for_govt",   // article reads as praise/credit for TVK govt
+    "negative_for_govt",   // article reads as criticism / failure attribution
+    "neutral",             // factual reporting with no clear lean
+    null                   // not applicable (not from a press outlet)
+  ]
 }}
 
 RELEVANCE RULES (be STRICT — when in doubt, set is_relevant=FALSE):
@@ -164,7 +170,22 @@ CONFIDENCE SCORING:
   - 0.9+ : Clearly sourced, named officials, specific date/place, official quotes
   - 0.7-0.9 : Sourced report, some specifics
   - 0.5-0.7 : Reported but vague — needs cross-check
-  - <0.5 : Speculative or single anonymous source"""
+  - <0.5 : Speculative or single anonymous source
+
+PRESS SENTIMENT (only for press-outlet sources, otherwise null):
+  - positive_for_govt : article frames a TVK action favourably (scheme launch
+    praised, achievement claimed, minister defended). Articles attributing
+    GOOD outcomes to TVK govt.
+  - negative_for_govt : article criticises TVK govt action/inaction
+    (scandal, failure, broken promise, opposition allegation with evidence).
+    Articles attributing BAD outcomes to TVK govt.
+  - neutral : factual reporting with no clear sentiment lean — straight news
+    about an event that doesn't directly praise or criticize.
+  - null : article is not from a press outlet (e.g. citizen report, social
+    media), so press-sentiment classification doesn't apply.
+
+  Be ANALYTICAL not partisan: classify by tone & framing in the article,
+  NOT by your own opinion of whether TVK actually deserves praise/blame."""
 
 
 def _get_client_and_model() -> tuple[OpenAI | None, str]:
@@ -415,6 +436,17 @@ async def process_article(item: ApifyWebhookItem) -> None:
         verification_status = "pending_verification"
         publish_status = "pending_review"  # held back from public view
 
+    # Only persist press_sentiment for press-tier sources (any of primary /
+    # established_press / regional_press / online_native — basically anything
+    # that PRESS_TIERS recognises). Citizen reports + social_media leads
+    # don't get a sentiment because the speaker isn't neutral press.
+    raw_sentiment = extracted.get("press_sentiment")
+    valid_sentiments = {"positive_for_govt", "negative_for_govt", "neutral"}
+    press_sentiment = (
+        raw_sentiment if (tier in PRESS_TIERS and raw_sentiment in valid_sentiments)
+        else None
+    )
+
     incident_payload = {
         "title": extracted["title"],
         "summary": extracted["summary"],
@@ -434,6 +466,7 @@ async def process_article(item: ApifyWebhookItem) -> None:
         "event_signature": signature,
         "image_urls": image_urls,
         "ai_raw": extracted,
+        "press_sentiment": press_sentiment,
     }
 
     inserted = db.table("incidents").insert(incident_payload).execute()

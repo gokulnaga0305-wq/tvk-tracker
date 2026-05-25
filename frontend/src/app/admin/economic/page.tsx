@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import {
-  TrendingUp, ShieldAlert, Check, X, Database, ExternalLink, Plus,
+  TrendingUp, ShieldAlert, Check, X, Database, ExternalLink, Plus, Bell,
+  RefreshCw, AlertTriangle,
 } from 'lucide-react';
 
 /**
@@ -33,6 +34,38 @@ interface Baseline {
   source_url?: string;
 }
 
+interface ReleaseWatch {
+  id: string;
+  label: string;
+  url: string;
+  publisher: string;
+  related_metrics: string[];
+  cadence_days: number;
+  last_checked: string | null;
+  last_changed_at: string | null;
+  notes: string | null;
+  pending_events: number;
+}
+
+interface ReleaseEvent {
+  id: string;
+  watch_id: string;
+  detected_at: string;
+  old_hash: string | null;
+  new_hash: string;
+  status: 'pending' | 'acknowledged' | 'dismissed';
+  ack_by: string | null;
+  ack_at: string | null;
+  notes: string | null;
+  watch?: {
+    id: string;
+    label: string;
+    url: string;
+    publisher: string;
+    related_metrics: string[];
+  };
+}
+
 interface Observation {
   id: string;
   metric_key: string;
@@ -59,6 +92,8 @@ export default function AdminEconomicPage() {
 
   const [baselines, setBaselines] = useState<Baseline[]>([]);
   const [observations, setObservations] = useState<Observation[]>([]);
+  const [releaseEvents, setReleaseEvents] = useState<ReleaseEvent[]>([]);
+  const [watches, setWatches] = useState<ReleaseWatch[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Form state
@@ -72,15 +107,22 @@ export default function AdminEconomicPage() {
   const [notes, setNotes]           = useState('');
   const [submitMsg, setSubmitMsg]   = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
-  // Fetch baselines + observations (auth check piggybacks on observations GET)
+  // Fetch baselines + observations + release watches/events in parallel.
+  // None of these read endpoints actually require auth (Supabase RLS is
+  // public-read on these tables) — we still send the secret so a wrong
+  // value surfaces immediately when the admin POSTs, not on first action.
   async function loadData(s: string) {
     setLoading(true);
     setAuthMsg('');
     try {
-      const [bRes, oRes] = await Promise.all([
+      const [bRes, oRes, wRes, eRes] = await Promise.all([
         fetch(`${API}/api/economic/baselines`, { cache: 'no-store' }),
         fetch(`${API}/api/economic/quarterly?limit=200`, {
           headers: { 'x-admin-secret': s },
+          cache: 'no-store',
+        }),
+        fetch(`${API}/api/economic/release-watches`, { cache: 'no-store' }),
+        fetch(`${API}/api/economic/release-events?status=pending&limit=20`, {
           cache: 'no-store',
         }),
       ]);
@@ -89,16 +131,35 @@ export default function AdminEconomicPage() {
       setBaselines(bs);
       if (!metricKey && bs.length) setMetricKey(bs[0].key);
 
-      // observations endpoint accepts requests without auth too (it's
-      // public read), but checking response shape gives us a smoke-test.
-      if (oRes.ok) {
-        setObservations(await oRes.json());
+      if (oRes.ok) setObservations(await oRes.json());
+      if (wRes.ok) {
+        const wj = await wRes.json();
+        setWatches(wj.watches ?? []);
       }
+      if (eRes.ok) setReleaseEvents(await eRes.json());
+
       setAuthed(true);
     } catch (e: any) {
       setAuthMsg(e?.message || 'Cannot connect to backend');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function ackReleaseEvent(eventId: string, status: 'acknowledged' | 'dismissed', notes: string) {
+    try {
+      const res = await fetch(`${API}/api/economic/release-events/${eventId}/ack`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-secret': secret,
+        },
+        body: JSON.stringify({ status, notes }),
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setReleaseEvents(es => es.filter(e => e.id !== eventId));
+    } catch (e: any) {
+      alert(`Failed: ${e?.message}`);
     }
   }
 
@@ -205,6 +266,69 @@ export default function AdminEconomicPage() {
           delta vs the DMK CAGR baseline.
         </p>
       </div>
+
+      {/* Release-watcher alert panel. Renders only when the auto-ingest
+          script has detected publisher-page changes that need admin review. */}
+      {releaseEvents.length > 0 && (
+        <div className="bg-amber-950/30 border border-amber-700/40 rounded-lg p-5 mb-6">
+          <h2 className="text-amber-300 font-semibold mb-3 flex items-center gap-2 text-sm">
+            <Bell size={14} className="text-amber-400" />
+            New releases detected ({releaseEvents.length})
+            <span className="text-amber-500/70 text-xs font-normal">
+              · publisher page changed since last review
+            </span>
+          </h2>
+          <div className="space-y-2">
+            {releaseEvents.map(ev => (
+              <div
+                key={ev.id}
+                className="bg-black/30 border border-amber-900/40 rounded-md p-3 flex items-start gap-3"
+              >
+                <AlertTriangle size={14} className="text-amber-400 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <div className="text-amber-100 text-sm font-medium">
+                    {ev.watch?.label ?? 'Unknown publisher'}
+                    <span className="ml-2 text-[10px] text-amber-500/60 uppercase tracking-wider">
+                      {ev.watch?.publisher}
+                    </span>
+                  </div>
+                  <div className="text-amber-300/80 text-[11px] mt-0.5 flex items-center gap-3 flex-wrap">
+                    <span>detected {new Date(ev.detected_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</span>
+                    {ev.watch?.url && (
+                      <a
+                        href={ev.watch.url} target="_blank" rel="noopener noreferrer"
+                        className="text-orange-400 hover:underline inline-flex items-center gap-0.5"
+                      >open page <ExternalLink size={9} /></a>
+                    )}
+                  </div>
+                  {ev.watch?.related_metrics && ev.watch.related_metrics.length > 0 && (
+                    <div className="text-[10px] text-amber-500/70 mt-1">
+                      Related metrics: {ev.watch.related_metrics.join(', ')}
+                    </div>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => {
+                      const note = prompt('Optional note (e.g. "Entered FY27-Q1 GSDP = 8.7%"):') || '';
+                      ackReleaseEvent(ev.id, 'acknowledged', note);
+                    }}
+                    className="bg-emerald-700 hover:bg-emerald-600 text-white text-xs px-2.5 py-1 rounded inline-flex items-center gap-1"
+                  >
+                    <Check size={11} /> Entered
+                  </button>
+                  <button
+                    onClick={() => ackReleaseEvent(ev.id, 'dismissed', 'no actionable change')}
+                    className="bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs px-2.5 py-1 rounded inline-flex items-center gap-1"
+                  >
+                    <X size={11} /> Dismiss
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Form card */}
       <form
@@ -364,6 +488,57 @@ export default function AdminEconomicPage() {
           )}
         </div>
       </form>
+
+      {/* Watcher status — show whether automation is running + last-checked
+          per publisher so the admin can spot a broken cron quickly. */}
+      {watches.length > 0 && (
+        <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 mb-8">
+          <h2 className="text-white font-semibold mb-4 flex items-center gap-2 text-sm">
+            <RefreshCw size={14} className="text-sky-400" />
+            Publisher watch status
+            <span className="text-gray-600 text-xs font-normal">
+              ({watches.length} URLs monitored)
+            </span>
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {watches.map(w => {
+              const lastChecked = w.last_checked ? new Date(w.last_checked) : null;
+              const lastChanged = w.last_changed_at ? new Date(w.last_changed_at) : null;
+              const hoursSinceCheck = lastChecked ? (Date.now() - lastChecked.getTime()) / 3600000 : null;
+              const isStale = hoursSinceCheck !== null && hoursSinceCheck > 24 * 8; // older than 8d
+              return (
+                <div key={w.id} className="bg-black/30 border border-[#2a2a2a] rounded p-3">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <a
+                      href={w.url} target="_blank" rel="noopener noreferrer"
+                      className="text-gray-200 text-xs font-medium hover:text-orange-400 inline-flex items-center gap-1"
+                    >
+                      {w.label} <ExternalLink size={9} />
+                    </a>
+                    {w.pending_events > 0 && (
+                      <span className="bg-amber-700 text-amber-100 text-[10px] px-1.5 py-0.5 rounded">
+                        {w.pending_events} pending
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-gray-500 flex items-center gap-2 flex-wrap">
+                    <span>{w.publisher}</span>
+                    <span>· every ~{w.cadence_days}d</span>
+                    {lastChecked && (
+                      <span className={isStale ? 'text-amber-400' : ''}>
+                        · last check {lastChecked.toLocaleDateString('en-IN', { day:'numeric', month:'short' })}
+                      </span>
+                    )}
+                    {lastChanged && (
+                      <span>· last change {lastChanged.toLocaleDateString('en-IN', { day:'numeric', month:'short' })}</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Existing observations */}
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5">

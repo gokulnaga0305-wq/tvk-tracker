@@ -193,12 +193,23 @@ async def get_incumbency_meter():
     govt_start_iso = settings.govt_start_date.isoformat()
     days = max(1, settings.govt_day_number)
 
-    incidents_res = (
-        db.table("incidents")
-        .select("category, is_credit_steal, verification_status, severity, incident_date")
-        .eq("status", "approved")
-        .execute()
-    )
+    # Try to fetch press_sentiment too; fall back to the original select if
+    # the column doesn't exist yet (migration 010 may not have been applied
+    # on this Supabase project).
+    try:
+        incidents_res = (
+            db.table("incidents")
+            .select("category, is_credit_steal, verification_status, severity, incident_date, press_sentiment")
+            .eq("status", "approved")
+            .execute()
+        )
+    except Exception:
+        incidents_res = (
+            db.table("incidents")
+            .select("category, is_credit_steal, verification_status, severity, incident_date")
+            .eq("status", "approved")
+            .execute()
+        )
     incidents = incidents_res.data or []
 
     promises_res = db.table("promises").select("status").execute()
@@ -283,7 +294,41 @@ async def get_incumbency_meter():
         elif ratio < 0.8:
             trend_pts = -min((1.0 - ratio) * 5.0, 3.0)       # falling → pro
 
-    # --- 6) Economic pressure (sectoral CAGR vs DMK) -----------------------
+    # --- 6) Press sentiment (last 14 days, press-tier articles) ------------
+    # Counts press-tier articles in the recent window classified by the AI as
+    # positive_for_govt vs negative_for_govt.  A net-negative tilt adds anti
+    # pressure (cap +10pts), net-positive tilt adds pro boost (cap +5pts).
+    # Caps are deliberately asymmetric — negative press is a stronger
+    # electoral signal than positive press (which can be PR-driven).
+    sentiment_window_start = recent_cutoff  # reuse the 14d window already computed
+    sentiment_counts = {"positive_for_govt": 0, "negative_for_govt": 0, "neutral": 0}
+    for inc in incidents:
+        ps = inc.get("press_sentiment")
+        if not ps or ps not in sentiment_counts:
+            continue
+        if (inc.get("incident_date") or "") >= sentiment_window_start:
+            sentiment_counts[ps] += 1
+
+    sentiment_total = sum(sentiment_counts.values())
+    sentiment_pressure_pts = 0.0
+    sentiment_pro_boost = 0.0
+    sentiment_net_pct: float | None = None
+
+    # Need at least 5 classified press articles in window for a signal
+    if sentiment_total >= 5:
+        neg = sentiment_counts["negative_for_govt"]
+        pos = sentiment_counts["positive_for_govt"]
+        # Net negative share, ranges -1.0 .. +1.0 (negative dominates -> -ve)
+        # E.g. 8 negative / 2 positive / 0 neutral (n=10) -> net = (2-8)/10 = -0.6
+        sentiment_net_pct = round((pos - neg) / sentiment_total, 2)
+        if sentiment_net_pct < 0:
+            # Each -0.1 of net = ~1pt of anti, cap at 10pts (net = -1.0)
+            sentiment_pressure_pts = min(abs(sentiment_net_pct) * 10.0, 10.0)
+        elif sentiment_net_pct > 0:
+            # Each +0.1 of net = ~0.5pt of pro, cap at 5pts (net = +1.0)
+            sentiment_pro_boost = min(sentiment_net_pct * 5.0, 5.0)
+
+    # --- 7) Economic pressure (sectoral CAGR vs DMK) -----------------------
     # Gated: only active once we have observations for at least 3 distinct
     # metric_keys. A single noisy quarter shouldn't swing the meter ±20 pts.
     # Compares each TVK observation to the DMK CAGR for that metric and
@@ -356,12 +401,13 @@ async def get_incumbency_meter():
         + credit_pressure_pts
         + max(0.0, trend_pts)
         + economic_pressure_pts
+        + sentiment_pressure_pts
     )
 
     delivery_bonus = delivery_ratio * 20.0
     baseline_beats_bonus = min(baseline_beats * 3.0, 15.0)
     trend_bonus = max(0.0, -trend_pts)
-    pro_boost = delivery_bonus + baseline_beats_bonus + trend_bonus + economic_pro_boost
+    pro_boost = delivery_bonus + baseline_beats_bonus + trend_bonus + economic_pro_boost + sentiment_pro_boost
 
     # First-100-days honeymoon softens the meter — voters give a new govt
     # some benefit of the doubt. Fades linearly to 0 by day 100.
@@ -399,6 +445,9 @@ async def get_incumbency_meter():
         ("trend_rising",      max(0.0, trend_pts), "anti",
          f"Rising incident rate ({recent_count} last 14d vs {prior_count} prior)"),
         ("economic_pressure", economic_pressure_pts, "anti", econ_label_anti),
+        ("press_sentiment",   sentiment_pressure_pts, "anti",
+         f"Press tone last 14d: {sentiment_counts['negative_for_govt']} negative vs "
+         f"{sentiment_counts['positive_for_govt']} positive ({sentiment_counts['neutral']} neutral)"),
         ("delivery_bonus",    delivery_bonus, "pro",
          f"{kept_promises} of {total_promises} promises delivered"),
         ("baseline_beats",    baseline_beats_bonus, "pro",
@@ -406,6 +455,9 @@ async def get_incumbency_meter():
         ("trend_falling",     max(0.0, -trend_pts), "pro",
          f"Falling incident rate ({recent_count} last 14d vs {prior_count} prior)"),
         ("economic_pro",      economic_pro_boost, "pro", econ_label_pro),
+        ("sentiment_pro",     sentiment_pro_boost, "pro",
+         f"Press tone last 14d: {sentiment_counts['positive_for_govt']} positive vs "
+         f"{sentiment_counts['negative_for_govt']} negative"),
         ("honeymoon",         honeymoon_softener, "pro",
          f"Day {days} of {settings.govt_name} govt — first-100-days honeymoon"),
     ]
@@ -436,6 +488,8 @@ async def get_incumbency_meter():
             "baseline_beats_bonus":  round(baseline_beats_bonus, 1),
             "economic_pressure":     round(economic_pressure_pts, 1),
             "economic_pro_boost":    round(economic_pro_boost, 1),
+            "sentiment_pressure":    round(sentiment_pressure_pts, 1),
+            "sentiment_pro_boost":   round(sentiment_pro_boost, 1),
         },
         "raw_inputs": {
             "total_incidents":       len(incidents),
@@ -452,5 +506,11 @@ async def get_incumbency_meter():
             "economic_metrics_compared": econ_metrics_compared,
             "economic_avg_delta_pp": econ_avg_delta_pp,
             "economic_meter_active": econ_obs_count >= 3,
+            "press_sentiment_window_total": sentiment_total,
+            "press_sentiment_positive": sentiment_counts["positive_for_govt"],
+            "press_sentiment_negative": sentiment_counts["negative_for_govt"],
+            "press_sentiment_neutral":  sentiment_counts["neutral"],
+            "press_sentiment_net_pct": sentiment_net_pct,
+            "press_sentiment_meter_active": sentiment_total >= 5,
         },
     }

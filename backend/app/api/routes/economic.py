@@ -526,6 +526,121 @@ async def upsert_quarterly_observation(
     return {"ok": True, "inserted": res.data}
 
 
+# ---------- RELEASE WATCHES (auto-ingest pipeline) ------------------------
+#
+# These read endpoints power the /admin/economic "Pending releases" panel
+# so the admin sees a notification any time a watched publisher's page
+# changed since they last reviewed it. The actual fetching + change
+# detection is done by scripts/watch_economic_releases.py via a weekly
+# GH Action; this is just the read + ack surface.
+
+@router.get("/release-watches")
+async def list_release_watches():
+    """List configured publisher pages we monitor + latest change status."""
+    db = get_db()
+    try:
+        watches_res = (
+            db.table("economic_release_watches")
+            .select("id, label, url, publisher, related_metrics, cadence_days, "
+                    "last_checked, last_changed_at, notes")
+            .order("publisher")
+            .order("label")
+            .execute()
+        )
+        watches = watches_res.data or []
+        # Count pending events per watch for the badge in UI
+        events_res = (
+            db.table("economic_release_events")
+            .select("watch_id, status")
+            .eq("status", "pending")
+            .execute()
+        )
+        events = events_res.data or []
+    except Exception:
+        return {"watches": [], "pending_count": 0}
+
+    pending_by_watch: dict[str, int] = {}
+    for e in events:
+        wid = e.get("watch_id")
+        if wid:
+            pending_by_watch[wid] = pending_by_watch.get(wid, 0) + 1
+
+    for w in watches:
+        w["pending_events"] = pending_by_watch.get(w["id"], 0)
+
+    return {
+        "watches": watches,
+        "pending_count": sum(pending_by_watch.values()),
+    }
+
+
+@router.get("/release-events")
+async def list_release_events(status: str = "pending", limit: int = 50):
+    """List detected publisher-page change events."""
+    db = get_db()
+    try:
+        res = (
+            db.table("economic_release_events")
+            .select("id, watch_id, detected_at, old_hash, new_hash, status, ack_by, ack_at, notes")
+            .eq("status", status)
+            .order("detected_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        events = res.data or []
+        # Attach the parent watch label / url for display
+        if events:
+            wids = list({e["watch_id"] for e in events if e.get("watch_id")})
+            wres = (
+                db.table("economic_release_watches")
+                .select("id, label, url, publisher, related_metrics")
+                .in_("id", wids)
+                .execute()
+            )
+            wmap = {w["id"]: w for w in (wres.data or [])}
+            for e in events:
+                e["watch"] = wmap.get(e["watch_id"])
+        return events
+    except Exception:
+        return []
+
+
+class ReleaseEventAck(BaseModel):
+    notes: Optional[str] = None
+    status: str = "acknowledged"  # 'acknowledged' or 'dismissed'
+
+
+@router.post("/release-events/{event_id}/ack")
+async def ack_release_event(
+    event_id: str,
+    payload: ReleaseEventAck,
+    x_admin_secret: Optional[str] = Header(None),
+):
+    """Admin marks a detected change as 'acknowledged' (entered the number)
+    or 'dismissed' (false positive / no action needed)."""
+    _verify_admin(x_admin_secret)
+    if payload.status not in ("acknowledged", "dismissed"):
+        raise HTTPException(status_code=400, detail="status must be acknowledged|dismissed")
+    db = get_db()
+    try:
+        res = (
+            db.table("economic_release_events")
+            .update({
+                "status": payload.status,
+                "ack_by": "admin",
+                "ack_at": datetime.now(timezone.utc).isoformat(),
+                "notes":  payload.notes,
+            })
+            .eq("id", event_id)
+            .execute()
+        )
+        return {"ok": True, "updated": res.data}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ack failed: {e}")
+
+
+# ---------- QUARTERLY (already-built) -----------------------------------
+
 @router.get("/quarterly")
 async def list_quarterly_observations(metric_key: Optional[str] = None, limit: int = 100):
     """Read-only: list raw observations, newest first. For audit/debug."""

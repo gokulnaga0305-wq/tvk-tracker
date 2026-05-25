@@ -1,0 +1,78 @@
+name: Economic release watcher (weekly)
+
+# Polls publisher pages (DPIIT FDI, MoSPI GSVA, RBI State Finances, TN
+# Budget, DGCI&S exports) for content changes. When a page hash differs
+# from the last-seen hash, inserts a 'pending' event into
+# economic_release_events for the admin to review on /admin/economic.
+#
+# Read+write to Supabase uses SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY,
+# both stored as GH repo secrets (same ones the backend uses).
+#
+# Cadence: weekly Monday 03:00 UTC (~08:30 IST). Most publishers update
+# quarterly so anything more frequent is wasted runner-min. The
+# /admin/economic UI can also kick off a manual run via workflow_dispatch
+# if a release is rumoured to be imminent.
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'  # every Monday 03:00 UTC (08:30 IST)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Set to "true" to fetch + diff without writing to DB'
+        required: false
+        default: 'false'
+
+concurrency:
+  group: economic-release-watcher
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install minimal deps
+        # The watcher needs only supabase-py + urllib; no need to install
+        # the full backend stack.
+        run: |
+          pip install --upgrade pip
+          pip install supabase pydantic-settings
+
+      - name: Run release watcher
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          # Settings() requires these even if unused by the watcher path
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+        run: |
+          set -e
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_SERVICE_ROLE_KEY" ]; then
+            echo "::error::Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY secret"
+            exit 1
+          fi
+          DRY=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY="--dry-run"
+            echo "::notice::Running in dry-run mode"
+          fi
+          python scripts/watch_economic_releases.py $DRY | tee /tmp/watcher.log
+
+          # Surface the change count in the workflow header
+          changed=$(grep -E "^\[done\]" /tmp/watcher.log | sed 's/.*changed=\([0-9]*\).*/\1/')
+          if [ -n "$changed" ] && [ "$changed" -gt 0 ]; then
+            echo "::notice::Detected $changed publisher page change(s) — review at /admin/economic"
+          fi
