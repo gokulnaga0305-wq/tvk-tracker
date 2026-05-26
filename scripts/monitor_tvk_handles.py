@@ -54,9 +54,15 @@ HANDLES: list[tuple[str, str, str]] = [
     ("youturn_in",        "YouTurn (Tamil fact-checker)",  "online_native"),
     ("News18TamilNadu",   "News18 Tamil Nadu",             "established_press"),
     ("sunnewstamil",      "Sun News Tamil",                "established_press"),
-    # TVK official handles (uncomment when user confirms exact spellings)
-    # ("ttvkofficial",   "TVK Party HQ",                  "social_media"),
-    # ("actorvijay",     "TVK CM Vijay (personal)",       "social_media"),
+    # TVK official handles — now part of the regular monitor.
+    # tier='social_media' is deliberate: as partisan first-party sources
+    # they do NOT count toward the press_sentiment meter (which only
+    # weights independent press tones), but they ARE captured as primary
+    # evidence of what TVK officially announced.  This closes the gap
+    # where TVK's "achievement" slides go viral on official channels
+    # 6-24h before any press outlet covers them.
+    ("ttvkofficial",   "TVK Party HQ",                  "social_media"),
+    ("actorvijay",     "TVK CM Vijay (personal)",       "social_media"),
 ]
 
 APIFY_ACTOR = "kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest"
