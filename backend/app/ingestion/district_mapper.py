@@ -295,6 +295,13 @@ LOCALITY_TO_DISTRICT: dict[str, str] = {
     "alanganallur":       "Madurai",
     "andipatti":          "Theni",
     "villathikulam":      "Thoothukudi",
+    # ---- Added after first-pass backfill discovered gaps ----
+    "pallipalayam":       "Namakkal",
+    "kumarapalayam":      "Namakkal",
+    "komarapalayam":      "Namakkal",      # spelling variant
+    "ilayankudi":         "Sivaganga",
+    "ilaiyankudi":        "Sivaganga",
+    "kuppam":             "Krishnagiri",   # Tamil-speaking border zone, closest TN district
 }
 
 
