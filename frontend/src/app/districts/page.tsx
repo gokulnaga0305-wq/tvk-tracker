@@ -1,8 +1,10 @@
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
+import Link from 'next/link';
 import {
   MapPin, AlertTriangle, Activity, RefreshCw, Info, LayoutGrid, Map as MapIcon,
+  ChevronRight,
 } from 'lucide-react';
 import TamilNaduMap from '@/components/TamilNaduMap';
 
@@ -89,11 +91,17 @@ function DistrictCard({ d, window }: { d: DistrictRow; window: '7d' | '30d' }) {
   const count = window === '7d' ? d.incidents_7d : d.incidents_30d;
   const cats  = window === '7d' ? d.top_categories_7d : d.top_categories_30d;
   const style = zoneStyle(zone);
+  const hasIncidents = (d.incidents_30d ?? 0) > 0;
 
-  return (
-    <article className={`rounded-lg border p-4 ${style.bg} ${style.border}`}>
+  // Only districts with at least one incident are clickable — others
+  // would just land on an empty page.
+  const inner = (
+    <>
       <header className="flex items-start justify-between gap-2 mb-2">
-        <h3 className="text-white font-semibold text-sm leading-tight">{d.district}</h3>
+        <h3 className="text-white font-semibold text-sm leading-tight flex items-center gap-1">
+          {d.district}
+          {hasIncidents && <ChevronRight size={11} className="text-gray-500" />}
+        </h3>
         <span className={`text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded ${style.text}`}>
           {zone}
         </span>
@@ -122,6 +130,22 @@ function DistrictCard({ d, window }: { d: DistrictRow; window: '7d' | '30d' }) {
           Last: {new Date(d.last_incident_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
         </p>
       )}
+    </>
+  );
+
+  if (hasIncidents) {
+    return (
+      <Link
+        href={`/districts/${encodeURIComponent(d.district)}`}
+        className={`block rounded-lg border p-4 hover:scale-[1.02] hover:brightness-110 transition-transform ${style.bg} ${style.border}`}
+      >
+        {inner}
+      </Link>
+    );
+  }
+  return (
+    <article className={`rounded-lg border p-4 ${style.bg} ${style.border} opacity-70`}>
+      {inner}
     </article>
   );
 }

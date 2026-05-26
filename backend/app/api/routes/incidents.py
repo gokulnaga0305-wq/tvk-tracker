@@ -75,6 +75,7 @@ async def list_incidents(
     is_credit_steal: Optional[bool] = None,
     verification_status: Optional[str] = None,
     status: str = "approved",
+    district: Optional[str] = None,
     limit: int = Query(50, le=200),
     offset: int = 0,
 ):
@@ -87,6 +88,8 @@ async def list_incidents(
         query = query.eq("is_credit_steal", is_credit_steal)
     if verification_status:
         query = query.eq("verification_status", verification_status)
+    if district:
+        query = query.eq("district", district)
 
     res = query.order("incident_date", desc=True).range(offset, offset + limit - 1).execute()
     data = res.data or []

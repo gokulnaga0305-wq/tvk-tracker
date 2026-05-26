@@ -1,5 +1,7 @@
 'use client';
 import { useState } from 'react';
+import Link from 'next/link';
+import { ChevronRight } from 'lucide-react';
 
 /**
  * TamilNaduMap — stylised hex-grid choropleth of TN's 38 districts.
@@ -247,9 +249,18 @@ export default function TamilNaduMap({
                 Last incident: {new Date(hover.last_incident_date).toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' })}
               </p>
             )}
+            {((window === '7d' ? hover.incidents_7d : hover.incidents_30d) > 0 || hover.incidents_30d > 0) && (
+              <Link
+                href={`/districts/${encodeURIComponent(hover.district)}`}
+                className="mt-3 inline-flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 font-medium"
+              >
+                See full incident report
+                <ChevronRight size={12} />
+              </Link>
+            )}
           </>
         ) : (
-          <p className="text-gray-500 text-sm italic">Hover over a district to see details</p>
+          <p className="text-gray-500 text-sm italic">Click any district to see details</p>
         )}
       </div>
     </div>
