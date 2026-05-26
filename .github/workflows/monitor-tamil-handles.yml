@@ -1,0 +1,76 @@
+name: Tamil press + govt-handle monitor (every 2 hours)
+
+# Periodically pulls the last few hours of tweets from:
+#   - 5 independent Tamil press handles (SparkPluz_, PttvNewsX, youturn_in,
+#     News18TamilNadu, sunnewstamil)
+#   - 2 govt-official handles (CMOTamilnadu, TNDIPRNEWS) which feed the
+#     Promise Comparator
+# Each tweet is AI-extracted -> incident -> district-tagged -> meter updates.
+#
+# Cadence: every 2 hours so the dashboard never goes more than ~2h stale on
+# breaking news (e.g. a fresh Neelankarai power-cut protest hits the
+# dashboard within ~120 min of Tamil press tweeting about it).
+#
+# Cost: Apify scrape ~$0.00025/tweet × ~200 tweets/run × 12 runs/day =
+# ~$0.60/day = ~$18/month.
+#
+# Concurrency guard prevents two runs piling up if a run takes long.
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'   # every 2 hours, top of hour
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: 'Lookback window in hours (default 6)'
+        required: false
+        default: '6'
+
+concurrency:
+  group: tamil-monitor
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend deps
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run monitor
+        working-directory: backend     # ensures .env-style settings resolution
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          APIFY_API_TOKEN: ${{ secrets.APIFY_API_TOKEN }}
+          GOOGLE_FACT_CHECK_API_KEY: ${{ secrets.GOOGLE_FACT_CHECK_API_KEY }}
+          HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+        run: |
+          set -e
+          HOURS="${{ github.event.inputs.hours || '6' }}"
+          echo "::notice::Monitoring Tamil press + govt handles, lookback=${HOURS}h"
+          python ../scripts/monitor_tvk_handles.py --hours "${HOURS}" 2>&1 | tee /tmp/monitor.log
+
+          # Surface the tweet count in the GH Actions summary
+          queued=$(grep -E "^Done. Total tweets queued:" /tmp/monitor.log | awk '{print $NF}')
+          if [ -n "$queued" ]; then
+            echo "::notice::Queued ${queued} tweets through the AI pipeline this run"
+          fi
