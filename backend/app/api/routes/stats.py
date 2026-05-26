@@ -14,6 +14,8 @@ TRACKED_CATEGORIES = [
     "power_cut", "eb_failure", "alcohol_menace", "honour_killing",
     "police_excess", "broken_promise", "attack_on_press", "fake_news",
     "custodial_death",
+    # New promise-comparator categories (auto-set by the comparator)
+    "kept_promise", "partial_promise", "new_initiative",
 ]
 
 # Verification statuses that mean "press-confirmed or admin-reviewed truth".

@@ -48,21 +48,27 @@ from app.config import settings
 # a single tweet from them DOES count as a press source toward the 2+
 # distinct outlets verification gate (unlike random social_media).
 HANDLES: list[tuple[str, str, str]] = [
-    # Established Tamil news on X
-    ("SparkPluz_",        "Spark+ (TVK-skeptical Tamil)", "online_native"),
-    ("PttvNewsX",         "Puthiya Thalaimurai TV",        "regional_press"),
-    ("youturn_in",        "YouTurn (Tamil fact-checker)",  "online_native"),
-    ("News18TamilNadu",   "News18 Tamil Nadu",             "established_press"),
-    ("sunnewstamil",      "Sun News Tamil",                "established_press"),
-    # TVK official handles — now part of the regular monitor.
-    # tier='social_media' is deliberate: as partisan first-party sources
-    # they do NOT count toward the press_sentiment meter (which only
-    # weights independent press tones), but they ARE captured as primary
-    # evidence of what TVK officially announced.  This closes the gap
-    # where TVK's "achievement" slides go viral on official channels
-    # 6-24h before any press outlet covers them.
-    ("ttvkofficial",   "TVK Party HQ",                  "social_media"),
-    ("actorvijay",     "TVK CM Vijay (personal)",       "social_media"),
+    # ---- Government official handles (the most important data source) ----
+    # Tier = 'govt_announcement' — special tier that:
+    #   * IS captured as primary evidence of official govt orders / claims
+    #   * DOES NOT count toward press_sentiment meter (these are partisan
+    #     spokespeople by definition, even when the underlying announcement
+    #     is fact)
+    #   * Triggers the Promise Comparator in ai_processor.py which matches
+    #     each announcement against the manifesto and classifies as
+    #     fulfilled / partial / broken / new_initiative
+    ("CMOTamilnadu",    "CM Office, Tamil Nadu (now TVK)", "govt_announcement"),
+    ("TNDIPRNEWS",      "TN DIPR (state PR dept)",         "govt_announcement"),
+    # ---- Independent Tamil press on X (sentiment-bearing) ----
+    ("SparkPluz_",      "Spark+ (TVK-skeptical Tamil)",    "online_native"),
+    ("PttvNewsX",       "Puthiya Thalaimurai TV",          "regional_press"),
+    ("youturn_in",      "YouTurn (Tamil fact-checker)",    "online_native"),
+    ("News18TamilNadu", "News18 Tamil Nadu",               "established_press"),
+    ("sunnewstamil",    "Sun News Tamil",                  "established_press"),
+    # ---- TVK PARTY handles intentionally NOT monitored ----
+    # @ttvkofficial / @actorvijay are partisan party propaganda channels.
+    # We track what the GOVERNMENT (CMO/DIPR) officially says it has done,
+    # not what the party claims about itself.
 ]
 
 APIFY_ACTOR = "kaitoeasyapi~twitter-x-data-tweet-scraper-pay-per-result-cheapest"

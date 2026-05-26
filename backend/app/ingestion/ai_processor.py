@@ -66,7 +66,8 @@ Return JSON with these fields exactly:
     "corruption", "murders", "sexual_assault", "crimes_women_kids",
     "police_excess", "custodial_death", "honour_killing",
     "censorship", "media_blackout", "fake_news", "propaganda",
-    "credit_stealing", "broken_promise",
+    "credit_stealing", "broken_promise", "kept_promise", "partial_promise",
+    "new_initiative",
     "governance", "tenders", "power_cut", "water_shortage", "civic_failure",
     "drug_menace", "alcohol_menace", "communal_violence",
     "industrial_flight", "investment_announcement",
@@ -463,14 +464,15 @@ async def process_article(item: ApifyWebhookItem) -> None:
         verification_status = "pending_verification"
         publish_status = "pending_review"  # held back from public view
 
-    # Only persist press_sentiment for press-tier sources (any of primary /
-    # established_press / regional_press / online_native — basically anything
-    # that PRESS_TIERS recognises). Citizen reports + social_media leads
-    # don't get a sentiment because the speaker isn't neutral press.
+    # Only persist press_sentiment for INDEPENDENT press tiers — exclude
+    # govt_announcement (CMO/DIPR are partisan by definition), citizen
+    # reports, and social_media leads. The speaker must be a neutral
+    # observer for tone classification to be meaningful.
+    from app.ingestion.corroboration import INDEPENDENT_PRESS_TIERS
     raw_sentiment = extracted.get("press_sentiment")
     valid_sentiments = {"positive_for_govt", "negative_for_govt", "neutral"}
     press_sentiment = (
-        raw_sentiment if (tier in PRESS_TIERS and raw_sentiment in valid_sentiments)
+        raw_sentiment if (tier in INDEPENDENT_PRESS_TIERS and raw_sentiment in valid_sentiments)
         else None
     )
 
@@ -546,6 +548,49 @@ async def process_article(item: ApifyWebhookItem) -> None:
         "Saved [%s] conf=%.2f sig=%s: %s",
         verification_status, confidence, signature, extracted["title"],
     )
+
+    # ---- 7a. PROMISE COMPARATOR (govt-tier announcements only) ----------
+    # For announcements coming from CMO TN / TN DIPR (tier=govt_announcement)
+    # we automatically match against the manifesto and update both the
+    # incident category + the matched promise's status. This is the core
+    # "promise vs delivery" auditing loop.
+    if tier == "govt_announcement":
+        try:
+            from app.ingestion.promise_comparator import compare_to_manifesto
+            verdict = compare_to_manifesto(
+                title=extracted["title"],
+                summary=extracted["summary"],
+                category=extracted["category"],
+                location=extracted.get("location"),
+                date=extracted.get("incident_date") or date.today().isoformat(),
+                announcement_url=item.url,
+            )
+            if verdict:
+                v = verdict.get("verdict")
+                # Map verdict to a clean incident category that downstream
+                # filters / dashboard cards can rely on.
+                cat_for_verdict = {
+                    "fulfilled":   "kept_promise",
+                    "partial":     "partial_promise",
+                    "broken":      "broken_promise",
+                    "new":         "new_initiative",
+                    "irrelevant":  None,    # don't overwrite extractor's category
+                }.get(v)
+                update_fields = {}
+                if cat_for_verdict:
+                    update_fields["category"] = cat_for_verdict
+                # Store the full verdict on the incident for the UI to render
+                merged_raw = dict(extracted)
+                merged_raw["promise_verdict"] = verdict
+                update_fields["ai_raw"] = merged_raw
+                db.table("incidents").update(update_fields).eq("id", incident_id).execute()
+                logger.info(
+                    "Promise comparator: incident %s -> category=%s, matched_promise=%s, verdict=%s",
+                    incident_id, cat_for_verdict, verdict.get("best_match_promise_id"), v,
+                )
+        except Exception as e:
+            # Never let comparator failure break the ingestion path
+            logger.warning("Promise comparator failed for %s: %s", item.url, e)
 
     # ---- 7b. Defection record (horse-trading tracker) -----------------
     # When the article describes an MLA / leader switching parties, also

@@ -107,10 +107,28 @@ OUTLET_REGISTRY: dict[str, tuple[str, str]] = {
     "altnews":               ("alt_news",               "online_native"),
     "boom":                  ("boom_live",              "online_native"),
     "youturn":               ("youturn",                "online_native"),
+    # ---- Government official channels (primary sources) ----
+    # tier='govt_announcement' — counted toward verification (PRESS_TIERS)
+    # but excluded from sentiment scoring because these are by definition
+    # spokespeople for the ruling party (not neutral observers).
+    "cmotamilnadu":          ("cmo_tn",                 "govt_announcement"),
+    "tndiprnews":            ("tn_dipr",                "govt_announcement"),
+    "twitter_cmotamilnadu":  ("cmo_tn",                 "govt_announcement"),
+    "twitter_tndiprnews":    ("tn_dipr",                "govt_announcement"),
+    "cmo tn":                ("cmo_tn",                 "govt_announcement"),
+    "tn dipr":               ("tn_dipr",                "govt_announcement"),
 }
 
 # Press tiers — anything in this set counts toward verification.
-PRESS_TIERS = {"primary", "established_press", "regional_press", "online_native"}
+# `govt_announcement` is included so CMO/DIPR releases count as evidence,
+# but the ai_processor explicitly skips press_sentiment classification on
+# them (govt spokespeople aren't neutral observers).
+PRESS_TIERS = {"primary", "established_press", "regional_press", "online_native", "govt_announcement"}
+
+# Subset of PRESS_TIERS whose articles ARE eligible for press_sentiment
+# classification (i.e. independent observers). Used by ai_processor to
+# decide whether to ask Claude for a tone classification.
+INDEPENDENT_PRESS_TIERS = {"primary", "established_press", "regional_press", "online_native"}
 
 # Words to strip from titles before building a search query — they create
 # noise and reduce result count without helping match accuracy.
