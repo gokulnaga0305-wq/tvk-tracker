@@ -116,6 +116,13 @@ async def get_dashboard_stats():
         "fake_news_verified":       counts_verified["fake_news"],
         "custodial_death_verified": counts_verified["custodial_death"],
         "credit_steal_verified":    credit_verified,
+        # Promise-comparator categories (auto-tagged from govt announcements)
+        "kept_promise_count":       counts_total["kept_promise"],
+        "kept_promise_verified":    counts_verified["kept_promise"],
+        "partial_promise_count":    counts_total["partial_promise"],
+        "partial_promise_verified": counts_verified["partial_promise"],
+        "new_initiative_count":     counts_total["new_initiative"],
+        "new_initiative_verified":  counts_verified["new_initiative"],
         # Promise + overall totals
         "promises_kept":            kept,
         "promises_total":           len(promises),
