@@ -11,7 +11,7 @@ import { CATEGORY_LABELS } from '@/lib/constants';
 import Link from 'next/link';
 import {
   DollarSign, Skull, ShieldAlert, Users, CheckSquare, Copy, AlertTriangle,
-  Zap, ZapOff, Wine, Megaphone, ShieldOff, Flame, Clock, ArrowRightLeft,
+  Zap, ZapOff, Wine, Megaphone, ShieldOff, Flame, Clock,
 } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -47,7 +47,6 @@ export default function DashboardPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [pending, setPending] = useState<Incident[]>([]);
   const [baselines, setBaselines] = useState<BaselineRow[]>([]);
-  const [horseTradeStats, setHorseTradeStats] = useState<{ total: number; verified: number; pending: number; last_30_days: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [backendDown, setBackendDown] = useState(false);
 
@@ -66,16 +65,13 @@ export default function DashboardPage() {
       fetch(`${API}/api/baselines/dashboard`, { signal: ctrl.signal, cache: 'no-store' }).then(r => r.ok ? r.json() : []),
       // Single-source pending — the "breaking but wait" feed
       fetch(`${API}/api/incidents/?limit=5&verification_status=pending_verification`, { signal: ctrl.signal, cache: 'no-store' }).then(r => r.ok ? r.json() : []),
-      // Horse-trading summary — surface only when there's at least 1 defection
-      fetch(`${API}/api/defections/stats`, { signal: ctrl.signal, cache: 'no-store' }).then(r => r.ok ? r.json() : null),
     ])
-      .then(([s, inc, bl, pn, ht]) => {
+      .then(([s, inc, bl, pn]) => {
         if (cancelled) return;
         if (s) setStats(s);
         setIncidents(Array.isArray(inc) ? inc : []);
         setBaselines(Array.isArray(bl) ? bl : []);
         setPending(Array.isArray(pn) ? pn : []);
-        setHorseTradeStats(ht && typeof ht.total === 'number' ? ht : null);
         setBackendDown(!s);
       })
       .catch(() => {
@@ -168,26 +164,6 @@ export default function DashboardPage() {
             Self-fetches /api/economic/dashboard. Renders even when there's
             no TVK data yet (cards just show DMK baseline as the anchor). */}
         <SectoralCAGR />
-
-        {/* Horse-trading highlight — only rendered when there's actually a
-            defection. Single prominent strip, no extra clutter when empty. */}
-        {horseTradeStats && horseTradeStats.total > 0 && (
-          <Link
-            href="/horse-trading"
-            className="block bg-amber-950/30 border border-amber-700/40 hover:border-amber-600/60 rounded-lg px-4 py-3 mb-6 transition-colors"
-          >
-            <div className="flex items-center gap-3 flex-wrap">
-              <ArrowRightLeft size={16} className="text-amber-400 shrink-0" />
-              <span className="text-amber-200 text-sm">
-                <strong className="text-amber-100">{horseTradeStats.total} MLAs</strong> have crossed over to TVK
-                {horseTradeStats.last_30_days > 0 && (
-                  <span className="text-amber-400/80"> · {horseTradeStats.last_30_days} in the last 30 days</span>
-                )}
-              </span>
-              <span className="ml-auto text-amber-400/80 text-xs">See details →</span>
-            </div>
-          </Link>
-        )}
 
         {/* Credit steal highlight */}
         {stats.credit_steal_count > 0 && (

@@ -476,12 +476,22 @@ async def process_article(item: ApifyWebhookItem) -> None:
         else None
     )
 
+    # District resolution: dictionary lookup first (free, fast); AI fallback
+    # only if the dictionary can't find a match.  The result powers the
+    # District Mood page without changing anything else about ingestion.
+    try:
+        from app.ingestion.district_mapper import map_location_to_district
+        resolved_district = map_location_to_district(extracted.get("location"))
+    except Exception:
+        resolved_district = None
+
     incident_payload = {
         "title": extracted["title"],
         "summary": extracted["summary"],
         "category": extracted["category"],
         "incident_date": extracted.get("incident_date", date.today().isoformat()),
         "location": extracted.get("location"),
+        "district": resolved_district,
         "source_urls": [item.url],
         "source_count": 1,
         "is_credit_steal": extracted.get("is_credit_steal", False),

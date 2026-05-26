@@ -1,0 +1,35 @@
+{
+  "data": {
+    "total": 1,
+    "count": 1,
+    "offset": 0,
+    "limit": 10,
+    "desc": false,
+    "items": [
+      {
+        "id": "ERzAeW2chJ30j6ZyV",
+        "userId": "WAWlLGsApi7pSi9g3",
+        "name": "tvk-tracker-daily-scrape",
+        "title": "TVK Tracker Daily Scrape",
+        "createdAt": "2026-05-22T09:12:27.955Z",
+        "modifiedAt": "2026-05-22T09:17:39.773Z",
+        "nextRunAt": "2026-05-25T03:30:00.000Z",
+        "lastRunAt": "2026-05-24T03:30:00.009Z",
+        "isEnabled": true,
+        "isExclusive": true,
+        "timezone": "UTC",
+        "cronExpression": "30 3 * * *",
+        "notifications": {
+          "email": true
+        },
+        "actions": [
+          {
+            "id": "93eWl5Hpi40FdVSur",
+            "type": "RUN_ACTOR",
+            "actorId": "O9eSvgDpYAXxk63B9"
+          }
+        ]
+      }
+    ]
+  }
+}

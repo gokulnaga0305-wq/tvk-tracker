@@ -338,33 +338,6 @@ async def get_incumbency_meter():
             # Each +0.1 of net = ~0.5pt of pro, cap at 5pts (net = +1.0)
             sentiment_pro_boost = min(sentiment_net_pct * 5.0, 5.0)
 
-    # --- 7) Horse-trading pressure (opposition defections to TVK) ----------
-    # Each verified defection signals the incumbent is manufacturing a
-    # majority via inducements rather than winning hearts. We count
-    # verified + pending (pending is shown publicly with a badge) and
-    # weight verified 2× pending.
-    defection_pressure_pts = 0.0
-    defection_count_verified = 0
-    defection_count_pending = 0
-    try:
-        d_res = (
-            db.table("defections")
-            .select("status, to_party")
-            .neq("status", "retracted")
-            .eq("to_party", "TVK")
-            .execute()
-        )
-        for d in (d_res.data or []):
-            if d.get("status") == "verified":
-                defection_count_verified += 1
-            elif d.get("status") == "pending":
-                defection_count_pending += 1
-    except Exception:
-        pass
-    weighted_defections = defection_count_verified * 1.0 + defection_count_pending * 0.5
-    # 2 pts per weighted defection, cap at 10 pts (~5 verified or 10 pending)
-    defection_pressure_pts = min(weighted_defections * 2.0, 10.0)
-
     # --- 8) Economic pressure (sectoral CAGR vs DMK) -----------------------
     # Gated: only active once we have observations for at least 3 distinct
     # metric_keys. A single noisy quarter shouldn't swing the meter ±20 pts.
@@ -439,7 +412,6 @@ async def get_incumbency_meter():
         + max(0.0, trend_pts)
         + economic_pressure_pts
         + sentiment_pressure_pts
-        + defection_pressure_pts
     )
 
     delivery_bonus = delivery_ratio * 20.0
@@ -483,8 +455,6 @@ async def get_incumbency_meter():
         ("trend_rising",      max(0.0, trend_pts), "anti",
          f"Rising incident rate ({recent_count} last 14d vs {prior_count} prior)"),
         ("economic_pressure", economic_pressure_pts, "anti", econ_label_anti),
-        ("horse_trading", defection_pressure_pts, "anti",
-         f"{defection_count_verified} confirmed + {defection_count_pending} unconfirmed MLAs poached to TVK"),
         ("press_sentiment",   sentiment_pressure_pts, "anti",
          f"Press tone last 14d: {sentiment_counts['negative_for_govt']} negative vs "
          f"{sentiment_counts['positive_for_govt']} positive ({sentiment_counts['neutral']} neutral)"),
@@ -530,7 +500,6 @@ async def get_incumbency_meter():
             "economic_pro_boost":    round(economic_pro_boost, 1),
             "sentiment_pressure":    round(sentiment_pressure_pts, 1),
             "sentiment_pro_boost":   round(sentiment_pro_boost, 1),
-            "defection_pressure":    round(defection_pressure_pts, 1),
         },
         "raw_inputs": {
             "total_incidents":       len(incidents),
@@ -553,8 +522,6 @@ async def get_incumbency_meter():
             "press_sentiment_neutral":  sentiment_counts["neutral"],
             "press_sentiment_net_pct": sentiment_net_pct,
             "press_sentiment_meter_active": sentiment_total >= 5,
-            "defections_verified":   defection_count_verified,
-            "defections_pending":    defection_count_pending,
         },
     }
 
@@ -638,3 +605,172 @@ async def get_meter_history(days: int = 90):
         # Table missing — degrade cleanly so the dashboard sparkline just
         # hides itself rather than erroring out.
         return []
+
+
+# ---------- DISTRICT MOOD -------------------------------------------------
+#
+# For each of TN's 38 districts: compute a 0-100 sentiment score using
+# the same anti-pressure logic as the main meter but localised to that
+# district's incidents.  Two windows: 7 days (recent intensity) and 30
+# days (medium-term trend) so the UI can toggle.
+#
+# Lower score = angrier district.  Categories with higher severity have
+# more anti-pressure weight per incident.
+
+_DISTRICT_CATEGORY_WEIGHT = {
+    "murders":           5.0,
+    "custodial_death":   5.0,
+    "honour_killing":    4.5,
+    "sexual_assault":    4.5,
+    "crimes_women_kids": 4.0,
+    "corruption":        4.0,
+    "police_excess":     4.0,
+    "attack_on_press":   4.0,
+    "broken_promise":    3.0,
+    "communal_violence": 4.0,
+    "fake_news":         2.0,
+    "alcohol_menace":    2.0,
+    "power_cut":         2.5,
+    "water_shortage":    2.5,
+    "civic_failure":     2.0,
+    "eb_failure":        2.0,
+    "credit_stealing":   2.0,
+    "governance":        1.5,
+    "kept_promise":     -3.0,        # negative weight = pro-govt boost
+    "partial_promise":   1.0,
+    "new_initiative":   -1.0,        # mild pro
+}
+
+
+def _district_score(incidents_in_district: list[dict], *, now_iso: str, window_days: int) -> dict:
+    """Compute one district's anti-pressure score + top issue breakdown
+    for a given lookback window."""
+    cutoff = (date.today() - timedelta(days=window_days)).isoformat()
+    recent = [
+        i for i in incidents_in_district
+        if (i.get("incident_date") or "") >= cutoff
+    ]
+    if not recent:
+        return {"score": 50.0, "incidents": 0, "top_categories": [], "last_incident_date": None}
+
+    # Pressure per category, with severity multiplier + recency multiplier
+    anti = 0.0
+    pro  = 0.0
+    today = date.today()
+    cat_counts: dict[str, int] = {}
+    last_date: str | None = None
+
+    for inc in recent:
+        cat = (inc.get("category") or "other").lower()
+        weight = _DISTRICT_CATEGORY_WEIGHT.get(cat, 1.0)
+        severity = max(1, min(5, int(inc.get("severity") or 1)))
+        sev_mult = 0.6 + severity * 0.2        # sev 1=0.8x, sev 5=1.6x
+
+        # Recency multiplier: 1.0 today, 0.5 at end of window
+        try:
+            age_days = max(0, (today - date.fromisoformat((inc.get("incident_date") or today.isoformat())[:10])).days)
+        except Exception:
+            age_days = 0
+        rec_mult = max(0.5, 1.0 - (age_days / window_days) * 0.5)
+
+        pressure = weight * sev_mult * rec_mult
+        if weight < 0:
+            pro += abs(pressure)
+        else:
+            anti += pressure
+        cat_counts[cat] = cat_counts.get(cat, 0) + 1
+
+        if not last_date or (inc.get("incident_date") or "") > last_date:
+            last_date = inc.get("incident_date")
+
+    # Squash anti-pressure into 0-50 range so total score never exits 0-100
+    # without making single horrible districts swing too fast.  Cap raw
+    # anti at 50 effective points.
+    anti_capped = min(anti, 50.0)
+    pro_capped  = min(pro, 15.0)
+    score = max(0.0, min(100.0, 50.0 - anti_capped + pro_capped))
+
+    # Top categories by count, plain-English label
+    top = sorted(cat_counts.items(), key=lambda x: -x[1])[:4]
+
+    return {
+        "score":             round(score, 1),
+        "incidents":         len(recent),
+        "top_categories":    [{"category": c, "count": n} for c, n in top],
+        "last_incident_date": last_date,
+    }
+
+
+def _zone_label_for(score: float) -> str:
+    if score < 25:  return "Very angry"
+    if score < 40:  return "Angry"
+    if score < 55:  return "Tense"
+    if score < 70:  return "Calm"
+    return            "Quiet"
+
+
+@router.get("/districts")
+async def get_districts_mood():
+    """Per-district sentiment for the District Mood page.
+
+    Returns scores for two windows (7d and 30d) plus top issue categories.
+    All 38 TN districts are returned even when they have zero incidents
+    (score=50 'Quiet') so the map renders fully.
+    """
+    from app.ingestion.district_mapper import TN_DISTRICTS
+
+    db = get_db()
+    # Pull every approved incident with a district tag in the last 30 days
+    cutoff_30 = (date.today() - timedelta(days=30)).isoformat()
+    try:
+        res = (
+            db.table("incidents")
+            .select("district, category, incident_date, severity, verification_status, title")
+            .eq("status", "approved")
+            .not_.is_("district", "null")
+            .gte("incident_date", cutoff_30)
+            .execute()
+        )
+        incidents = res.data or []
+    except Exception:
+        # Migration 015 may not be applied yet -> return all-quiet baseline
+        incidents = []
+
+    # Bucket by district
+    by_district: dict[str, list[dict]] = {d: [] for d in TN_DISTRICTS}
+    for inc in incidents:
+        d = inc.get("district")
+        if d in by_district:
+            by_district[d].append(inc)
+
+    now_iso = datetime.now(timezone.utc).isoformat()
+    rows = []
+    for district in TN_DISTRICTS:
+        bucket = by_district[district]
+        m7  = _district_score(bucket, now_iso=now_iso, window_days=7)
+        m30 = _district_score(bucket, now_iso=now_iso, window_days=30)
+        rows.append({
+            "district":               district,
+            "score_7d":               m7["score"],
+            "score_30d":              m30["score"],
+            "zone_7d":                _zone_label_for(m7["score"]),
+            "zone_30d":               _zone_label_for(m30["score"]),
+            "incidents_7d":           m7["incidents"],
+            "incidents_30d":          m30["incidents"],
+            "top_categories_7d":      m7["top_categories"],
+            "top_categories_30d":     m30["top_categories"],
+            "last_incident_date":     m30["last_incident_date"],
+        })
+
+    # Sort by angriest 7d-window first (most actionable view)
+    rows.sort(key=lambda r: r["score_7d"])
+
+    return {
+        "as_of":     now_iso,
+        "districts": rows,
+        "totals": {
+            "districts_tracked":  len(TN_DISTRICTS),
+            "with_incidents_7d":  sum(1 for r in rows if r["incidents_7d"] > 0),
+            "with_incidents_30d": sum(1 for r in rows if r["incidents_30d"] > 0),
+        },
+    }
