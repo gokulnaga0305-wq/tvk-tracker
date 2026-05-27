@@ -30,7 +30,10 @@ import logging
 from typing import Optional
 
 from app.database import get_db
-from app.ingestion.ai_processor import _get_client_and_model, _strip_code_fences
+from app.ingestion.ai_processor import (
+    _get_client_and_model, _get_client_chain,
+    _strip_code_fences, llm_call_with_fallback,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -243,8 +246,7 @@ def compare_to_manifesto(*, title: str, summary: str, category: str,
     error.  Also persists side-effects (promise status updates,
     evidence_url) when verdict is fulfilled/partial/broken with
     confidence >= 0.7."""
-    client, model = _get_client_and_model()
-    if client is None:
+    if not _get_client_chain():
         logger.warning("Promise comparator: no AI client configured")
         return None
 
@@ -270,15 +272,17 @@ def compare_to_manifesto(*, title: str, summary: str, category: str,
     )
 
     try:
-        resp = client.chat.completions.create(
-            model=model,
-            max_tokens=600,
+        raw_response = llm_call_with_fallback(
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user",   "content": prompt},
             ],
+            max_tokens=600,
         )
-        raw = _strip_code_fences(resp.choices[0].message.content)
+        if raw_response is None:
+            logger.warning("Promise comparator: all AI providers failed")
+            return None
+        raw = _strip_code_fences(raw_response)
         verdict = json.loads(raw)
     except (json.JSONDecodeError, Exception) as e:
         logger.warning("Promise comparator AI call failed: %s", e)

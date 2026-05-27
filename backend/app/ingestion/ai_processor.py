@@ -217,21 +217,94 @@ PRESS SENTIMENT (only for press-outlet sources, otherwise null):
 
 
 def _get_client_and_model() -> tuple[OpenAI | None, str]:
+    """Return the PRIMARY AI client (kept for backwards compatibility with
+    callers that just want a single client)."""
+    chain = _get_client_chain()
+    if chain:
+        return chain[0]
+    return None, ""
+
+
+def _get_client_chain() -> list[tuple[OpenAI, str]]:
+    """Return an ordered list of (client, model) tuples to try in sequence.
+    Primary first, fallback second. Used by the resilient wrapper that
+    automatically retries on 402 (credits) / 429 (rate-limit) errors."""
+    chain: list[tuple[OpenAI, str]] = []
     if settings.openrouter_api_key:
-        return OpenAI(
+        chain.append((OpenAI(
             api_key=settings.openrouter_api_key,
             base_url="https://openrouter.ai/api/v1",
             default_headers={
                 "HTTP-Referer": "https://tvk-tracker.vercel.app",
                 "X-Title": "TVK Tracker",
             },
-        ), "anthropic/claude-haiku-4.5"
+        ), "anthropic/claude-haiku-4.5"))
     if settings.anthropic_api_key:
-        return OpenAI(
+        chain.append((OpenAI(
             api_key=settings.anthropic_api_key,
             base_url="https://api.anthropic.com/v1",
-        ), "claude-haiku-4-5"
-    return None, ""
+        ), "claude-haiku-4-5"))
+    return chain
+
+
+def _is_quota_or_rate_error(exc: Exception) -> bool:
+    """Recognise OpenAI/OpenRouter errors that indicate we should try the
+    next provider in the chain (insufficient credits, rate limited, etc.)."""
+    s = str(exc).lower()
+    if "402" in s or "insufficient" in s or "credit" in s or "quota" in s:
+        return True
+    if "429" in s or "rate limit" in s or "rate_limit" in s:
+        return True
+    if "401" in s or "unauthor" in s or "invalid_api_key" in s:
+        return True
+    return False
+
+
+def llm_call_with_fallback(messages: list[dict], *, max_tokens: int = 1024) -> str | None:
+    """Call the LLM chain with automatic provider failover.
+
+    Tries each (client, model) in order. On 402/429/401 from one
+    provider, logs and falls through to the next. Returns the raw
+    string response from the first provider that succeeds, or None
+    if every provider failed.
+
+    Non-quota errors (network, parse, etc.) on the LAST provider raise.
+    """
+    chain = _get_client_chain()
+    if not chain:
+        logger.warning("No AI provider configured")
+        return None
+
+    last_err: Exception | None = None
+    for i, (client, model) in enumerate(chain):
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                max_tokens=max_tokens,
+                messages=messages,
+            )
+            return resp.choices[0].message.content
+        except Exception as e:
+            last_err = e
+            is_last = i == len(chain) - 1
+            if _is_quota_or_rate_error(e) and not is_last:
+                logger.warning("Provider %d (%s) hit quota/rate (%s); falling through to next",
+                               i, model, type(e).__name__)
+                continue
+            if is_last:
+                # Last provider failed too — bubble up the original error
+                logger.error("All %d providers failed; last error on %s: %s",
+                             len(chain), model, e)
+                return None
+            # Non-quota error on non-last provider — also try the next one
+            # rather than fail loudly (a transient network blip shouldn't
+            # block everything if we have a fallback available).
+            logger.warning("Provider %d (%s) errored (%s); trying next",
+                           i, model, type(e).__name__)
+            continue
+    if last_err:
+        logger.error("Provider chain exhausted: %s", last_err)
+    return None
 
 
 def _load_dmk_schemes_for_prompt(db) -> str:
@@ -286,8 +359,7 @@ def analyze_only(*, url: str, source: str, title: str, text: str) -> dict:
     Raises RuntimeError if no AI provider is configured.
     Returns the raw `extracted` dict from the model.
     """
-    client, model = _get_client_and_model()
-    if client is None:
+    if not _get_client_chain():
         raise RuntimeError("No AI provider configured (set OPENROUTER_API_KEY or ANTHROPIC_API_KEY)")
 
     db = get_db()
@@ -302,15 +374,16 @@ def analyze_only(*, url: str, source: str, title: str, text: str) -> dict:
         today=date.today().isoformat(),
     )
 
-    response = client.chat.completions.create(
-        model=model,
-        max_tokens=1024,
+    raw_response = llm_call_with_fallback(
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ],
+        max_tokens=1024,
     )
-    raw = _strip_code_fences(response.choices[0].message.content)
+    if raw_response is None:
+        raise RuntimeError("All AI providers failed (check OpenRouter credits + Anthropic key)")
+    raw = _strip_code_fences(raw_response)
     extracted = json.loads(raw)
 
     # Best-effort: also attach fact-check matches so admin sees them in the form
@@ -326,8 +399,7 @@ def analyze_only(*, url: str, source: str, title: str, text: str) -> dict:
 
 
 async def process_article(item: ApifyWebhookItem) -> None:
-    client, model = _get_client_and_model()
-    if client is None:
+    if not _get_client_chain():
         logger.warning("No AI provider configured — skipping %s", item.url)
         return
 
@@ -352,15 +424,17 @@ async def process_article(item: ApifyWebhookItem) -> None:
     )
 
     try:
-        response = client.chat.completions.create(
-            model=model,
-            max_tokens=1024,
+        raw_response = llm_call_with_fallback(
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": prompt},
             ],
+            max_tokens=1024,
         )
-        raw = _strip_code_fences(response.choices[0].message.content)
+        if raw_response is None:
+            logger.error("All AI providers failed for %s — skipping", item.url)
+            return
+        raw = _strip_code_fences(raw_response)
         extracted = json.loads(raw)
     except json.JSONDecodeError as e:
         logger.error("AI returned invalid JSON for %s: %s", item.url, e)
