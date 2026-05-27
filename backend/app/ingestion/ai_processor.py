@@ -105,16 +105,34 @@ Return JSON with these fields exactly:
   }}
 }}
 
-RELEVANCE RULES (be STRICT — when in doubt, set is_relevant=FALSE):
+RELEVANCE RULES (be STRICT on opinion/politics, but INCLUSIVE on crime):
+
+CRITICAL CONTEXT: This dashboard powers a baseline-comparison panel that
+contrasts TN crime rates under TVK govt vs DMK govt (using NCRB-style
+categories: murders, sexual assault, crimes vs women/kids, custodial
+death, honour killing, communal violence, police excess). For that
+comparison to be honest, we MUST capture ORDINARY CRIMES happening in
+Tamil Nadu under TVK rule — even when no TVK actor is named. A murder
+under TVK is still a murder under TVK; it counts toward the law-and-
+order pressure the meter measures.
+
+DO NOT reject crime reports because "no TVK governance failure mentioned"
+— TVK is responsible for law and order in TN by virtue of being the
+ruling government. Any verifiable crime in TN after May 11, 2026 is
+incident-eligible.
 
 ✅ TRACK these (is_relevant=true):
-  - Crime against a specific person/group with named victim or location
-    (murder, rape, assault, custodial death, communal/caste attack)
-  - Named corruption case: bribe demand, scam, FIR filed, vigilance arrest,
-    tender irregularity with named amount
-  - Specific civic failure with named place + measurable impact: power cut
-    > 3 hours in named area, water shortage, flooding, sewage backup,
-    hospital oxygen shortage
+  - ANY crime against a specific person/group with named victim or
+    location — murder, rape, attempted murder, assault, custodial death,
+    honour killing, communal/caste attack, child abuse, petrol-bomb
+    attack, dowry death, kidnapping. The perpetrator does NOT need to
+    be a TVK actor. These all feed our crime-vs-DMK-baseline panel.
+  - Named corruption case: bribe demand, scam, FIR filed, vigilance
+    arrest, tender irregularity with named amount (whether the accused
+    is TVK or not — corruption in TN is govt's responsibility)
+  - Specific civic failure with named place + measurable impact: power
+    cut > 3 hours in named area, water shortage, flooding, sewage
+    backup, hospital oxygen shortage
   - Specific TVK policy decision with concrete impact: scheme launch,
     scheme cancellation, budget cut, fare hike, license revocation
   - Broken/delayed manifesto promise (named promise + deadline)
@@ -171,6 +189,29 @@ EXAMPLES (study these carefully):
 
   EX 9: "Honour killing in Tiruvannamalai: woman killed by family"
     → is_relevant=TRUE, category=honour_killing, severity=5.
+
+  EX 9a: "Trichy: Man arrested for attempted murder of partner for
+         delaying marriage decision"
+    → is_relevant=TRUE, category=crimes_women_kids, severity=4.
+    Even though no TVK actor is involved, this is a verifiable crime
+    against a woman in TN under TVK govt — feeds crime-baseline panel.
+
+  EX 9b: "Coimbatore: Youth throws petrol bomb at woman's home after
+         she rejected his romantic advances; CCTV emerges"
+    → is_relevant=TRUE, category=crimes_women_kids, severity=4.
+    Crime against a woman under TVK rule = relevant, regardless of
+    perpetrator's party. Law and order is the ruling govt's duty.
+
+  EX 9c: "Murder near Manali New Town: Rowdy Prashanth kills youth
+         Vijay (21)"
+    → is_relevant=TRUE, category=murders, severity=5. Even though
+    perpetrator is a private criminal, the murder counts toward
+    TVK-era murder rate vs DMK-era baseline.
+
+  EX 9d: "Crime statistics aggregate for May 10-25"
+    → is_relevant=FALSE. Aggregates of crime data without specific
+    named incident, victim, or location are NOT incidents themselves
+    (the underlying specific incidents would be ingested individually).
 
   EX 10: "Vijay's Cabinet has record 7 SC community members"
     → is_relevant=FALSE. Composition news, not incident.
