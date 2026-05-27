@@ -432,13 +432,31 @@ async def process_article(item: ApifyWebhookItem) -> None:
         )
         outlet_count = distinct_outlets.count or new_count
 
-        new_status = "multi_source_verified" if outlet_count >= 2 else "pending_verification"
+        # Determine the right status:
+        #   2+ distinct outlets       -> multi_source_verified
+        #   1 outlet but it's press   -> press_verified (NEW: single press
+        #                                source is credible on its own —
+        #                                Hindu / SunNews / Vikatan etc. are
+        #                                real journalism, not Reddit posts)
+        #   only social_media         -> pending_verification (still needs
+        #                                press to publish)
+        from app.ingestion.corroboration import PRESS_TIERS as _PRESS_TIERS_SET
+        _is_reddit_xref = ("reddit.com" in (item.url or "").lower()) or ("reddit" in (outlet or "").lower())
+        is_press_source = (tier in _PRESS_TIERS_SET) and not _is_reddit_xref
+        if outlet_count >= 2:
+            new_status = "multi_source_verified"
+        elif is_press_source:
+            new_status = "press_verified"
+        else:
+            new_status = "pending_verification"
+
+        publish_visible = new_status in ("multi_source_verified", "press_verified")
 
         db.table("incidents").update({
             "source_urls": new_sources,
             "source_count": new_count,
             "verification_status": new_status,
-            "status": "approved" if new_status == "multi_source_verified" else "pending_review",
+            "status": "approved" if publish_visible else "pending_review",
             # Keep highest confidence
             "ai_confidence": max(target.get("ai_confidence") or 0, confidence),
         }).eq("id", target["id"]).execute()
@@ -453,14 +471,28 @@ async def process_article(item: ApifyWebhookItem) -> None:
         return
 
     # ---- 4. First sighting of this event — decide auto-publish vs queue ----
-    # Rule: high-tier outlet (primary/established_press) + AI confidence ≥ 0.7
-    # is good enough to auto-publish as single-source. Future articles from
-    # other outlets graduate it to multi_source_verified.
+    # New status hierarchy:
+    #   multi_source_verified  — 2+ press outlets agree (only set later)
+    #   press_verified         — 1 press-tier source (NEW)
+    #   pending_verification   — social_media / unknown, awaits press
+    # Reddit posts had historical mis-tagging as 'online_native'; explicitly
+    # disqualify any URL on reddit.com from press_verified.
+    from app.ingestion.corroboration import PRESS_TIERS as _PRESS_TIERS_SET
     HIGH_TIER = {"primary", "established_press"}
-    if tier in HIGH_TIER and confidence >= 0.7:
-        verification_status = "pending_verification"  # waiting for cross-ref
-        publish_status = "approved"                    # but show publicly meanwhile
+    _is_reddit = ("reddit.com" in (item.url or "").lower()) or ("reddit" in (outlet or "").lower())
+    is_press_source = (tier in _PRESS_TIERS_SET) and not _is_reddit
+
+    if is_press_source and confidence >= 0.6:
+        # Press outlet at decent confidence -> publish as press_verified.
+        # Future cross-ref from a 2nd outlet upgrades to multi_source_verified.
+        verification_status = "press_verified"
+        publish_status = "approved"
+    elif tier in HIGH_TIER and confidence >= 0.7:
+        # Edge case: established press but lower confidence in extraction
+        verification_status = "press_verified"
+        publish_status = "approved"
     else:
+        # Social_media / citizen / low-confidence -> waits for press
         verification_status = "pending_verification"
         publish_status = "pending_review"  # held back from public view
 

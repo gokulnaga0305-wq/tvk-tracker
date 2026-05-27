@@ -22,7 +22,7 @@ TRACKED_CATEGORIES = [
 # Anything else (pending_verification, retracted) is shown but NOT counted as
 # verified — the dashboard exposes both numbers honestly so the user can see
 # what's confirmed vs what's still single-source.
-VERIFIED_STATUSES = {"multi_source_verified", "admin_verified"}
+VERIFIED_STATUSES = {"multi_source_verified", "admin_verified", "press_verified"}
 
 
 @router.get("/dashboard")
