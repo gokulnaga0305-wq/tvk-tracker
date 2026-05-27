@@ -58,16 +58,34 @@ def _is_social_platform(url: str, outlet: str | None) -> bool:
 
 def run(*, dry_run: bool) -> int:
     db = get_db()
-    # Fetch all approved+pending incidents
-    res = (
-        db.table("incidents")
-        .select("id, title, source_urls, verification_status, status")
-        .eq("status", "approved")
-        .eq("verification_status", "pending_verification")
-        .execute()
-    )
-    rows = res.data or []
-    print(f"[i] {len(rows)} approved+pending_verification incidents to evaluate")
+    # PASS A — Already verified but stuck in pending_review (visibility bug):
+    #   multi_source_verified or press_verified + status=pending_review
+    # These should simply have status flipped to 'approved' so they show on the
+    # public dashboard. Already-verified content shouldn't be hidden.
+    pre = db.table("incidents").select("id, title, verification_status").eq("status", "pending_review").in_("verification_status", ["multi_source_verified", "press_verified"]).execute()
+    pre_rows = pre.data or []
+    if pre_rows:
+        print(f"[i] Pass A — {len(pre_rows)} already-verified items hidden in pending_review:")
+        for r in pre_rows:
+            label = "[dry] would approve" if dry_run else "[OK] approved"
+            print(f"  {label} ({r.get('verification_status'):22s}): {r.get('title','')[:65]}")
+            if not dry_run:
+                db.table("incidents").update({"status": "approved"}).eq("id", r["id"]).execute()
+        print()
+
+    # PASS B — Fetch pending_verification incidents in BOTH approved + pending_review
+    # so press-source items in pending_review also get promoted (was hidden).
+    rows: list[dict] = []
+    for s in ("approved", "pending_review"):
+        res = (
+            db.table("incidents")
+            .select("id, title, source_urls, verification_status, status, ai_confidence")
+            .eq("status", s)
+            .eq("verification_status", "pending_verification")
+            .execute()
+        )
+        rows.extend(res.data or [])
+    print(f"[i] Pass B — {len(rows)} pending_verification incidents to evaluate (across both status types)")
 
     # Also bulk-fetch sources so we can tier-resolve in one shot
     all_urls = list({u for r in rows for u in (r.get("source_urls") or [])})
@@ -118,11 +136,12 @@ def run(*, dry_run: bool) -> int:
             continue
 
         if dry_run:
-            print(f"  [dry] -> press_verified | {chosen_outlet:20s} | {r.get('title','')[:60]}")
+            print(f"  [dry] -> press_verified + approved | {chosen_outlet:20s} | {r.get('title','')[:55]}")
         else:
             try:
                 db.table("incidents").update({
                     "verification_status": "press_verified",
+                    "status": "approved",          # also surface publicly
                 }).eq("id", r["id"]).execute()
                 try:
                     db.table("incident_audit").insert({
