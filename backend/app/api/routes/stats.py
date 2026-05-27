@@ -53,11 +53,23 @@ async def get_dashboard_stats():
     credit_total = 0
     credit_verified = 0
     verified_overall = 0
+    # Granular split so the dashboard banner can show accurate labels
+    # (multi-source / press-confirmed / community) instead of a lumped count.
+    cross_verified_count    = 0   # multi_source_verified + admin_verified
+    press_verified_count    = 0   # single press outlet (press_verified)
+    community_pending_count = 0   # social_media / pending_verification
 
     for inc in incidents:
-        verified = inc.get("verification_status") in VERIFIED_STATUSES
+        vstat = inc.get("verification_status")
+        verified = vstat in VERIFIED_STATUSES
         if verified:
             verified_overall += 1
+        if vstat in ("multi_source_verified", "admin_verified"):
+            cross_verified_count += 1
+        elif vstat == "press_verified":
+            press_verified_count += 1
+        elif vstat == "pending_verification":
+            community_pending_count += 1
 
         if inc.get("is_credit_steal"):
             credit_total += 1
@@ -129,6 +141,10 @@ async def get_dashboard_stats():
         "total_incidents":          len(incidents),
         "verified_incidents":       verified_overall,
         "unverified_incidents":     len(incidents) - verified_overall,
+        # Granular trust split (used by the dashboard trust banner).
+        "cross_verified_count":     cross_verified_count,   # 2+ outlets agree, or admin
+        "press_verified_count":     press_verified_count,   # 1 press outlet (Hindu/SunNews etc.)
+        "community_pending_count":  community_pending_count, # Reddit / social only
     }
     return out
 

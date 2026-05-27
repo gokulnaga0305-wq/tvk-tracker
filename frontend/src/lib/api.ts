@@ -38,6 +38,10 @@ export interface DashboardStats {
   total_incidents: number;
   verified_incidents?: number;
   unverified_incidents?: number;
+  // Granular trust split (used by the trust banner)
+  cross_verified_count?: number;     // multi_source or admin
+  press_verified_count?: number;     // single press outlet
+  community_pending_count?: number;  // Reddit / social only
 }
 
 export interface IncidentSource {

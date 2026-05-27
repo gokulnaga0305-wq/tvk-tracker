@@ -111,21 +111,39 @@ export default function DashboardPage() {
             the rest of the dashboard render. */}
         <IncumbencyMeter />
 
-        {/* Trust transparency banner — show the overall verified/pending split */}
+        {/* Trust transparency banner — three honest tiers instead of the
+            old misleading two-bucket count. Lumping single-press incidents
+            under "multi-source verified" was inaccurate; the new breakdown
+            shows each tier separately so users see exactly where the
+            evidence stands. */}
         {(stats.total_incidents ?? 0) > 0 && (
-          <div className="bg-[#15161c] border border-[#262833] rounded-lg px-4 py-3 mb-5 flex items-center gap-4 flex-wrap text-sm">
+          <div className="bg-[#15161c] border border-[#262833] rounded-lg px-4 py-3 mb-5 flex items-center gap-x-4 gap-y-2 flex-wrap text-sm">
             <span className="text-gray-400">
               Tracking <strong className="text-white">{stats.total_incidents}</strong> incidents:
             </span>
-            <span className="flex items-center gap-1.5 text-emerald-400">
+            <span
+              className="flex items-center gap-1.5 text-emerald-400"
+              title="Two or more independent press outlets reported the same event (or admin manually verified)"
+            >
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block" />
-              <strong>{stats.verified_incidents ?? 0}</strong>
-              <span className="text-emerald-400/70">multi-source verified</span>
+              <strong>{stats.cross_verified_count ?? 0}</strong>
+              <span className="text-emerald-400/70">cross-verified</span>
             </span>
-            <span className="flex items-center gap-1.5 text-amber-400">
+            <span
+              className="flex items-center gap-1.5 text-sky-400"
+              title="One press outlet has reported this — credible single source (Hindu, SunNewsTamil, News18 Tamil, Spark+, PttvNewsX, etc.)"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-sky-400 inline-block" />
+              <strong>{stats.press_verified_count ?? 0}</strong>
+              <span className="text-sky-400/70">press-confirmed</span>
+            </span>
+            <span
+              className="flex items-center gap-1.5 text-amber-400"
+              title="Reported on Reddit / social media only — no press confirmation yet"
+            >
               <span className="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" />
-              <strong>{stats.unverified_incidents ?? 0}</strong>
-              <span className="text-amber-400/70">single-source, pending corroboration</span>
+              <strong>{stats.community_pending_count ?? stats.unverified_incidents ?? 0}</strong>
+              <span className="text-amber-400/70">community reports</span>
             </span>
             <a href="/methodology" className="ml-auto text-xs text-gray-500 hover:text-white underline-offset-2 hover:underline">
               How we verify →
