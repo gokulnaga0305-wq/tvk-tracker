@@ -67,13 +67,41 @@ Return JSON with these fields exactly:
     "police_excess", "custodial_death", "honour_killing",
     "censorship", "media_blackout", "fake_news", "propaganda",
     "credit_stealing", "broken_promise", "kept_promise", "partial_promise",
-    "new_initiative",
+    "new_initiative", "defection",
+    "youth_targeting", "crowd_management_failure",
     "governance", "tenders", "power_cut", "water_shortage", "civic_failure",
     "drug_menace", "alcohol_menace", "communal_violence",
     "industrial_flight", "investment_announcement",
     "federalism", "language_imposition", "dravidian_attack",
     "other"
   ],
+
+  CATEGORY DISCIPLINE — NEVER DEFAULT TO "governance":
+    The "governance" bucket has historically been used as a catch-all
+    when the AI was uncertain.  STOP doing this.  Pick the most specific
+    category that matches:
+      - If a TVK official is accused of any crime against a person
+        (assault, sexual assault, child abuse, murder) -> use the CRIME
+        category (sexual_assault, crimes_women_kids, murders), NOT
+        governance.  The accused being TVK does not make it "governance".
+      - If an MLA changes parties -> use "defection" + populate the
+        defection object below; do NOT tag as governance.
+      - If TVK officially announces something misleading or fact-checked
+        false -> use "fake_news" or "propaganda", not governance.
+      - If the article is about a fake-degree allegation against a TVK
+        MLA -> use "corruption" (fraudulent credential) or "fake_news"
+        depending on whether it's a verified allegation.
+      - If it's a crowd injury / stampede / rally management failure ->
+        use "crowd_management_failure" (NEW category).
+      - If it's school-age voter targeting / propaganda aimed at minors
+        / film-tie-in mobilisation of youth -> use "youth_targeting"
+        (NEW category).
+      - "governance" is reserved for actual administrative/policy decisions
+        and their consequences (tender irregularities, quarry closures,
+        TASMAC strikes from policy, civil servants protesting orders,
+        budget redirection, hospital civic failures, etc.).  If you are
+        about to set category=governance, ask yourself: "is there a
+        more specific category that fits?"  If yes, USE THAT.
   "incident_date": "YYYY-MM-DD",
   "location": "district / city name in Tamil Nadu, or null if not TN-specific",
   "is_credit_steal": true/false,
