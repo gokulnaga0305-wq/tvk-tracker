@@ -135,6 +135,20 @@ Return JSON with these fields exactly:
 
 RELEVANCE RULES (be STRICT on opinion/politics, but INCLUSIVE on crime):
 
+HARD DATE GATE — MUST PASS BEFORE ANYTHING ELSE:
+  TVK government took oath on May 11, 2026.  This dashboard is an
+  accountability tool for the TVK ADMINISTRATION's actions, NOT the
+  pre-election campaign era.
+  → If the incident_date is BEFORE 2026-05-11, set is_relevant=FALSE
+    regardless of how serious or TVK-connected the event is.
+  → Campaign-era events (rally injuries, Karur stampede, founding
+    defections that built the winning coalition) are pre-election
+    context.  They belong to a different chapter.
+  → "incident_date" must reflect when the event HAPPENED — not when
+    the article was published.  A news report on May 28 about a
+    rally injury that happened on Sep 27, 2025 is still PRE-ELECTION
+    and must be rejected.
+
 CRITICAL CONTEXT: This dashboard powers a baseline-comparison panel that
 contrasts TN crime rates under TVK govt vs DMK govt (using NCRB-style
 categories: murders, sexual assault, crimes vs women/kids, custodial
