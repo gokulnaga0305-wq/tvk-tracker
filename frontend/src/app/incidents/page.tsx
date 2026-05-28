@@ -16,12 +16,16 @@ export default function IncidentsPage() {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
-    const params = new URLSearchParams({ limit: '100' });
+    // limit=50 is the current safe cap: the backend's enrichment code
+    // (sources + dmk_evidence + tag normalization) hits a Supabase IN()
+    // payload size limit somewhere between 50 and 75 incidents per page.
+    // TODO(perf): chunk the enrichment IN() calls so we can lift this.
+    const params = new URLSearchParams({ limit: '50' });
     if (category) params.set('category', category);
     if (creditStealsOnly) params.set('is_credit_steal', 'true');
     fetch(`${API}/api/incidents/?${params}`)
-      .then(r => r.json())
-      .then(setIncidents)
+      .then(r => r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`)))
+      .then(data => setIncidents(Array.isArray(data) ? data : []))
       .catch(() => setIncidents([]))
       .finally(() => setLoading(false));
   }, [category, creditStealsOnly]);

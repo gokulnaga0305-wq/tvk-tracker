@@ -8,18 +8,41 @@ router = APIRouter(prefix="/incidents", tags=["incidents"])
 
 
 def _enrich_sources(db, incidents: list[dict]) -> list[dict]:
-    """Attach outlet info + credibility tier to each incident's source_urls."""
+    """Attach outlet info + credibility tier to each incident's source_urls.
+
+    The IN() call must be CHUNKED — Supabase/PostgREST has an ~8KB
+    query-string limit, and many URLs (especially Reddit comment links
+    with Tamil-script paths and Twitter status URLs) push us over the
+    edge somewhere around 50-75 incidents. Chunking at 30 URLs per
+    fetch keeps every request well under the limit no matter how many
+    incidents are being enriched at once.
+    """
     if not incidents:
         return incidents
     all_urls = list({u for inc in incidents for u in (inc.get("source_urls") or [])})
-    if all_urls:
-        res = db.table("sources").select("url,outlet,credibility_tier,title").in_("url", all_urls).execute()
-        source_lookup = {s["url"]: s for s in (res.data or [])}
-        for inc in incidents:
-            inc["sources"] = [
-                source_lookup.get(u, {"url": u, "outlet": "unknown", "credibility_tier": "unknown"})
-                for u in (inc.get("source_urls") or [])
-            ]
+    if not all_urls:
+        return incidents
+    source_lookup: dict[str, dict] = {}
+    CHUNK = 30
+    for start in range(0, len(all_urls), CHUNK):
+        chunk = all_urls[start:start + CHUNK]
+        try:
+            res = (
+                db.table("sources")
+                .select("url,outlet,credibility_tier,title")
+                .in_("url", chunk)
+                .execute()
+            )
+            for s in (res.data or []):
+                source_lookup[s["url"]] = s
+        except Exception:
+            # Single-chunk failure should not break the whole list response
+            continue
+    for inc in incidents:
+        inc["sources"] = [
+            source_lookup.get(u, {"url": u, "outlet": "unknown", "credibility_tier": "unknown"})
+            for u in (inc.get("source_urls") or [])
+        ]
     return incidents
 
 
@@ -40,26 +63,37 @@ def _normalize_tags(incidents: list[dict]) -> list[dict]:
 
 
 def _enrich_dmk_evidence(db, incidents: list[dict]) -> list[dict]:
-    """Bulk-load top-3 DMK precedents for credit-steal incidents."""
+    """Bulk-load top-3 DMK precedents for credit-steal incidents.
+
+    Chunked for the same reason _enrich_sources is (URL-length limit on
+    PostgREST IN() with many uuid values).
+    """
     credit_steal_ids = [inc["id"] for inc in incidents if inc.get("is_credit_steal")]
     if not credit_steal_ids:
         return incidents
-    try:
-        res = (
-            db.table("incident_dmk_evidence")
-            .select(
-                "incident_id,match_score,match_reason,"
-                "announcement:dmk_announcements("
-                "id,title,content,source,source_url,announcement_date,media_urls"
-                ")"
+    by_incident: dict[str, list] = {}
+    CHUNK = 30
+    for start in range(0, len(credit_steal_ids), CHUNK):
+        chunk = credit_steal_ids[start:start + CHUNK]
+        try:
+            res = (
+                db.table("incident_dmk_evidence")
+                .select(
+                    "incident_id,match_score,match_reason,"
+                    "announcement:dmk_announcements("
+                    "id,title,content,source,source_url,announcement_date,media_urls"
+                    ")"
+                )
+                .in_("incident_id", chunk)
+                .order("match_score", desc=True)
+                .execute()
             )
-            .in_("incident_id", credit_steal_ids)
-            .order("match_score", desc=True)
-            .execute()
-        )
-        by_incident: dict[str, list] = {}
-        for ev in res.data or []:
-            by_incident.setdefault(ev["incident_id"], []).append(ev)
+            for ev in res.data or []:
+                by_incident.setdefault(ev["incident_id"], []).append(ev)
+        except Exception:
+            # Single-chunk failure should not break the whole list response
+            continue
+    try:
         for inc in incidents:
             if inc.get("is_credit_steal"):
                 inc["dmk_evidence"] = by_incident.get(inc["id"], [])[:3]
