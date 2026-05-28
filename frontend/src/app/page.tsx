@@ -11,7 +11,7 @@ import { CATEGORY_LABELS } from '@/lib/constants';
 import Link from 'next/link';
 import {
   DollarSign, Skull, ShieldAlert, Users, CheckSquare, Copy, AlertTriangle,
-  Zap, ZapOff, Wine, Megaphone, ShieldOff, Flame, Clock,
+  Zap, ZapOff, Wine, Megaphone, ShieldOff, Flame, Clock, Landmark, FileX,
 } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -173,6 +173,47 @@ export default function DashboardPage() {
             icon={CheckSquare}
             color="text-green-400"
           />
+        </div>
+
+        {/* Governance + promise + credit-steal widgets — previously these
+            sat hidden inside the trust banner's 213 total but had no
+            dedicated card on the dashboard. Governance alone is ~40% of
+            our incidents, so it deserves visibility. */}
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+          <StatCard
+            label="Governance Gaps"
+            value={stats.governance_count ?? 0}
+            verified={stats.governance_verified}
+            icon={Landmark}
+            color="text-sky-400"
+          />
+          <StatCard
+            label="Broken Promises"
+            value={stats.broken_promise_count ?? 0}
+            verified={stats.broken_promise_verified}
+            icon={FileX}
+            color="text-rose-400"
+          />
+          <StatCard
+            label="Credit Stealing"
+            value={stats.credit_steal_count ?? 0}
+            verified={stats.credit_steal_verified}
+            icon={Copy}
+            color="text-blue-400"
+          />
+          {/* Link cell to view every category — keeps surface area honest
+              without cluttering with rare buckets (custodial_death,
+              honour_killing, propaganda, etc.). */}
+          <a
+            href="/incidents"
+            className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 flex flex-col items-center justify-center gap-1 hover:border-[#333] transition-colors group col-span-2"
+          >
+            <span className="text-xs text-gray-500 uppercase tracking-wider font-medium">All categories</span>
+            <span className="text-orange-400 text-sm font-medium group-hover:text-orange-300">
+              View all {stats.total_incidents ?? 0} incidents →
+            </span>
+            <span className="text-[11px] text-gray-600 mt-1">includes honour killing · custodial death · water shortage · propaganda · more</span>
+          </a>
         </div>
 
         {/* DMK era vs TVK era delta panel — crime/governance event counts */}

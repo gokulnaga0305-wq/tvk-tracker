@@ -13,7 +13,7 @@ TRACKED_CATEGORIES = [
     "corruption", "murders", "sexual_assault", "crimes_women_kids",
     "power_cut", "eb_failure", "alcohol_menace", "honour_killing",
     "police_excess", "broken_promise", "attack_on_press", "fake_news",
-    "custodial_death",
+    "custodial_death", "governance",
     # New promise-comparator categories (auto-set by the comparator)
     "kept_promise", "partial_promise", "new_initiative",
 ]
@@ -112,6 +112,7 @@ async def get_dashboard_stats():
         "attack_on_press_count":    counts_total["attack_on_press"],
         "fake_news_count":          counts_total["fake_news"],
         "custodial_death_count":    counts_total["custodial_death"],
+        "governance_count":         counts_total["governance"],
         "credit_steal_count":       credit_total,
         # Verified-only counts (the honest baseline)
         "corruption_verified":      counts_verified["corruption"],
@@ -127,6 +128,7 @@ async def get_dashboard_stats():
         "attack_on_press_verified": counts_verified["attack_on_press"],
         "fake_news_verified":       counts_verified["fake_news"],
         "custodial_death_verified": counts_verified["custodial_death"],
+        "governance_verified":      counts_verified["governance"],
         "credit_steal_verified":    credit_verified,
         # Promise-comparator categories (auto-tagged from govt announcements)
         "kept_promise_count":       counts_total["kept_promise"],

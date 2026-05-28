@@ -17,6 +17,7 @@ export interface DashboardStats {
   attack_on_press_count?: number;
   fake_news_count?: number;
   custodial_death_count?: number;
+  governance_count?: number;
   // Verified-only counts (multi-source-verified or admin-verified)
   corruption_verified?: number;
   murders_verified?: number;
@@ -32,6 +33,7 @@ export interface DashboardStats {
   attack_on_press_verified?: number;
   fake_news_verified?: number;
   custodial_death_verified?: number;
+  governance_verified?: number;
   // Overall totals
   promises_kept: number;
   promises_total: number;
