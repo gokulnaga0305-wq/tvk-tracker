@@ -130,6 +130,110 @@ Return JSON with these fields exactly:
           A Saidapet Urban Housing Board case where allotments were
           biased by caste -> communal_violence (primary), with
           governance/corruption in tags_extra.
+      - LANGUAGE_IMPOSITION (TN-specific, chronically under-detected):
+          Tamil Nadu has a 60-year political tradition of resisting
+          Hindi imposition.  The AI's default training will frame Hindi
+          as "national language" and miss imposition events.  CORRECT
+          this — in TN context, imposition IS the incident.  Flag as
+          language_imposition (severity 3-5):
+            * Centre / TVK ordering Hindi signage on TN govt buildings,
+              metro stations, post offices, central PSU offices
+            * Three-language formula being pushed in TN schools (NEP
+              compliance disputes)
+            * Hindi-only forms, exams, recruitment notifications for
+              central jobs in TN
+            * Replacement of Tamil signage with Hindi on highways,
+              railways, airports inside TN
+            * TVK official or central minister speaking Hindi at TN
+              official function where Tamil was promised
+            * Withholding central funds for Tamil-medium schools
+            * Anti-Tamil rhetoric from central or TVK officials
+            * NEP 2020 / three-language compliance pressure
+          Counter-examples (NOT language_imposition):
+            * Bollywood film released in TN -> entertainment, skip
+            * Tamil-Hindi debate on TV panel -> opinion, skip
+            * Hindi cinema actor visiting TN -> not incident
+          Pre-2026-05-11 anti-Hindi protests remain pre-election; only
+          imposition events after govt-formation count.
+      - DRAVIDIAN_ATTACK (TN-specific identity attack):
+          The Dravidian movement (Periyar, EVR, Self-Respect, rationalism)
+          is the ideological foundation of modern TN politics.  Direct
+          attacks on this legacy ARE accountability events under a
+          government whose constituency is anti-Dravidian.  Flag as
+          dravidian_attack (severity 4-5 for statue/violence, 3 for
+          rhetoric):
+            * Periyar statue vandalism, garlanding with footwear,
+              defacement (Erode, Tirunelveli, Salem hot spots)
+            * Ambedkar / Annadurai / Karunanidhi statue desecration
+              (often paired ideologically with Periyar attacks)
+            * TVK official publicly attacking Periyarist / rationalist
+              ideology, calling Self-Respect movement "anti-Hindu"
+            * Removal of Periyar quotes / Self-Respect curriculum from
+              TN school textbooks under TVK administration
+            * Attacks on rationalist activists, atheist speakers,
+              caste-reform organisations
+            * Renaming of Periyar-named institutions, roads, universities
+            * Sangh-affiliate march through Dravidian-symbol areas with
+              official protection / blind eye
+            * Attacks on inter-caste / inter-faith marriage registrars
+              citing "tradition"
+          When a caste/communal attack is ALSO an ideology attack
+          (e.g. Dalit activist murdered for distributing Periyar
+          literature), use the harm-category as primary
+          (murders / honour_killing) and add "dravidian_attack" to
+          tags_extra.
+      - FEDERALISM (Centre-State conflict, structural):
+          TN under TVK + Centre under BJP is a federalism flashpoint by
+          design.  Conflicts here are real accountability events — they
+          determine whether TN gets its rightful share of resources.
+          Flag as federalism (severity 3-5):
+            * GST devolution / TN's share withheld / 15th Finance
+              Commission disputes / cess-vs-tax revenue grab
+            * NEET imposition on TN despite state assembly resolutions
+              exempting it; NEET-related student suicides count toward
+              federalism (with crimes_women_kids in tags_extra if minor)
+            * Governor (TN Raj Bhavan) stalling / refusing assent to
+              bills passed by TN assembly
+            * Central agencies (ED / CBI / IT) raids on TN officials,
+              opposition figures, businesspersons aligned with Dravidian
+              parties, in apparent retaliation pattern
+            * Disaster relief delay / denial from Centre for TN
+              (cyclones, floods, drought)
+            * Central scheme rebranding forcing TN to drop state-named
+              schemes (PMAY-vs-CM-housing, Ayushman-vs-CMCHIS)
+            * Centre denying clearance for TN industrial / infra projects
+            * Three-language / NEP / UGC autonomy disputes targeting TN
+          Note: federalism conflict where TVK SIDES WITH CENTRE against
+          TN interest is doubly important — that's the credit-steal
+          counterpart at the federal level.  Capture in tags_extra.
+      - DRUG_MENACE (TN-specific drug trafficking corridor):
+          TN sits on the ganja corridor from Andhra Pradesh / Odisha and
+          the MD (mephedrone) / synthetic drug pipeline from Bengaluru.
+          Drug enforcement (or lack of it) is a law-and-order
+          accountability metric for the ruling govt.  Flag as
+          drug_menace (severity 3-5):
+            * Ganja seizures with named quantity + location (>10kg = sev 4,
+              >100kg = sev 5)
+            * MD / mephedrone / cocaine / heroin / hash seizures in TN
+              cities (Chennai, Coimbatore, Madurai hot spots)
+            * Drug-related arrests of named individuals (especially
+              when TVK-affiliate or police-affiliate is implicated)
+            * Student / school / college drug bust with named institution
+            * Drug death of named person (overdose, contaminated supply)
+            * NCB / state narcotics dept operations in TN with named outcome
+            * Drug trafficking route exposure (Andhra-TN border, Kerala-TN
+              border, port seizures at Chennai / Tuticorin)
+            * Failure of TVK's promised drug-control measures (manifesto
+              cross-ref) -> drug_menace + broken_promise
+          When a drug crime overlaps with another category (drug
+          smuggling by TVK functionary -> drug_menace + corruption;
+          drug-fueled murder -> murders + drug_menace tag_extra), use
+          the most severe harm-category as primary.
+          NOT drug_menace:
+            * Alcohol-related events -> alcohol_menace
+            * Pharmacy / prescription drug scandal without addiction
+              dimension -> corruption or governance
+            * General "drug awareness" campaigns without seizure data
       - POWER / EB DISTINCTION (frequently confused):
           * "power_cut"  = customer-facing outage event: a named place
             lost power for N hours, residents protested, hospital lost
