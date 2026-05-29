@@ -51,35 +51,6 @@ jobs:
       - name: Upload backend/ to HF Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: |
-          set -e
-          if [ -z "$HF_TOKEN" ]; then
-            echo "::error::HF_TOKEN secret is not set. Add a write-scoped token from huggingface.co/settings/tokens under repo Settings → Secrets and variables → Actions."
-            exit 1
-          fi
-
-          # Use huggingface_hub.upload_folder instead of `git subtree push`.
-          # The subtree approach was fragile: `git subtree split -b <branch>`
-          # failed fast on re-runs and silently left HF up to 3 commits
-          # behind (root cause of the 2026-05-29 propaganda-router 404).
-          # upload_folder diffs the backend/ tree against the Space repo and
-          # commits only what changed — idempotent, no local branch state,
-          # no force-push gymnastics.
-          python - <<'PY'
-          import os
-          from huggingface_hub import HfApi
-          api = HfApi(token=os.environ["HF_TOKEN"])
-          commit = api.upload_folder(
-              repo_id="goknaga/tvk-tracker-backend",
-              repo_type="space",
-              folder_path="backend",
-              path_in_repo=".",
-              commit_message="CI sync from GitHub main",
-              # Don't wipe Space-only files (README with HF metadata header,
-              # .gitattributes). delete_patterns left unset = additive sync.
-              ignore_patterns=["**/__pycache__/**", "**/*.pyc", ".env", ".venv/**"],
-          )
-          print(f"Synced backend/ -> HF Space. Commit: {getattr(commit, 'oid', commit)}")
-          PY
-
-          echo "::notice::Successfully synced backend/ to HF Space via huggingface_hub"
+        # Committed script (not inline heredoc) so tracebacks surface
+        # cleanly and there's no YAML/heredoc indentation ambiguity.
+        run: python scripts/ci_sync_backend_to_hf.py
