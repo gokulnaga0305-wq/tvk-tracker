@@ -96,6 +96,25 @@ Return JSON with these fields exactly:
       - If it's school-age voter targeting / propaganda aimed at minors
         / film-tie-in mobilisation of youth -> use "youth_targeting"
         (NEW category).
+      - POWER / EB DISTINCTION (frequently confused):
+          * "power_cut"  = customer-facing outage event: a named place
+            lost power for N hours, residents protested, hospital lost
+            supply, etc.  The symptom.
+          * "eb_failure" = TNEB / TANGEDCO department / infrastructure /
+            staff specific:
+              - Repeated outages indicating infrastructure decay
+                ("5 outages in one night in Tiruttani")
+              - Transformer blast / sub-station fire
+              - EB employee misconduct (bribery, sexual harassment by
+                EB staff) — primary category should reflect the crime
+                (e.g. sexual_assault), but ALSO add "eb_failure" to
+                tags_extra so the EB widget surfaces it
+              - Billing fraud / tariff dispute by EB
+              - EB officials caught taking bribes
+              - Refusal to restore power after natural disaster
+          When in doubt: a single outage in a single location -> power_cut.
+          A pattern of failures / something EB-the-organisation did wrong
+          -> eb_failure.
       - "governance" is reserved for actual administrative/policy decisions
         and their consequences (tender irregularities, quarry closures,
         TASMAC strikes from policy, civil servants protesting orders,

@@ -18,6 +18,8 @@ export interface DashboardStats {
   fake_news_count?: number;
   custodial_death_count?: number;
   governance_count?: number;
+  power_eb_count?: number;
+  power_eb_verified?: number;
   // Verified-only counts (multi-source-verified or admin-verified)
   corruption_verified?: number;
   murders_verified?: number;

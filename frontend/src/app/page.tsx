@@ -151,13 +151,20 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Trending / hot categories */}
+        {/* Trending / hot categories — Power & EB merged into one widget
+            since citizens experience them as the same "electricity issue".
+            Internal DB still keeps power_cut vs eb_failure distinct so we
+            can drill down. */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-4">
-          <StatCard label="Power Cut"      value={stats.power_cut_count ?? 0}      verified={stats.power_cut_verified}     icon={ZapOff}     color="text-amber-400" />
-          <StatCard label="EB Failure"     value={stats.eb_failure_count ?? 0}     verified={stats.eb_failure_verified}    icon={Zap}        color="text-yellow-400" />
+          <StatCard label="Power & EB"     value={stats.power_eb_count ?? ((stats.power_cut_count ?? 0) + (stats.eb_failure_count ?? 0))}
+                                            verified={stats.power_eb_verified ?? ((stats.power_cut_verified ?? 0) + (stats.eb_failure_verified ?? 0))}
+                                            icon={ZapOff} color="text-amber-400" />
           <StatCard label="Alcohol Menace" value={stats.alcohol_menace_count ?? 0} verified={stats.alcohol_menace_verified} icon={Wine}      color="text-pink-400" />
           <StatCard label="Police Excess"  value={stats.police_excess_count ?? 0}  verified={stats.police_excess_verified} icon={ShieldOff}  color="text-red-400" />
           <StatCard label="Fake News"      value={stats.fake_news_count ?? 0}      verified={stats.fake_news_verified}     icon={Megaphone}  color="text-fuchsia-400" />
+          <StatCard label="Civic Failure"  value={(stats as any).civic_failure_count ?? 0}
+                                            verified={(stats as any).civic_failure_verified}
+                                            icon={AlertTriangle} color="text-orange-400" />
         </div>
 
         {/* Crime stat cards */}

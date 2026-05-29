@@ -14,6 +14,8 @@ TRACKED_CATEGORIES = [
     "power_cut", "eb_failure", "alcohol_menace", "honour_killing",
     "police_excess", "broken_promise", "attack_on_press", "fake_news",
     "custodial_death", "governance",
+    "civic_failure", "defection", "crowd_management_failure",
+    "youth_targeting", "censorship", "propaganda",
     # New promise-comparator categories (auto-set by the comparator)
     "kept_promise", "partial_promise", "new_initiative",
 ]
@@ -113,6 +115,8 @@ async def get_dashboard_stats():
         "fake_news_count":          counts_total["fake_news"],
         "custodial_death_count":    counts_total["custodial_death"],
         "governance_count":         counts_total["governance"],
+        "civic_failure_count":      counts_total["civic_failure"],
+        "civic_failure_verified":   counts_verified["civic_failure"],
         "credit_steal_count":       credit_total,
         # Verified-only counts (the honest baseline)
         "corruption_verified":      counts_verified["corruption"],
@@ -138,6 +142,12 @@ async def get_dashboard_stats():
         "new_initiative_count":     counts_total["new_initiative"],
         "new_initiative_verified":  counts_verified["new_initiative"],
         # Promise + overall totals
+        # Combined view for the dashboard "Power & EB" widget. We keep the
+        # two categories distinct in the DB (different sub-types) but
+        # surface a merged count for the user-facing widget because they
+        # mean the same thing to a citizen ("electricity issues").
+        "power_eb_count":           counts_total["power_cut"] + counts_total["eb_failure"],
+        "power_eb_verified":        counts_verified["power_cut"] + counts_verified["eb_failure"],
         "promises_kept":            kept,
         "promises_total":           len(promises),
         "total_incidents":          len(incidents),
