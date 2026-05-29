@@ -2,18 +2,34 @@
 import { useState, useEffect } from 'react';
 import IncidentCard from '@/components/IncidentCard';
 import { Incident } from '@/lib/api';
-import { CATEGORY_LABELS } from '@/lib/constants';
 import { Search, Filter } from 'lucide-react';
 import clsx from 'clsx';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+interface CategoryOption {
+  category: string;
+  label: string;
+  count: number;
+  verified: number;
+}
+
 export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [category, setCategory] = useState('');
   const [creditStealsOnly, setCreditStealsOnly] = useState(false);
   const [search, setSearch] = useState('');
+
+  // Fetch the live category list with counts so chips only show
+  // categories that actually have data, with current counts.
+  useEffect(() => {
+    fetch(`${API}/api/incidents/categories`, { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : [])
+      .then((data: CategoryOption[]) => setCategories(Array.isArray(data) ? data : []))
+      .catch(() => setCategories([]));
+  }, []);
 
   useEffect(() => {
     // limit=50 is the current safe cap: the backend's enrichment code
@@ -62,8 +78,10 @@ export default function IncidentsPage() {
           className="bg-[#1a1a1a] border border-[#2a2a2a] text-gray-300 text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-orange-500"
         >
           <option value="">All categories</option>
-          {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
-            <option key={k} value={k}>{v}</option>
+          {categories.map(c => (
+            <option key={c.category} value={c.category}>
+              {c.label} ({c.count})
+            </option>
           ))}
         </select>
         <button
@@ -82,22 +100,32 @@ export default function IncidentsPage() {
         </span>
       </div>
 
-      {/* Category pills */}
+      {/* Category pills — dynamically built from the backend so chips
+          always match real data. No more "ghost" chips for categories
+          the AI never assigns, no more missing chips for categories
+          the AI does assign. Counts shown so users see scale at a glance. */}
       <div className="flex flex-wrap gap-2 mb-6">
         <button
           onClick={() => setCategory('')}
           className={clsx('text-xs px-3 py-1.5 rounded-full border transition-colors',
             !category ? 'bg-orange-600 border-orange-600 text-white' : 'bg-[#1e1e1e] border-[#2a2a2a] text-gray-400 hover:text-white'
           )}
-        >All</button>
-        {Object.entries(CATEGORY_LABELS).map(([k, v]) => (
+        >
+          All ({categories.reduce((s, c) => s + c.count, 0)})
+        </button>
+        {categories.map(c => (
           <button
-            key={k}
-            onClick={() => setCategory(k === category ? '' : k)}
+            key={c.category}
+            onClick={() => setCategory(c.category === category ? '' : c.category)}
             className={clsx('text-xs px-3 py-1.5 rounded-full border transition-colors',
-              category === k ? 'bg-orange-600 border-orange-600 text-white' : 'bg-[#1e1e1e] border-[#2a2a2a] text-gray-400 hover:text-white'
+              category === c.category
+                ? 'bg-orange-600 border-orange-600 text-white'
+                : 'bg-[#1e1e1e] border-[#2a2a2a] text-gray-400 hover:text-white'
             )}
-          >{v}</button>
+            title={`${c.verified} verified of ${c.count} total`}
+          >
+            {c.label} <span className="text-[10px] opacity-70 ml-0.5">({c.count})</span>
+          </button>
         ))}
       </div>
 

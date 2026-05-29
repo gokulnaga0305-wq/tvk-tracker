@@ -103,6 +103,80 @@ def _enrich_dmk_evidence(db, incidents: list[dict]) -> list[dict]:
     return incidents
 
 
+# Friendly labels for categories — kept here so frontend doesn't need a
+# duplicate hardcoded map.  Every category that EVER appears in DB gets a
+# label; the frontend will only render chips for ones with non-zero count.
+CATEGORY_LABELS_BACKEND: dict[str, str] = {
+    "corruption":               "Corruption",
+    "murders":                  "Murders",
+    "sexual_assault":           "Sexual Assault",
+    "crimes_women_kids":        "Crimes vs Women & Kids",
+    "police_excess":            "Police Excess",
+    "custodial_death":          "Custodial Death",
+    "honour_killing":           "Honour Killing",
+    "censorship":               "Censorship",
+    "media_blackout":           "Media Blackout",
+    "fake_news":                "Fake News",
+    "propaganda":               "Propaganda",
+    "credit_stealing":          "Credit Stealing",
+    "broken_promise":           "Broken Promises",
+    "kept_promise":             "Promises Kept",
+    "partial_promise":          "Partial Promises",
+    "new_initiative":           "New Initiatives",
+    "defection":                "Defections (MLA Switching)",
+    "youth_targeting":          "Youth Targeting",
+    "crowd_management_failure": "Crowd / Rally Failures",
+    "governance":               "Governance",
+    "tenders":                  "Tenders / Procurement",
+    "power_cut":                "Power Cut",
+    "eb_failure":               "EB / TANGEDCO Failure",
+    "water_shortage":           "Water Shortage",
+    "civic_failure":            "Civic Failure",
+    "drug_menace":              "Drug Menace",
+    "alcohol_menace":           "Alcohol Menace",
+    "communal_violence":        "Communal Violence",
+    "industrial_flight":        "Industrial Flight",
+    "investment_announcement":  "Investment Announcement",
+    "federalism":               "Federalism Conflict",
+    "language_imposition":      "Language Imposition",
+    "dravidian_attack":         "Attack on Dravidian Identity",
+    "attack_on_press":          "Attack on Press",
+    "other":                    "Other",
+}
+
+
+@router.get("/categories")
+async def list_categories():
+    """Return categories that ACTUALLY have approved incidents, with
+    total + verified counts.  Frontend uses this to build dynamic
+    filter chips so the UI can never show a category with zero data
+    (or omit one that has data).
+
+    Categories the AI may emit but with no rows yet are still returned
+    with count=0 so the frontend can show them as greyed-out chips if
+    desired (currently we hide them)."""
+    from app.api.routes.stats import VERIFIED_STATUSES
+    db = get_db()
+    res = db.table("incidents").select("category, verification_status").eq("status", "approved").execute()
+    from collections import Counter
+    counts: dict[str, dict] = {}
+    for row in (res.data or []):
+        c = row.get("category") or "other"
+        bucket = counts.setdefault(c, {"total": 0, "verified": 0})
+        bucket["total"] += 1
+        if row.get("verification_status") in VERIFIED_STATUSES:
+            bucket["verified"] += 1
+    out = []
+    for c, b in sorted(counts.items(), key=lambda x: -x[1]["total"]):
+        out.append({
+            "category": c,
+            "label":    CATEGORY_LABELS_BACKEND.get(c, c.replace("_", " ").title()),
+            "count":    b["total"],
+            "verified": b["verified"],
+        })
+    return out
+
+
 @router.get("/", response_model=list[dict])
 async def list_incidents(
     category: Optional[str] = None,
