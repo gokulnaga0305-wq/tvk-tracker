@@ -33,28 +33,34 @@ TWITTER_DATE_FMT = "%a %b %d %H:%M:%S %z %Y"
 # script see the same set. tier governs how each tweet is treated by the
 # AI extractor + cross-reference loop. See ai_processor.py for tier
 # semantics (govt_announcement vs press_tiers vs social_media).
+# Reduced to 5 priority handles after Apify free-tier audit (2026-05-29).
+# At 2h cadence × 5 handles × ~8 tweets average = ~14,400 tweets/month,
+# fitting Apify's $5 free monthly credit ($3.60 estimated usage) with
+# margin. Was 9 handles × 1h cadence = $18/month, untenable on self-funded
+# infra.
+#
+# Dropped handles aren't gone forever — they're served by other paths:
+#   - @sunnewstamil — kept (rotated in over PttvNewsX per user pref)
+#   - @PttvNewsX, @youturn_in, @dstock_insights, @DMKITwing — manual flagging
+#     by admin when something noteworthy appears; or restore here later
+#     after upgrading Apify plan.
 HANDLES: list[tuple[str, str, str]] = [
     # Government official handles — feed the Promise Comparator
     ("CMOTamilnadu",    "CM Office, Tamil Nadu (now TVK)",                  "govt_announcement"),
     ("TNDIPRNEWS",      "TN DIPR (state PR dept)",                          "govt_announcement"),
     # Independent Tamil press on X (single-post = press_verified)
     ("SparkPluz_",      "Spark+ (TVK-skeptical Tamil)",                     "online_native"),
-    ("PttvNewsX",       "Puthiya Thalaimurai TV",                           "regional_press"),
-    ("youturn_in",      "YouTurn (Tamil fact-checker)",                     "online_native"),
     ("News18TamilNadu", "News18 Tamil Nadu",                                "established_press"),
     ("sunnewstamil",    "Sun News Tamil",                                   "established_press"),
-    # Independent commentary / data threads
+]
+
+# Handles available but currently INACTIVE — restored by adding to HANDLES
+# above. Kept here as a code-level reference so admin can swap in/out
+# without rewriting the list from memory.
+INACTIVE_HANDLES: list[tuple[str, str, str]] = [
+    ("PttvNewsX",       "Puthiya Thalaimurai TV",                           "regional_press"),
+    ("youturn_in",      "YouTurn (Tamil fact-checker)",                     "online_native"),
     ("dstock_insights", "DStock Insights (TN sectoral data + satire)",      "social_media"),
-    # Opposition party IT wing — partisan but high-signal source for TVK
-    # critiques. Treated as social_media tier so a single tweet alone
-    # cannot publish to the public dashboard; it holds at
-    # pending_verification until press cross-references the same event.
-    # In practice this works as lead-generation: DMK IT Wing flags a TVK
-    # incident -> our backend looks for press echo -> if Hindu/Spark+/
-    # PttvNewsX corroborate, the incident graduates to multi_source_verified
-    # and lands on the public dashboard. If press never picks it up the
-    # claim stays in the admin queue, never on the public dashboard.
-    # Same trust posture as the dstock_insights handle above.
     ("DMKITwing",       "DMK IT Wing (opposition party)",                   "social_media"),
 ]
 

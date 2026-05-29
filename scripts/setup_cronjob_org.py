@@ -107,15 +107,17 @@ JOBS = [
     },
     {
         "title":          "TVK · monitor handles",
-        "url":            f"{BACKEND}/api/cron/monitor-handles?hours_back=2&max_per_handle=30",
+        "url":            f"{BACKEND}/api/cron/monitor-handles?hours_back=3&max_per_handle=20",
         "requestMethod":  METHOD_POST,
-        # Every 1 hour at :00 — right-sized for an accountability
-        # dashboard (not a news ticker). 2h lookback handles handles
-        # that tweet in bursts; 30 max/handle prevents runaway AI
-        # spend on the rare high-volume hour.
-        # Was 15 min × 9 handles × ~10 tweets = ~$3.50/day in Haiku.
-        # Now 1h × Groq free tier = ~$0/day.
-        "schedule":       _make_schedule(minutes=[0]),
+        # Every 2 hours at even-hour :00 (IST).
+        # Combined with 5 priority handles (down from 9), this fits
+        # within Apify's $5 free monthly credit:
+        #   5 handles × 12 fires/day × ~8 tweets avg = 480/day
+        #   = 14,400/month × $0.00025 = ~$3.60/month
+        #   Margin = $1.40 inside Apify free tier.
+        # 3h lookback gives the 2h cadence a 1h buffer for occasional
+        # missed ticks (cron-job.org rare delays, HF Space cold starts).
+        "schedule":       _make_schedule(hours=[0,2,4,6,8,10,12,14,16,18,20,22], minutes=[0]),
         "headers":        {"x-admin-secret": ADMIN_SECRET},
     },
     {
