@@ -1,0 +1,70 @@
+name: Sync backend/ to HF Space
+
+# Auto-pushes the backend/ subtree to the goknaga/tvk-tracker-backend HF
+# Space whenever main moves. Without this, GitHub and HF drift apart
+# silently — the HF Space was found 13 commits behind during the
+# cron-migration deploy, which is exactly the failure mode this fixes.
+#
+# Trigger: any push to main that touches backend/ files. (We don't run
+# on frontend-only or scripts-only pushes — those don't affect HF.)
+#
+# Secret required: HF_TOKEN with write access to the Space. Get it from
+# https://huggingface.co/settings/tokens (create a "Write" token), then
+# add it under Settings → Secrets and variables → Actions as HF_TOKEN.
+# The HUGGINGFACE_API_KEY secret that already exists for other workflows
+# may be read-only; create a separate write-scoped token if so.
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'backend/**'
+      # Also fire when this workflow itself changes
+      - '.github/workflows/sync-backend-to-hf.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: hf-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repo (full history for subtree)
+        uses: actions/checkout@v4
+        with:
+          # subtree push needs the complete commit graph for backend/
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions (HF sync)"
+
+      - name: Push backend/ subtree to HF Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          set -e
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::error::HF_TOKEN secret is not set. Add a write-scoped token from huggingface.co/settings/tokens under repo Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+          REMOTE_URL="https://USER:${HF_TOKEN}@huggingface.co/spaces/goknaga/tvk-tracker-backend"
+          # Note: HF accepts the literal "USER" in the URL when a token
+          # is supplied — the token is what authenticates, not the user
+          # part. This is the documented push form.
+
+          # Split the backend/ subtree into its own ref locally, then
+          # force-push that ref to HF's main. We force-push because
+          # subtree generates its own commit hashes and they won't
+          # match HF's previous HEAD on incremental syncs.
+          git subtree split --prefix=backend -b hf-sync-branch
+          git push --force "$REMOTE_URL" hf-sync-branch:main
+
+          echo "::notice::Successfully synced backend/ to HF Space (commit: $(git rev-parse HEAD))"
