@@ -107,12 +107,15 @@ JOBS = [
     },
     {
         "title":          "TVK · monitor handles",
-        "url":            f"{BACKEND}/api/cron/monitor-handles?hours_back=1&max_per_handle=20",
+        "url":            f"{BACKEND}/api/cron/monitor-handles?hours_back=2&max_per_handle=30",
         "requestMethod":  METHOD_POST,
-        # Every 15 min — near-realtime Tamil press ingestion.
-        # 1h lookback to keep cost down (with 15min cron we'd otherwise
-        # re-scrape the same tweets 4x).
-        "schedule":       _make_schedule(minutes=[0, 15, 30, 45]),
+        # Every 1 hour at :00 — right-sized for an accountability
+        # dashboard (not a news ticker). 2h lookback handles handles
+        # that tweet in bursts; 30 max/handle prevents runaway AI
+        # spend on the rare high-volume hour.
+        # Was 15 min × 9 handles × ~10 tweets = ~$3.50/day in Haiku.
+        # Now 1h × Groq free tier = ~$0/day.
+        "schedule":       _make_schedule(minutes=[0]),
         "headers":        {"x-admin-secret": ADMIN_SECRET},
     },
     {

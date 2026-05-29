@@ -467,9 +467,26 @@ def _get_client_and_model() -> tuple[OpenAI | None, str]:
 
 def _get_client_chain() -> list[tuple[OpenAI, str]]:
     """Return an ordered list of (client, model) tuples to try in sequence.
-    Primary first, fallback second. Used by the resilient wrapper that
-    automatically retries on 402 (credits) / 429 (rate-limit) errors."""
+    Used by the resilient wrapper that automatically retries on 402
+    (credits) / 429 (rate-limit) / 401 (auth) errors.
+
+    Priority for cost reasons (this is a self-funded project):
+      0. Groq Llama-3.3-70B-versatile — FREE tier, 14,400 req/day,
+         very capable on structured-JSON extraction. Becomes primary
+         so OpenRouter credits don't get burned on routine ingestion.
+      1. OpenRouter -> Claude Haiku 4.5 — paid fallback when Groq is
+         rate-limited or down.
+      2. Anthropic direct -> Claude Haiku 4.5 — last-resort fallback.
+
+    Each provider is OpenAI-API-compatible at its base_url, so a single
+    OpenAI client class handles all three.
+    """
     chain: list[tuple[OpenAI, str]] = []
+    if settings.groq_api_key:
+        chain.append((OpenAI(
+            api_key=settings.groq_api_key,
+            base_url="https://api.groq.com/openai/v1",
+        ), "llama-3.3-70b-versatile"))
     if settings.openrouter_api_key:
         chain.append((OpenAI(
             api_key=settings.openrouter_api_key,

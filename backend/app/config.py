@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     supabase_service_role_key: str
     anthropic_api_key: str = ""
     openrouter_api_key: str = ""
+    groq_api_key: str = ""
     apify_api_token: str = ""
     google_fact_check_api_key: str = ""
     huggingface_api_key: str = ""
