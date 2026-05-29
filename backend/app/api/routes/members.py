@@ -8,9 +8,33 @@ router = APIRouter(prefix="/members", tags=["members"])
 
 @router.get("/", response_model=list[dict])
 async def list_members():
+    """List members + an approved-incident-count per row.
+
+    The nested PostgREST form `select("*, incidents(count)")` requires a
+    declared FK between members.id and incidents.member_ids[], which we
+    don't have (member_ids is a uuid[] column on incidents with no FK).
+    We compute the count per member in a second pass.  Slightly chatty
+    but the /members page is rarely loaded.
+    """
     db = get_db()
-    res = db.table("members").select("*, incidents(count)").order("name").execute()
-    return res.data or []
+    try:
+        res = db.table("members").select("*").order("name").execute()
+        members = res.data or []
+    except Exception:
+        return []
+    for m in members:
+        try:
+            c = (
+                db.table("incidents")
+                .select("id", count="exact")
+                .eq("status", "approved")
+                .contains("member_ids", [m["id"]])
+                .execute()
+            )
+            m["incident_count"] = c.count or 0
+        except Exception:
+            m["incident_count"] = 0
+    return members
 
 
 @router.get("/{member_id}", response_model=dict)

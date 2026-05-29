@@ -48,7 +48,7 @@ export default function BaselineDelta({ rows }: { rows: BaselineRow[] }) {
   if (!rows.length) return null;
   return (
     <section className="mb-8">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
         <h2 className="text-white font-semibold text-sm flex items-center gap-2">
           DMK era vs TVK era
           <span className="text-gray-600 text-xs font-normal">(pro-rated to days under TVK)</span>
@@ -59,6 +59,22 @@ export default function BaselineDelta({ rows }: { rows: BaselineRow[] }) {
         >
           <Info size={11} /> How baselines are computed
         </a>
+      </div>
+      {/* Honest methodology caveat. The DMK "pace" is from NCRB
+          state-wide totals (every reported case statewide). Our TVK
+          count is what our scrapers picked up from press tweets +
+          curated sources — a SUBSET of all reported events. So a
+          green "−92%" on Murders doesn't mean TVK halved murders in
+          TN; it likely reflects scraping coverage vs NCRB's full
+          reporting.  Genuine progress will only show up over months
+          once both sources stabilise on the same denominator. */}
+      <div className="bg-amber-950/20 border border-amber-800/30 rounded-md px-3 py-2 mb-3 flex items-start gap-2 text-[11px] text-amber-300/80">
+        <Info size={11} className="mt-0.5 shrink-0 text-amber-400" />
+        <span>
+          <strong className="text-amber-200">Caveat:</strong> DMK pace is NCRB statewide totals (every reported case).
+          TVK count is what press tweets + curated sources surface — a partial sample.
+          Treat directional signal cautiously; absolute crime parity will only emerge after months of NCRB data under TVK.
+        </span>
       </div>
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {rows.map(r => (
