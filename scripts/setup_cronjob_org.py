@@ -107,10 +107,23 @@ JOBS = [
     },
     {
         "title":          "TVK · monitor handles",
-        "url":            f"{BACKEND}/api/cron/monitor-handles?hours_back=6&max_per_handle=50",
+        "url":            f"{BACKEND}/api/cron/monitor-handles?hours_back=1&max_per_handle=20",
         "requestMethod":  METHOD_POST,
-        # Every 1 hour at :00
-        "schedule":       _make_schedule(minutes=[0]),
+        # Every 15 min — near-realtime Tamil press ingestion.
+        # 1h lookback to keep cost down (with 15min cron we'd otherwise
+        # re-scrape the same tweets 4x).
+        "schedule":       _make_schedule(minutes=[0, 15, 30, 45]),
+        "headers":        {"x-admin-secret": ADMIN_SECRET},
+    },
+    {
+        "title":          "TVK · nightly handles catchup",
+        "url":            f"{BACKEND}/api/cron/monitor-handles?hours_back=24&max_per_handle=200",
+        "requestMethod":  METHOD_POST,
+        # Daily 04:00 IST — full 24h re-scrape of every handle. Catches
+        # anything the 15-min jobs missed (rate-limited Apify runs,
+        # transient errors, tweets posted between two ticks and deleted
+        # before next, etc). Insurance policy on completeness.
+        "schedule":       _make_schedule(hours=[4], minutes=[0]),
         "headers":        {"x-admin-secret": ADMIN_SECRET},
     },
     {
