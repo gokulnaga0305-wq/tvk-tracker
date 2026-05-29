@@ -45,7 +45,10 @@ jobs:
           git config user.email "actions@github.com"
           git config user.name "GitHub Actions (HF sync)"
 
-      - name: Push backend/ subtree to HF Space
+      - name: Install huggingface_hub
+        run: pip install --upgrade "huggingface_hub>=0.25"
+
+      - name: Upload backend/ to HF Space
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
@@ -55,16 +58,28 @@ jobs:
             exit 1
           fi
 
-          REMOTE_URL="https://USER:${HF_TOKEN}@huggingface.co/spaces/goknaga/tvk-tracker-backend"
-          # Note: HF accepts the literal "USER" in the URL when a token
-          # is supplied — the token is what authenticates, not the user
-          # part. This is the documented push form.
+          # Use huggingface_hub.upload_folder instead of `git subtree push`.
+          # The subtree approach was fragile: `git subtree split -b <branch>`
+          # failed fast on re-runs and silently left HF up to 3 commits
+          # behind (root cause of the 2026-05-29 propaganda-router 404).
+          # upload_folder diffs the backend/ tree against the Space repo and
+          # commits only what changed — idempotent, no local branch state,
+          # no force-push gymnastics.
+          python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          api = HfApi(token=os.environ["HF_TOKEN"])
+          commit = api.upload_folder(
+              repo_id="goknaga/tvk-tracker-backend",
+              repo_type="space",
+              folder_path="backend",
+              path_in_repo=".",
+              commit_message="CI sync from GitHub main",
+              # Don't wipe Space-only files (README with HF metadata header,
+              # .gitattributes). delete_patterns left unset = additive sync.
+              ignore_patterns=["**/__pycache__/**", "**/*.pyc", ".env", ".venv/**"],
+          )
+          print(f"Synced backend/ -> HF Space. Commit: {getattr(commit, 'oid', commit)}")
+          PY
 
-          # Split the backend/ subtree into its own ref locally, then
-          # force-push that ref to HF's main. We force-push because
-          # subtree generates its own commit hashes and they won't
-          # match HF's previous HEAD on incremental syncs.
-          git subtree split --prefix=backend -b hf-sync-branch
-          git push --force "$REMOTE_URL" hf-sync-branch:main
-
-          echo "::notice::Successfully synced backend/ to HF Space (commit: $(git rev-parse HEAD))"
+          echo "::notice::Successfully synced backend/ to HF Space via huggingface_hub"
