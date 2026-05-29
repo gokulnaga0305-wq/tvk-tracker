@@ -10,12 +10,11 @@ name: Corroboration sweep (auto-verify pending incidents)
 # competing with the daily 9 AM IST Apify scrape.
 
 on:
-  # Full backlog sweep once daily at 03:30 IST (22:00 UTC).
-  # The trickle sweep (every 30 min) handles the recent stuff; this
-  # nightly run picks up anything that's been pending past 30 days +
-  # also re-verifies older items that fell out of the trickle window.
-  schedule:
-    - cron: '0 22 * * *'    # 03:30 IST
+  # Cron disabled — migrated to cron-job.org which hits
+  # /api/cron/sweep-verify?limit=500 daily at 22:00 UTC.
+  # workflow_dispatch retained so this can be triggered manually as backup.
+  # schedule:
+  #   - cron: '0 22 * * *'    # 03:30 IST
   workflow_dispatch:
     inputs:
       max_age_days:

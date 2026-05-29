@@ -16,10 +16,13 @@ name: Keep HF Spaces warm
 #   schedule.
 
 on:
-  schedule:
-    # Every 5 minutes — minimum allowed by GitHub Actions cron
-    - cron: '*/5 * * * *'
-  workflow_dispatch:  # allow manual ping from the Actions tab for debugging
+  # Cron disabled — migrated to cron-job.org which pings /api/cron/keep-warm
+  # every 5 min reliably. cron-job.org runs at the configured time without
+  # the 5-15 min delay GH Actions adds.
+  # workflow_dispatch retained so this can be triggered manually as backup.
+  # schedule:
+  #   - cron: '*/5 * * * *'
+  workflow_dispatch:
 
 jobs:
   ping:

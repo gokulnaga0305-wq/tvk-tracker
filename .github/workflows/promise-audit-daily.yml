@@ -12,8 +12,11 @@ name: Promise audit (daily)
 # news cycle.  Free tier: ~3 GH Action minutes per run = ~90 min/month.
 
 on:
-  schedule:
-    - cron: '30 18 * * *'   # daily 18:30 UTC / 24:00 IST
+  # Cron disabled — migrated to cron-job.org which hits
+  # /api/cron/promise-audit daily at 18:30 UTC reliably.
+  # workflow_dispatch retained so this can be triggered manually as backup.
+  # schedule:
+  #   - cron: '30 18 * * *'
   workflow_dispatch:
     inputs:
       retro_limit:

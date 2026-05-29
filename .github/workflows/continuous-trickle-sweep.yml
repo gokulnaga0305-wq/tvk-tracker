@@ -17,8 +17,11 @@ name: Continuous trickle sweep (every 30 min)
 # If it becomes a problem we can switch to hourly (1050 min/month).
 
 on:
-  schedule:
-    - cron: '*/30 * * * *'   # every 30 minutes
+  # Cron disabled — migrated to cron-job.org which hits /api/cron/sweep-verify
+  # every 30 min reliably (vs 2-4h drift on GH Actions free tier).
+  # workflow_dispatch retained so this can be triggered manually as backup.
+  # schedule:
+  #   - cron: '*/30 * * * *'
   workflow_dispatch:
 
 concurrency:

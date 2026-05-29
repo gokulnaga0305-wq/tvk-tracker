@@ -11,8 +11,11 @@ name: Daily meter snapshot
 # Cost: ~2s of runner time × 365 = 12 minutes/year. Trivial.
 
 on:
-  schedule:
-    - cron: '0 18 * * *'  # 18:00 UTC daily (23:30 IST)
+  # Cron disabled — migrated to cron-job.org which hits
+  # /api/cron/meter-snapshot daily at 18:00 UTC reliably.
+  # workflow_dispatch retained so this can be triggered manually as backup.
+  # schedule:
+  #   - cron: '0 18 * * *'
   workflow_dispatch:
 
 concurrency:
