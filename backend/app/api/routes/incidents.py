@@ -246,16 +246,35 @@ async def get_incident(incident_id: str):
     return incident
 
 
+def _require_sources(payload: dict) -> None:
+    """Dashboard invariant: every approved/visible incident MUST link to at
+    least one source URL. The dashboard's whole credibility rests on every
+    claim being verifiable. Reject any create/update that would publish
+    an incident without a source."""
+    urls = payload.get("source_urls") or []
+    if not isinstance(urls, list) or not any(isinstance(u, str) and u.strip() for u in urls):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "source_urls is required for any incident shown on the dashboard. "
+                "Either provide at least one source URL, or set status='pending_review' "
+                "to hold the row off the public dashboard until a source is supplied."
+            ),
+        )
+
+
 @router.post("/", response_model=dict, status_code=201)
 async def create_incident(body: IncidentCreate, x_admin_secret: str = Header(...)):
     if x_admin_secret != settings.admin_secret:
         raise HTTPException(status_code=403, detail="Forbidden")
     db = get_db()
     payload = body.model_dump(exclude_none=True)
+    # ENFORCE source-integrity: no publication without sourcing.
+    _require_sources(payload)
     payload["status"] = "approved"
     payload["verification_status"] = "admin_verified"
     payload["incident_date"] = payload["incident_date"].isoformat()
-    payload["source_count"] = len(payload.get("source_urls") or []) or 1
+    payload["source_count"] = len(payload.get("source_urls") or [])
     res = db.table("incidents").insert(payload).execute()
     incident_id = res.data[0]["id"]
 
@@ -308,6 +327,23 @@ async def update_incident(incident_id: str, body: IncidentUpdate, x_admin_secret
     if not existing.data:
         raise HTTPException(status_code=404, detail="Incident not found")
     updates = body.model_dump(exclude_none=True)
+    # Source-integrity invariant: if this update would set status='approved'
+    # OR clear sources on an already-approved row, require source_urls.
+    target_status = updates.get("status", existing.data.get("status"))
+    if target_status == "approved":
+        effective_sources = (
+            updates.get("source_urls")
+            if "source_urls" in updates
+            else (existing.data.get("source_urls") or [])
+        )
+        if not effective_sources or not any(isinstance(u, str) and u.strip() for u in effective_sources):
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "Cannot leave an approved incident without source_urls. "
+                    "Supply at least one source URL or set status='pending_review'."
+                ),
+            )
     res = db.table("incidents").update(updates).eq("id", incident_id).execute()
 
     # Audit log status change
@@ -329,6 +365,19 @@ async def admin_verify(incident_id: str, x_admin_secret: str = Header(...)):
     if x_admin_secret != settings.admin_secret:
         raise HTTPException(status_code=403, detail="Forbidden")
     db = get_db()
+    # Source-integrity check: don't promote a sourceless row to approved.
+    existing = db.table("incidents").select("source_urls").eq("id", incident_id).single().execute()
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Incident not found")
+    src = existing.data.get("source_urls") or []
+    if not src or not any(isinstance(u, str) and u.strip() for u in src):
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Cannot verify an incident without source_urls. PATCH the row first "
+                "to add at least one source URL, then re-run /verify."
+            ),
+        )
     res = db.table("incidents").update({
         "status": "approved",
         "verification_status": "admin_verified",
