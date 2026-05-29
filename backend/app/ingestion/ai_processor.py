@@ -767,12 +767,34 @@ async def process_article(item: ApifyWebhookItem) -> None:
         verification_status, confidence, signature, extracted["title"],
     )
 
-    # ---- 7a. PROMISE COMPARATOR (govt-tier announcements only) ----------
-    # For announcements coming from CMO TN / TN DIPR (tier=govt_announcement)
-    # we automatically match against the manifesto and update both the
-    # incident category + the matched promise's status. This is the core
-    # "promise vs delivery" auditing loop.
-    if tier == "govt_announcement":
+    # ---- 7a. PROMISE COMPARATOR (govt-tier announcements + press) -------
+    # Fires on:
+    #   (a) tier=govt_announcement (CMO/DIPR posts) — the original case
+    #   (b) tier in PRESS_TIERS when the extractor flagged the article as
+    #       related to a scheme / promise / implementation (signals:
+    #       category in {broken_promise, partial_promise, kept_promise,
+    #       new_initiative, governance, credit_stealing} OR title/summary
+    #       mentions specific scheme keywords)
+    # This catches "Sun News says TVK loan waiver is inadequate" without
+    # needing CMO to tweet first.
+    from app.ingestion.corroboration import PRESS_TIERS as _PT_FOR_CMP
+    _scheme_words = ("scheme", "manifesto", "promise", "waiver", "padai",
+                     "thittam", "thogai", "magalir", "singappen",
+                     "loan", "subsidy", "free", "assistance", "rupees")
+    _comparator_should_fire = (
+        tier == "govt_announcement"
+        or (
+            tier in _PT_FOR_CMP and (
+                extracted.get("category") in {
+                    "broken_promise", "partial_promise", "kept_promise",
+                    "new_initiative", "credit_stealing"
+                }
+                or any(w in (extracted.get("title", "") + " " + extracted.get("summary", "")).lower()
+                       for w in _scheme_words)
+            )
+        )
+    )
+    if _comparator_should_fire:
         try:
             from app.ingestion.promise_comparator import compare_to_manifesto
             verdict = compare_to_manifesto(
