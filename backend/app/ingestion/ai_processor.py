@@ -96,6 +96,21 @@ Return JSON with these fields exactly:
       - If it's school-age voter targeting / propaganda aimed at minors
         / film-tie-in mobilisation of youth -> use "youth_targeting"
         (NEW category).
+      - TENDER / PROCUREMENT (commonly under-detected): A story citing
+        a SPECIFIC monetary amount + procurement red flag (sub-day
+        deadline, sole-source award, no competitive bidding, contractor
+        decided in advance, sealed-bid violation) qualifies as
+        is_relevant=TRUE, category="tenders".  You do NOT need a named
+        official or FIR for tender irregularities — public-money
+        procurement red flags ARE the accountability event.  Examples:
+          * "Rs 3 crore tender for 6 PC200 excavators announced with
+            sub-day deadline" -> TRUE, tenders, severity 4 (specific
+            amount + specific deadline anomaly = concrete event)
+          * "Fastest tender ever in TN" -> TRUE if the underlying
+            speed is documented (a sub-day or single-day award),
+            severity 3-4.
+          * "Government procurement decisions need transparency" ->
+            FALSE (no specific event, just opinion).
       - POWER / EB DISTINCTION (frequently confused):
           * "power_cut"  = customer-facing outage event: a named place
             lost power for N hours, residents protested, hospital lost
