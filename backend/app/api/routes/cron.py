@@ -197,6 +197,37 @@ async def cron_promise_audit(
 
 
 # ---------------------------------------------------------------------------
+# Weekly fact-check scraper (NewsMeter, YouTurn)
+# ---------------------------------------------------------------------------
+@router.post("/scrape-factcheckers")
+async def cron_scrape_factcheckers(
+    background_tasks: BackgroundTasks,
+    max_per_source: int = Query(8, ge=1, le=30,
+        description="Cap on articles per source per run"),
+    x_admin_secret: Optional[str] = Header(None),
+):
+    """Sweep NewsMeter and YouTurn fact-check tag pages for new
+    post-May-11 TVK / CM Vijay debunks. New articles are AI-extracted
+    and inserted into propaganda_events with status='active'.
+
+    Recommended schedule: weekly (e.g., Sundays 04:30 IST). Debunks
+    land on slow cadence and the AI cost is bounded (~$0.03/week).
+    """
+    _require_admin(x_admin_secret)
+    from app.ingestion.factcheck_scraper import scrape_all_sources
+
+    def _go():
+        try:
+            result = scrape_all_sources(max_per_source=max_per_source)
+            logger.info("factcheck scrape complete: %s", result)
+        except Exception as e:
+            logger.error("factcheck scrape background task failed: %s", e)
+
+    background_tasks.add_task(_go)
+    return {"status": "queued", "max_per_source": max_per_source}
+
+
+# ---------------------------------------------------------------------------
 # Keep-warm — no work, just touches the Space
 # ---------------------------------------------------------------------------
 @router.get("/keep-warm")

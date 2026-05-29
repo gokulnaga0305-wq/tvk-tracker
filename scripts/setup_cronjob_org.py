@@ -158,6 +158,17 @@ JOBS = [
         "schedule":       _make_schedule(hours=[0], minutes=[0]),
         "headers":        {"x-admin-secret": ADMIN_SECRET},
     },
+    {
+        "title":          "TVK · weekly fact-check scrape",
+        "url":            f"{BACKEND}/api/cron/scrape-factcheckers?max_per_source=10",
+        "requestMethod":  METHOD_POST,
+        # Sundays 04:30 IST — sweep NewsMeter + YouTurn fact-check tag
+        # pages, AI-extract post-May-11 TVK/Vijay debunks, queue as
+        # propaganda_events (status='active'). Weekly cadence keeps the
+        # AI cost bounded (~$0.03/run).
+        "schedule":       _make_schedule(hours=[4], minutes=[30], wdays=[0]),
+        "headers":        {"x-admin-secret": ADMIN_SECRET},
+    },
 ]
 
 
