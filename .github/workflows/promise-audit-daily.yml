@@ -1,0 +1,74 @@
+name: Promise audit (daily)
+
+# Two daily passes:
+#   1. deadline-pass — auto-flip promises whose deadline has lapsed
+#      without verifiable delivery (pending -> broken).
+#   2. retro-comparator — quick re-run of the Promise Comparator over
+#      the last 24h of post-May-11 incidents that mention scheme
+#      keywords.  Catches dilution coverage that arrived after the
+#      original ingestion.
+#
+# Cadence: daily at 18:30 UTC (~24:00 IST) so it runs after the day's
+# news cycle.  Free tier: ~3 GH Action minutes per run = ~90 min/month.
+
+on:
+  schedule:
+    - cron: '30 18 * * *'   # daily 18:30 UTC / 24:00 IST
+  workflow_dispatch:
+    inputs:
+      retro_limit:
+        description: 'Max retro-comparator items (blank = no cap)'
+        required: false
+
+concurrency:
+  group: promise-audit-daily
+  cancel-in-progress: false
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend deps
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Deadline pass
+        working-directory: backend
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+        run: python ../scripts/audit_promises.py --deadline-pass
+
+      - name: Retro comparator (last 24h scope is enforced by limit)
+        working-directory: backend
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+        run: |
+          LIMIT="${{ github.event.inputs.retro_limit }}"
+          if [ -n "$LIMIT" ]; then
+            python ../scripts/audit_promises.py --retro-comparator --limit "$LIMIT"
+          else
+            python ../scripts/audit_promises.py --retro-comparator
+          fi
