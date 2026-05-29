@@ -111,6 +111,25 @@ Return JSON with these fields exactly:
             severity 3-4.
           * "Government procurement decisions need transparency" ->
             FALSE (no specific event, just opinion).
+      - COMMUNAL_VIOLENCE COVERS CASTE TOO (TN-specific):
+          In Tamil Nadu, caste IS the primary communal fault line.  Do
+          NOT restrict "communal_violence" to Hindu-Muslim riots alone.
+          The following ARE communal_violence in TN context:
+            * Caste-based discrimination in housing allotments,
+              employment, education
+            * Honour killings tied to caste boundaries (these ALSO
+              get honour_killing as primary)
+            * Atrocities against Dalits, Adivasis, OBCs
+            * Discrimination against Devendra Kula Vellalars / SC /
+              ST / Most-Backward classes
+            * Inter-caste marriage harassment
+            * Caste-based attack on lawyers/activists raising
+              discrimination complaints (the attack is communal even
+              if the surface category is police_excess)
+            * Anti-Brahmin / anti-Dalit rhetoric from elected officials
+          A Saidapet Urban Housing Board case where allotments were
+          biased by caste -> communal_violence (primary), with
+          governance/corruption in tags_extra.
       - POWER / EB DISTINCTION (frequently confused):
           * "power_cut"  = customer-facing outage event: a named place
             lost power for N hours, residents protested, hospital lost
