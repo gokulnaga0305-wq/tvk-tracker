@@ -45,6 +45,17 @@ HANDLES: list[tuple[str, str, str]] = [
     ("sunnewstamil",    "Sun News Tamil",                                   "established_press"),
     # Independent commentary / data threads
     ("dstock_insights", "DStock Insights (TN sectoral data + satire)",      "social_media"),
+    # Opposition party IT wing — partisan but high-signal source for TVK
+    # critiques. Treated as social_media tier so a single tweet alone
+    # cannot publish to the public dashboard; it holds at
+    # pending_verification until press cross-references the same event.
+    # In practice this works as lead-generation: DMK IT Wing flags a TVK
+    # incident -> our backend looks for press echo -> if Hindu/Spark+/
+    # PttvNewsX corroborate, the incident graduates to multi_source_verified
+    # and lands on the public dashboard. If press never picks it up the
+    # claim stays in the admin queue, never on the public dashboard.
+    # Same trust posture as the dstock_insights handle above.
+    ("DMKITwing",       "DMK IT Wing (opposition party)",                   "social_media"),
 ]
 
 
