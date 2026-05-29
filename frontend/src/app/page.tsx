@@ -159,22 +159,24 @@ export default function DashboardPage() {
           <StatCard label="Power & EB"     value={stats.power_eb_count ?? ((stats.power_cut_count ?? 0) + (stats.eb_failure_count ?? 0))}
                                             verified={stats.power_eb_verified ?? ((stats.power_cut_verified ?? 0) + (stats.eb_failure_verified ?? 0))}
                                             topSources={stats.top_sources?.power_eb}
+                                            href="power_eb"
                                             icon={ZapOff} color="text-amber-400" />
-          <StatCard label="Alcohol Menace" value={stats.alcohol_menace_count ?? 0} verified={stats.alcohol_menace_verified} topSources={stats.top_sources?.alcohol_menace} icon={Wine}      color="text-pink-400" />
-          <StatCard label="Police Excess"  value={stats.police_excess_count ?? 0}  verified={stats.police_excess_verified} topSources={stats.top_sources?.police_excess}  icon={ShieldOff}  color="text-red-400" />
-          <StatCard label="Fake News"      value={stats.fake_news_count ?? 0}      verified={stats.fake_news_verified}     topSources={stats.top_sources?.fake_news}      icon={Megaphone}  color="text-fuchsia-400" />
+          <StatCard label="Alcohol Menace" value={stats.alcohol_menace_count ?? 0} verified={stats.alcohol_menace_verified} topSources={stats.top_sources?.alcohol_menace} href="alcohol_menace" icon={Wine}      color="text-pink-400" />
+          <StatCard label="Police Excess"  value={stats.police_excess_count ?? 0}  verified={stats.police_excess_verified} topSources={stats.top_sources?.police_excess}  href="police_excess"  icon={ShieldOff}  color="text-red-400" />
+          <StatCard label="Fake News"      value={stats.fake_news_count ?? 0}      verified={stats.fake_news_verified}     topSources={stats.top_sources?.fake_news}      href="fake_news"      icon={Megaphone}  color="text-fuchsia-400" />
           <StatCard label="Civic Failure"  value={(stats as any).civic_failure_count ?? 0}
                                             verified={(stats as any).civic_failure_verified}
                                             topSources={stats.top_sources?.civic_failure}
+                                            href="civic_failure"
                                             icon={AlertTriangle} color="text-orange-400" />
         </div>
 
         {/* Crime stat cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-          <StatCard label="Corruption"          value={stats.corruption_count}        verified={stats.corruption_verified}        topSources={stats.top_sources?.corruption}        icon={DollarSign}  color="text-yellow-400" />
-          <StatCard label="Murders"             value={stats.murders_count}           verified={stats.murders_verified}           topSources={stats.top_sources?.murders}           icon={Skull}       color="text-red-500" />
-          <StatCard label="Sexual Assaults"     value={stats.sexual_assault_count}    verified={stats.sexual_assault_verified}    topSources={stats.top_sources?.sexual_assault}    icon={ShieldAlert} color="text-red-400" />
-          <StatCard label="Crimes vs Children"  value={stats.crimes_women_kids_count} verified={stats.crimes_women_kids_verified} topSources={stats.top_sources?.crimes_women_kids} icon={Users}       color="text-orange-400" />
+          <StatCard label="Corruption"          value={stats.corruption_count}        verified={stats.corruption_verified}        topSources={stats.top_sources?.corruption}        href="corruption"        icon={DollarSign}  color="text-yellow-400" />
+          <StatCard label="Murders"             value={stats.murders_count}           verified={stats.murders_verified}           topSources={stats.top_sources?.murders}           href="murders"           icon={Skull}       color="text-red-500" />
+          <StatCard label="Sexual Assaults"     value={stats.sexual_assault_count}    verified={stats.sexual_assault_verified}    topSources={stats.top_sources?.sexual_assault}    href="sexual_assault"    icon={ShieldAlert} color="text-red-400" />
+          <StatCard label="Crimes vs Children"  value={stats.crimes_women_kids_count} verified={stats.crimes_women_kids_verified} topSources={stats.top_sources?.crimes_women_kids} href="crimes_women_kids" icon={Users}       color="text-orange-400" />
           <StatCard
             label="Promises Kept"
             value={stats.promises_kept}
@@ -194,6 +196,7 @@ export default function DashboardPage() {
             value={stats.governance_count ?? 0}
             verified={stats.governance_verified}
             topSources={stats.top_sources?.governance}
+            href="governance"
             icon={Landmark}
             color="text-sky-400"
           />
@@ -202,6 +205,7 @@ export default function DashboardPage() {
             value={stats.broken_promise_count ?? 0}
             verified={stats.broken_promise_verified}
             topSources={stats.top_sources?.broken_promise}
+            href="broken_promise"
             icon={FileX}
             color="text-rose-400"
           />
@@ -210,6 +214,7 @@ export default function DashboardPage() {
             value={stats.credit_steal_count ?? 0}
             verified={stats.credit_steal_verified}
             topSources={stats.top_sources?.credit_stealing}
+            href="credit_stealing"
             icon={Copy}
             color="text-blue-400"
           />

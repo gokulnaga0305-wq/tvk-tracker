@@ -1,5 +1,6 @@
-import { LucideIcon, ShieldCheck, ExternalLink } from 'lucide-react';
+import { LucideIcon, ShieldCheck, ExternalLink, ChevronRight } from 'lucide-react';
 import clsx from 'clsx';
+import Link from 'next/link';
 import { BaselineTopSource } from '@/lib/api';
 
 interface Props {
@@ -21,9 +22,17 @@ interface Props {
    *  jump straight to the source articles. Backend ranks by severity desc
    *  + most-recent date. */
   topSources?: BaselineTopSource[];
+  /** Category slug for the drilldown page. When provided, the WHOLE CARD
+   *  becomes a link to /category/[href] (the rich image-led news feed
+   *  for incidents in this widget). The internal source chips remain
+   *  individually clickable and don't trigger the card-level navigation.
+   *  Standard category slugs: corruption, murders, power_eb, credit_stealing,
+   *  governance, broken_promise, alcohol_menace, fake_news, civic_failure,
+   *  police_excess, sexual_assault, crimes_women_kids, etc. */
+  href?: string;
 }
 
-export default function StatCard({ label, value, sub, icon: Icon, color = 'text-white', verified, topSources }: Props) {
+export default function StatCard({ label, value, sub, icon: Icon, color = 'text-white', verified, topSources, href }: Props) {
   const numericValue = typeof value === 'number' ? value : undefined;
   const leadVerified =
     verified !== undefined &&
@@ -35,21 +44,47 @@ export default function StatCard({ label, value, sub, icon: Icon, color = 'text-
   const sources = topSources || [];
   const hasSources = sources.length > 0;
 
+  // When href is provided the whole card becomes a clickable link to the
+  // category drilldown. We render the same shell but wrap it in a Link.
+  // The CardShell below is identical for both modes — keeping styling
+  // co-located so the visual stays consistent.
+  const CardShell = ({ children }: { children: React.ReactNode }) => {
+    const cls = clsx(
+      'bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 flex flex-col gap-2 transition-colors h-full',
+      href ? 'hover:border-orange-700/40 cursor-pointer group/card' : 'hover:border-[#333]'
+    );
+    return href ? (
+      <Link href={`/category/${href}`} className={cls} aria-label={`View all ${label} incidents`}>
+        {children}
+      </Link>
+    ) : (
+      <div className={cls}>{children}</div>
+    );
+  };
+
   return (
-    <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 flex flex-col gap-2 hover:border-[#333] transition-colors">
+    <CardShell>
       <div className="flex items-center justify-between text-xs text-gray-500 uppercase tracking-wider font-medium">
         <span className="flex items-center gap-2">
           <Icon size={13} />
           {label}
         </span>
-        {leadVerified && (
-          <span
-            title="Includes cross-verified + press-confirmed + admin-verified"
-            className="flex items-center gap-1 text-[10px] text-emerald-500/70 normal-case tracking-normal"
-          >
-            <ShieldCheck size={10} /> verified
-          </span>
-        )}
+        <span className="flex items-center gap-1.5">
+          {leadVerified && (
+            <span
+              title="Includes cross-verified + press-confirmed + admin-verified"
+              className="flex items-center gap-1 text-[10px] text-emerald-500/70 normal-case tracking-normal"
+            >
+              <ShieldCheck size={10} /> verified
+            </span>
+          )}
+          {href && (
+            <ChevronRight
+              size={13}
+              className="text-gray-700 group-hover/card:text-orange-400 group-hover/card:translate-x-0.5 transition-all"
+            />
+          )}
+        </span>
       </div>
       <div className={clsx('text-4xl font-bold', color)}>
         {headline}
@@ -69,7 +104,8 @@ export default function StatCard({ label, value, sub, icon: Icon, color = 'text-
 
       {/* Top press sources behind the count. Chips link straight to the
           highest-impact press articles so users can verify rather than
-          just trust the headline number. */}
+          just trust the headline number. e.stopPropagation() prevents
+          the outer card-link from intercepting clicks on the chip. */}
       {hasSources && (
         <div className="mt-2 pt-2 border-t border-white/5 flex flex-col gap-1">
           {sources.map((s) => (
@@ -78,11 +114,12 @@ export default function StatCard({ label, value, sub, icon: Icon, color = 'text-
               href={s.url}
               target="_blank"
               rel="noopener noreferrer"
+              onClick={(e) => e.stopPropagation()}
               title={s.incident_title || s.url}
-              className="group text-[10.5px] text-gray-400 hover:text-orange-400 truncate flex items-center gap-1 transition-colors"
+              className="group/src text-[10.5px] text-gray-400 hover:text-orange-400 truncate flex items-center gap-1 transition-colors"
             >
-              <ExternalLink size={9} className="opacity-50 group-hover:opacity-100 shrink-0" />
-              <span className="font-medium text-gray-300 group-hover:text-orange-400">
+              <ExternalLink size={9} className="opacity-50 group-hover/src:opacity-100 shrink-0" />
+              <span className="font-medium text-gray-300 group-hover/src:text-orange-400">
                 {s.outlet}
               </span>
               <span className="text-gray-600 truncate">
@@ -92,6 +129,6 @@ export default function StatCard({ label, value, sub, icon: Icon, color = 'text-
           ))}
         </div>
       )}
-    </div>
+    </CardShell>
   );
 }

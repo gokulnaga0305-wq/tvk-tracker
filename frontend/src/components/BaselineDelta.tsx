@@ -1,6 +1,7 @@
 import { BaselineRow } from '@/lib/api';
-import { TrendingUp, TrendingDown, Minus, Info, ExternalLink } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Info, ExternalLink, ChevronRight } from 'lucide-react';
 import clsx from 'clsx';
+import Link from 'next/link';
 
 function DeltaCard({ row }: { row: BaselineRow }) {
   const delta = row.delta_pct;
@@ -20,10 +21,22 @@ function DeltaCard({ row }: { row: BaselineRow }) {
   const hasSources = sources.length > 0;
 
   return (
-    <div className={clsx('rounded-lg border p-4 flex flex-col', colorClass)}>
+    <Link
+      href={`/category/${row.category}`}
+      aria-label={`View all ${row.label} incidents`}
+      className={clsx(
+        'group/card rounded-lg border p-4 flex flex-col transition-all',
+        'hover:border-orange-700/40 hover:shadow-[0_0_0_1px_rgba(234,88,12,0.2)]',
+        colorClass
+      )}
+    >
       <div className="flex items-start justify-between gap-2 mb-2">
-        <div className="text-xs text-gray-400 uppercase tracking-wider font-medium">
+        <div className="text-xs text-gray-400 uppercase tracking-wider font-medium flex items-center gap-1">
           {row.label}
+          <ChevronRight
+            size={11}
+            className="text-gray-600 opacity-0 group-hover/card:opacity-100 group-hover/card:translate-x-0.5 transition-all"
+          />
         </div>
         <Icon size={14} className="opacity-60 shrink-0" />
       </div>
@@ -59,11 +72,12 @@ function DeltaCard({ row }: { row: BaselineRow }) {
                 href={s.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
                 title={s.incident_title || s.url}
-                className="group text-[10.5px] text-gray-400 hover:text-orange-400 truncate flex items-center gap-1 transition-colors"
+                className="group/src text-[10.5px] text-gray-400 hover:text-orange-400 truncate flex items-center gap-1 transition-colors"
               >
-                <ExternalLink size={9} className="opacity-50 group-hover:opacity-100 shrink-0" />
-                <span className="font-medium text-gray-300 group-hover:text-orange-400">
+                <ExternalLink size={9} className="opacity-50 group-hover/src:opacity-100 shrink-0" />
+                <span className="font-medium text-gray-300 group-hover/src:text-orange-400">
                   {s.outlet}
                 </span>
                 <span className="text-gray-600 truncate">
@@ -74,7 +88,7 @@ function DeltaCard({ row }: { row: BaselineRow }) {
           </div>
         </div>
       )}
-    </div>
+    </Link>
   );
 }
 
