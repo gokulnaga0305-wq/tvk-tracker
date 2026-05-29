@@ -134,6 +134,53 @@ def _enrich_sources(db, incidents: list[dict]) -> list[dict]:
     return incidents
 
 
+def _compute_visibility(incidents: list[dict]) -> list[dict]:
+    """Attach a `visibility_score` + `visibility_label` to each incident.
+
+    The score answers: "If a TVK supporter scrolling Instagram all day
+    encountered nothing about this — would that be normal?" High score
+    means mainstream press covered it (likely visible to TVK base too).
+    Low score means only opposition / fringe coverage (almost certainly
+    invisible to TVK supporters).
+
+    Categories of `credibility_tier` on each source:
+      primary, established_press, regional_press -> "mainstream"
+      online_native                              -> "alternative press"
+      social_media, anonymous_social             -> "social only"
+
+    Score scale:
+      3 = HIGH      — 2+ mainstream press outlets
+      2 = MEDIUM    — 1 mainstream outlet (visible but not amplified)
+      1 = LOW       — only alternative press / fringe Tamil outlets
+      0 = INVISIBLE — only social media, no press coverage at all
+    """
+    MAINSTREAM = {"primary", "established_press", "regional_press"}
+    ALTERNATIVE = {"online_native"}
+    for inc in incidents:
+        sources = inc.get("sources") or []
+        mainstream_count = sum(
+            1 for s in sources
+            if (s.get("credibility_tier") or "") in MAINSTREAM
+        )
+        alt_count = sum(
+            1 for s in sources
+            if (s.get("credibility_tier") or "") in ALTERNATIVE
+        )
+        if mainstream_count >= 2:
+            inc["visibility_score"] = 3
+            inc["visibility_label"] = "High — mainstream press covered"
+        elif mainstream_count == 1:
+            inc["visibility_score"] = 2
+            inc["visibility_label"] = "Medium — 1 mainstream outlet"
+        elif alt_count >= 1:
+            inc["visibility_score"] = 1
+            inc["visibility_label"] = "Low — alternative press only"
+        else:
+            inc["visibility_score"] = 0
+            inc["visibility_label"] = "Invisible — no press coverage"
+    return incidents
+
+
 def _normalize_tags(incidents: list[dict]) -> list[dict]:
     """Ensure every incident has a `tags` array. Falls back to [category]
     if the DB doesn't have the column yet (pre-migration 008)."""
@@ -290,6 +337,7 @@ async def list_incidents(
     res = query.order("incident_date", desc=True).range(offset, offset + limit - 1).execute()
     data = res.data or []
     data = _enrich_sources(db, data)
+    data = _compute_visibility(data)
     data = _enrich_dmk_evidence(db, data)
     data = _normalize_tags(data)
     return data

@@ -259,7 +259,7 @@ export default function IncumbencyMeter() {
       <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
         <h2 className="text-white font-semibold text-sm flex items-center gap-2">
           <Activity size={15} className={style.fg} />
-          Incumbency Meter
+          Accountability Pressure Index
           <span className="text-gray-600 text-xs font-normal">
             · evidence-weighted, realtime
           </span>
@@ -343,6 +343,22 @@ export default function IncumbencyMeter() {
             </a>
           </div>
         </div>
+      </div>
+
+      {/* Honest disclaimer — added after user pointed out that the score
+          reflects DOCUMENTED accountability events, not public opinion.
+          A government can have high accountability pressure (this index)
+          while still enjoying high approval if voters aren't seeing the
+          documented failures because of propaganda saturation. The
+          PropagandaReach widget below the meter quantifies that gap. */}
+      <div className="mt-4 pt-3 border-t border-white/5 text-[11px] text-gray-500 leading-relaxed">
+        <strong className="text-gray-300">What this is:</strong> a measure of
+        verified accountability pressure documented by this tracker — incidents,
+        broken promises, credit-steal, press-reported failures.{' '}
+        <strong className="text-gray-300">What this is not:</strong> a public-
+        opinion poll. Most TN voters never see most of what's documented here
+        because pro-TVK propaganda outpaces correction in reach by orders of
+        magnitude. See the <span className="text-purple-400 font-medium">What TN is actually seeing</span> panel below.
       </div>
     </section>
   );

@@ -4,6 +4,7 @@ import { Incident } from '@/lib/api';
 import { CATEGORY_COLORS, CATEGORY_LABELS } from '@/lib/constants';
 import {
   ExternalLink, MapPin, ShieldCheck, ShieldAlert, ImageOff, Newspaper,
+  EyeOff, Eye,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -163,6 +164,27 @@ export default function CategoryHeroCard({ incident }: { incident: Incident }) {
         <p className="text-gray-400 text-[12.5px] leading-relaxed line-clamp-3">
           {incident.summary}
         </p>
+
+        {/* Visibility / mainstream-reach chip. Shows whether this incident
+            was likely to be seen by a TVK supporter (mainstream press
+            covered it = high score) or buried (only social media coverage =
+            invisible). Sits right above the source byline list so users
+            can see "this incident scored 0/3 — invisible to most voters". */}
+        {incident.visibility_score !== undefined && (
+          <div
+            className={clsx(
+              'inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded mb-1 w-fit',
+              incident.visibility_score === 3 && 'bg-emerald-950/40 border border-emerald-800/50 text-emerald-300',
+              incident.visibility_score === 2 && 'bg-sky-950/40 border border-sky-800/50 text-sky-300',
+              incident.visibility_score === 1 && 'bg-amber-950/40 border border-amber-800/50 text-amber-300',
+              incident.visibility_score === 0 && 'bg-rose-950/40 border border-rose-800/50 text-rose-300'
+            )}
+            title={incident.visibility_label}
+          >
+            {incident.visibility_score >= 2 ? <Eye size={9} /> : <EyeOff size={9} />}
+            <span>Reach: {['Invisible', 'Low', 'Medium', 'High'][incident.visibility_score]}</span>
+          </div>
+        )}
 
         {/* Source bylines — newspaper style. Outlet names with external-link
             chips. Stays visible always so the source policy is honoured

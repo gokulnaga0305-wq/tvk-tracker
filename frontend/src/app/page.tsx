@@ -5,6 +5,7 @@ import TopBar from '@/components/TopBar';
 import IncidentCard from '@/components/IncidentCard';
 import BaselineDelta from '@/components/BaselineDelta';
 import IncumbencyMeter from '@/components/IncumbencyMeter';
+import PropagandaReach from '@/components/PropagandaReach';
 import SectoralCAGR from '@/components/SectoralCAGR';
 import { DashboardStats, Incident, BaselineRow } from '@/lib/api';
 import { CATEGORY_LABELS } from '@/lib/constants';
@@ -110,6 +111,13 @@ export default function DashboardPage() {
             sees after the header. Self-fetches + 5-min polls — never blocks
             the rest of the dashboard render. */}
         <IncumbencyMeter />
+
+        {/* Propaganda Reach panel — surfaces the asymmetry between what
+            we've documented vs what TN voters actually see. User pointed
+            out (correctly) that the meter alone misleads readers into
+            thinking the accountability score reflects public sentiment.
+            This widget makes the gap honest. */}
+        <PropagandaReach />
 
         {/* Trust transparency banner — three honest tiers instead of the
             old misleading two-bucket count. Lumping single-press incidents

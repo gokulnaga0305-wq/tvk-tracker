@@ -100,6 +100,9 @@ export interface Incident {
   dmk_evidence?: DmkPrecedent[];
   retraction_reason?: string | null;
   created_at: string;
+  // Reach-weighted visibility: 0=invisible (social only) → 3=high (mainstream)
+  visibility_score?: 0 | 1 | 2 | 3;
+  visibility_label?: string;
   audit_log?: Array<{
     action: string;
     from_value?: string | null;
@@ -157,6 +160,29 @@ export interface Promise_ {
   status: 'pending' | 'kept' | 'broken' | 'partial';
   evidence_url: string | null;
   notes: string | null;
+}
+
+export interface PropagandaSummary {
+  accountability_events_documented: number;
+  propaganda_events_tracked: number;
+  confirmed_fake_or_active: number;
+  organic_high_volume: number;
+  propaganda_reach_total: number;
+  debunk_reach_total: number;
+  asymmetry_ratio: number | null;
+  type_breakdown: Record<string, number>;
+  recent_debunks: Array<{
+    id: string;
+    title: string;
+    propaganda_type: string;
+    first_seen: string;
+    propaganda_url?: string;
+    debunk_url?: string;
+    debunk_source?: string;
+    reach_estimate?: number;
+    debunk_reach_estimate?: number;
+  }>;
+  honest_disclaimer: string;
 }
 
 export interface Member {
