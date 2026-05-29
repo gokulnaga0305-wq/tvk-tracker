@@ -5,6 +5,9 @@ name: Tamil press + govt-handle monitor (every 2 hours)
 #     News18TamilNadu, sunnewstamil)
 #   - 2 govt-official handles (CMOTamilnadu, TNDIPRNEWS) which feed the
 #     Promise Comparator
+#   - 1 independent commentary/data account (dstock_insights — TN sectoral
+#     growth data + satire; tier=social_media so single posts hold in
+#     pending_verification until press corroborates)
 # Each tweet is AI-extracted -> incident -> district-tagged -> meter updates.
 #
 # Cadence: every 2 hours so the dashboard never goes more than ~2h stale on

@@ -65,6 +65,20 @@ HANDLES: list[tuple[str, str, str]] = [
     ("youturn_in",      "YouTurn (Tamil fact-checker)",    "online_native"),
     ("News18TamilNadu", "News18 Tamil Nadu",               "established_press"),
     ("sunnewstamil",    "Sun News Tamil",                  "established_press"),
+    # ---- Independent commentary / data-thread accounts (social_media tier) ----
+    # User-flagged sources that don't fit press categories but carry
+    # signal — typically a mix of satire-framing critiques + concrete
+    # sectoral / economic data threads.
+    #
+    # tier="social_media" means a single post HOLDS ONLY pending_verification
+    # until a press outlet corroborates. This is intentional: satire posts
+    # will fail the "concrete event with named victim/perp/place" gate in
+    # the extractor and quietly drop with is_relevant=False. The growth-
+    # data posts often double as DMK-era credit-stealing detection
+    # ammunition because the underlying numbers come from official
+    # govt/NCRB/NITI releases — once press picks up the same data,
+    # cross-reference auto-promotes them.
+    ("dstock_insights", "DStock Insights (TN sectoral data + satire)", "social_media"),
     # ---- TVK PARTY handles intentionally NOT monitored ----
     # @ttvkofficial / @actorvijay are partisan party propaganda channels.
     # We track what the GOVERNMENT (CMO/DIPR) officially says it has done,
