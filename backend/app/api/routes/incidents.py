@@ -7,6 +7,81 @@ from typing import Optional
 router = APIRouter(prefix="/incidents", tags=["incidents"])
 
 
+# Known-outlet → credibility-tier map used as the URL-host fallback when
+# a source URL hasn't been written to the `sources` table (typically
+# happens for directly-seeded incidents that skipped the AI ingestion
+# path). Keeps user-facing source bylines honest: instead of "unknown",
+# they see "The Hindu · established press".
+_HOST_OUTLET_MAP: dict[str, tuple[str, str]] = {
+    # (host_substring): (display_name, credibility_tier)
+    "thehindu":            ("The Hindu",            "established_press"),
+    "thefederal":          ("The Federal",          "established_press"),
+    "tribuneindia":        ("Tribune India",        "established_press"),
+    "theweek":             ("The Week",             "established_press"),
+    "india.com":           ("India.com",            "established_press"),
+    "business-standard":   ("Business Standard",    "established_press"),
+    "deccanherald":        ("Deccan Herald",        "established_press"),
+    "deccanchronicle":     ("Deccan Chronicle",     "established_press"),
+    "newindianexpress":    ("New Indian Express",   "established_press"),
+    "newsminute":          ("The News Minute",      "established_press"),
+    "thenewsminute":       ("The News Minute",      "established_press"),
+    "magzter":             ("New Indian Express",   "established_press"),
+    "livelaw":             ("LiveLaw",              "established_press"),
+    "barandbench":         ("Bar and Bench",        "established_press"),
+    "outlookindia":        ("Outlook India",        "established_press"),
+    "hindustanherald":     ("Hindustan Herald",     "online_native"),
+    "tamilspark":          ("Tamil Spark",          "regional_press"),
+    "dtnext":              ("DT Next",              "regional_press"),
+    "polimer":             ("Polimer News",         "regional_press"),
+    "puthiyathalaimurai":  ("Puthiya Thalaimurai",  "regional_press"),
+    "vikatan":             ("Vikatan",              "regional_press"),
+    "cartoq":              ("Cartoq",               "online_native"),
+    "siasat":              ("Siasat",               "online_native"),
+    "autocarpro":          ("Autocar Professional", "online_native"),
+    "themachinemaker":     ("Machine Maker",        "online_native"),
+    "volvobuses":          ("Volvo Buses (press release)", "primary"),
+    "oneindia":            ("OneIndia",             "online_native"),
+    "newsx":               ("NewsX",                "online_native"),
+    "lawbeat":             ("LawBeat",              "online_native"),
+    "tvkvijay":            ("TVK Manifesto",        "primary"),
+    "tn.gov.in":           ("TN Govt",              "primary"),
+    "tnpsc":               ("TNPSC",                "primary"),
+    "ncrb":                ("NCRB",                 "primary"),
+    "niti.gov":            ("NITI Aayog",           "primary"),
+    "x.com":               ("X (tweet)",            "social_media"),
+    "twitter.com":         ("Twitter",              "social_media"),
+    "reddit.com":          ("Reddit",               "social_media"),
+    "youtube.com":         ("YouTube",              "social_media"),
+    "youtu.be":            ("YouTube",              "social_media"),
+    "instagram.com":       ("Instagram",            "social_media"),
+    "facebook.com":        ("Facebook",             "social_media"),
+    "news.google.com":     ("Google News",          "anonymous_social"),
+}
+
+
+def _outlet_from_url(url: str) -> tuple[str, str]:
+    """Derive (outlet_display_name, credibility_tier) from a URL.
+
+    Used as the fallback when a source URL hasn't been written to the
+    sources table. Honours the principle that EVERY source visible on
+    the dashboard must have a recognisable label, not a bare 'unknown'.
+    """
+    try:
+        host = url.split("//", 1)[1].split("/", 1)[0].lower()
+        host = host.removeprefix("www.").removeprefix("amp.")
+    except (IndexError, AttributeError):
+        return ("source", "unknown")
+    # Check known outlets first (substring match against host)
+    for needle, (name, tier) in _HOST_OUTLET_MAP.items():
+        if needle in host:
+            return (name, tier)
+    # Generic fallback: second-level domain titlecased
+    parts = host.split(".")
+    if len(parts) >= 2:
+        return (parts[-2].title(), "unknown")
+    return (host.title() or "source", "unknown")
+
+
 def _enrich_sources(db, incidents: list[dict]) -> list[dict]:
     """Attach outlet info + credibility tier to each incident's source_urls.
 
@@ -16,6 +91,11 @@ def _enrich_sources(db, incidents: list[dict]) -> list[dict]:
     edge somewhere around 50-75 incidents. Chunking at 30 URLs per
     fetch keeps every request well under the limit no matter how many
     incidents are being enriched at once.
+
+    Fallback: when a URL isn't in the sources table (typical for
+    directly-seeded rows), derive the outlet name from the URL host
+    via _outlet_from_url() so the user never sees a bare 'unknown'
+    on the dashboard.
     """
     if not incidents:
         return incidents
@@ -39,10 +119,18 @@ def _enrich_sources(db, incidents: list[dict]) -> list[dict]:
             # Single-chunk failure should not break the whole list response
             continue
     for inc in incidents:
-        inc["sources"] = [
-            source_lookup.get(u, {"url": u, "outlet": "unknown", "credibility_tier": "unknown"})
-            for u in (inc.get("source_urls") or [])
-        ]
+        sources_out: list[dict] = []
+        for u in (inc.get("source_urls") or []):
+            if u in source_lookup:
+                sources_out.append(source_lookup[u])
+            else:
+                outlet, tier = _outlet_from_url(u)
+                sources_out.append({
+                    "url": u,
+                    "outlet": outlet,
+                    "credibility_tier": tier,
+                })
+        inc["sources"] = sources_out
     return incidents
 
 
