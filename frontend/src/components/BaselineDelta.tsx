@@ -1,5 +1,5 @@
 import { BaselineRow } from '@/lib/api';
-import { TrendingUp, TrendingDown, Minus, Info } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, Info, ExternalLink } from 'lucide-react';
 import clsx from 'clsx';
 
 function DeltaCard({ row }: { row: BaselineRow }) {
@@ -16,8 +16,11 @@ function DeltaCard({ row }: { row: BaselineRow }) {
       ? 'text-emerald-400 border-emerald-800/40 bg-emerald-950/30'
       : 'text-gray-400 border-[#2a2a2a] bg-[#1a1a1a]';
 
+  const sources = row.top_sources || [];
+  const hasSources = sources.length > 0;
+
   return (
-    <div className={clsx('rounded-lg border p-4', colorClass)}>
+    <div className={clsx('rounded-lg border p-4 flex flex-col', colorClass)}>
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="text-xs text-gray-400 uppercase tracking-wider font-medium">
           {row.label}
@@ -39,6 +42,37 @@ function DeltaCard({ row }: { row: BaselineRow }) {
       )}
       {isUnknown && (
         <div className="text-xs text-gray-600 italic">No DMK baseline</div>
+      )}
+
+      {/* Top press sources behind the count. Each chip links to the actual
+          article so the user can verify rather than trust. Empty when
+          tvk_count=0 (nothing to source yet). */}
+      {hasSources && (
+        <div className="mt-3 pt-2 border-t border-white/5">
+          <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">
+            Sources
+          </div>
+          <div className="flex flex-col gap-1">
+            {sources.map((s) => (
+              <a
+                key={s.incident_id}
+                href={s.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                title={s.incident_title || s.url}
+                className="group text-[10.5px] text-gray-400 hover:text-orange-400 truncate flex items-center gap-1 transition-colors"
+              >
+                <ExternalLink size={9} className="opacity-50 group-hover:opacity-100 shrink-0" />
+                <span className="font-medium text-gray-300 group-hover:text-orange-400">
+                  {s.outlet}
+                </span>
+                <span className="text-gray-600 truncate">
+                  · {s.incident_title}
+                </span>
+              </a>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   );

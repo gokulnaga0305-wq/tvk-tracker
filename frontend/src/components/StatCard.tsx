@@ -1,5 +1,6 @@
-import { LucideIcon, ShieldCheck } from 'lucide-react';
+import { LucideIcon, ShieldCheck, ExternalLink } from 'lucide-react';
 import clsx from 'clsx';
+import { BaselineTopSource } from '@/lib/api';
 
 interface Props {
   label: string;
@@ -15,9 +16,14 @@ interface Props {
    *  corroboration", because they're not actually waiting for press
    *  confirmation that may never come. */
   verified?: number;
+  /** Up to 3 highest-impact press URLs behind this count. When present,
+   *  rendered as a tiny chip list at the bottom of the card so users can
+   *  jump straight to the source articles. Backend ranks by severity desc
+   *  + most-recent date. */
+  topSources?: BaselineTopSource[];
 }
 
-export default function StatCard({ label, value, sub, icon: Icon, color = 'text-white', verified }: Props) {
+export default function StatCard({ label, value, sub, icon: Icon, color = 'text-white', verified, topSources }: Props) {
   const numericValue = typeof value === 'number' ? value : undefined;
   const leadVerified =
     verified !== undefined &&
@@ -26,6 +32,8 @@ export default function StatCard({ label, value, sub, icon: Icon, color = 'text-
   // When verified mode: headline = verified, supplemental = community count
   const headline = leadVerified ? verified : value;
   const community = leadVerified ? (numericValue! - verified!) : 0;
+  const sources = topSources || [];
+  const hasSources = sources.length > 0;
 
   return (
     <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 flex flex-col gap-2 hover:border-[#333] transition-colors">
@@ -57,6 +65,32 @@ export default function StatCard({ label, value, sub, icon: Icon, color = 'text-
       )}
       {leadVerified && community === 0 && numericValue! > 0 && (
         <div className="text-[11px] text-gray-600 -mt-1">all press-confirmed</div>
+      )}
+
+      {/* Top press sources behind the count. Chips link straight to the
+          highest-impact press articles so users can verify rather than
+          just trust the headline number. */}
+      {hasSources && (
+        <div className="mt-2 pt-2 border-t border-white/5 flex flex-col gap-1">
+          {sources.map((s) => (
+            <a
+              key={s.incident_id}
+              href={s.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              title={s.incident_title || s.url}
+              className="group text-[10.5px] text-gray-400 hover:text-orange-400 truncate flex items-center gap-1 transition-colors"
+            >
+              <ExternalLink size={9} className="opacity-50 group-hover:opacity-100 shrink-0" />
+              <span className="font-medium text-gray-300 group-hover:text-orange-400">
+                {s.outlet}
+              </span>
+              <span className="text-gray-600 truncate">
+                · {s.incident_title}
+              </span>
+            </a>
+          ))}
+        </div>
       )}
     </div>
   );

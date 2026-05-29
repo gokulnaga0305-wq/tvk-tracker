@@ -46,6 +46,10 @@ export interface DashboardStats {
   cross_verified_count?: number;     // multi_source or admin
   press_verified_count?: number;     // single press outlet
   community_pending_count?: number;  // Reddit / social only
+  // Per-widget top sources — backend ranks by severity desc + date desc and
+  // returns up to 3 press chips per category. Keys: any TRACKED_CATEGORIES
+  // value + 'power_eb' (merged widget) + 'credit_stealing'.
+  top_sources?: Record<string, BaselineTopSource[]>;
 }
 
 export interface IncidentSource {
@@ -106,6 +110,15 @@ export interface Incident {
   }>;
 }
 
+export interface BaselineTopSource {
+  url: string;
+  outlet: string;
+  incident_id: string;
+  incident_title: string | null;
+  incident_date: string | null;
+  verification_status?: string | null;
+}
+
 export interface BaselineRow {
   category: string;
   label: string;
@@ -116,6 +129,10 @@ export interface BaselineRow {
   tvk_period_days: number;
   expected_at_dmk_rate: number;
   delta_pct: number | null;
+  // Up to 3 representative press-source URLs for the count on this card.
+  // Empty array when tvk_count=0. Surfaces the actual evidence behind
+  // the number so users can verify rather than trust.
+  top_sources?: BaselineTopSource[];
 }
 
 export interface CitizenReport {

@@ -107,9 +107,25 @@ async def list_baselines(category: Optional[str] = None):
     return BASELINES
 
 
+def _domain_of(url: str) -> str:
+    """Cheap outlet label from URL host (no urllib parse to keep it tight)."""
+    try:
+        host = url.split("//", 1)[1].split("/", 1)[0].lower()
+        host = host.removeprefix("www.").removeprefix("amp.")
+        # Strip TLDs and common subdomains for a clean chip label
+        parts = host.split(".")
+        if len(parts) >= 2:
+            return parts[-2]
+        return host
+    except Exception:
+        return "source"
+
+
 @router.get("/dashboard")
 async def dashboard_baselines_with_deltas():
-    """Returns DMK baseline + current TVK count + delta for each category."""
+    """Returns DMK baseline + current TVK count + delta for each category,
+    PLUS up to 3 top source URLs per category so the dashboard cards can
+    link directly to the press evidence behind the count."""
     db = get_db()
     days_under_tvk = max(1, (date.today() - settings.govt_start_date).days)
 
@@ -128,6 +144,49 @@ async def dashboard_baselines_with_deltas():
         except Exception:
             current = 0
 
+        # Pull up to 3 representative incidents — most recent + highest
+        # severity. We surface the FIRST source_url from each as a
+        # clickable chip on the dashboard card. Press credibility ranking
+        # would be ideal, but order-by(severity desc, incident_date desc)
+        # gives the user the most-citable rows first.
+        top_sources: list[dict] = []
+        try:
+            inc_res = (
+                db.table("incidents")
+                .select("id, title, incident_date, source_urls, severity, verification_status")
+                .eq("category", b["category"])
+                .eq("status", "approved")
+                .gte("incident_date", settings.govt_start_date.isoformat())
+                .order("severity", desc=True)
+                .order("incident_date", desc=True)
+                .limit(5)
+                .execute()
+            )
+            for row in (inc_res.data or []):
+                urls = row.get("source_urls") or []
+                if not urls:
+                    continue
+                # Prefer a non-google-news, non-reddit URL when available —
+                # those are direct press articles. Falls back to whatever
+                # the row carries.
+                preferred = next(
+                    (u for u in urls
+                     if "news.google.com" not in u and "reddit.com" not in u),
+                    urls[0],
+                )
+                top_sources.append({
+                    "url": preferred,
+                    "outlet": _domain_of(preferred),
+                    "incident_id": row["id"],
+                    "incident_title": row.get("title"),
+                    "incident_date": row.get("incident_date"),
+                    "verification_status": row.get("verification_status"),
+                })
+                if len(top_sources) >= 3:
+                    break
+        except Exception:
+            pass
+
         baseline_month_avg = float(b["dmk_monthly_avg"])
         expected = round(baseline_month_avg * (days_under_tvk / 30.0), 1)
         delta_pct = None
@@ -144,5 +203,6 @@ async def dashboard_baselines_with_deltas():
             "tvk_period_days": days_under_tvk,
             "expected_at_dmk_rate": expected,
             "delta_pct": delta_pct,
+            "top_sources": top_sources,
         })
     return out

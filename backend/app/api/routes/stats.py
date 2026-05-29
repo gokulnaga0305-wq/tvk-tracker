@@ -44,7 +44,10 @@ async def get_dashboard_stats():
 
     incidents_res = (
         db.table("incidents")
-        .select("category, is_credit_steal, ai_raw, verification_status")
+        .select(
+            "id, title, incident_date, source_urls, severity, "
+            "category, is_credit_steal, ai_raw, verification_status"
+        )
         .eq("status", "approved")
         .execute()
     )
@@ -52,8 +55,12 @@ async def get_dashboard_stats():
 
     counts_total = {c: 0 for c in TRACKED_CATEGORIES}
     counts_verified = {c: 0 for c in TRACKED_CATEGORIES}
+    # Collect every incident per claimed category for top-source ranking.
+    # Each entry: (severity, incident_date, id, title, source_urls, verification_status)
+    by_category: dict[str, list[tuple]] = {c: [] for c in TRACKED_CATEGORIES}
     credit_total = 0
     credit_verified = 0
+    credit_pool: list[tuple] = []   # for top-sources on the credit_steal widget
     verified_overall = 0
     # Granular split so the dashboard banner can show accurate labels
     # (multi-source / press-confirmed / community) instead of a lumped count.
@@ -73,10 +80,21 @@ async def get_dashboard_stats():
         elif vstat == "pending_verification":
             community_pending_count += 1
 
+        # Tuple used for top-source ranking later. severity desc, date desc.
+        inc_tuple = (
+            int(inc.get("severity") or 0),
+            inc.get("incident_date") or "",
+            inc.get("id"),
+            inc.get("title") or "",
+            inc.get("source_urls") or [],
+            vstat,
+        )
+
         if inc.get("is_credit_steal"):
             credit_total += 1
             if verified:
                 credit_verified += 1
+            credit_pool.append(inc_tuple)
 
         # Collect every category that should claim this incident
         claims = set()
@@ -93,10 +111,58 @@ async def get_dashboard_stats():
                 counts_total[c] += 1
                 if verified:
                     counts_verified[c] += 1
+                by_category[c].append(inc_tuple)
 
     promises_res = db.table("promises").select("status").execute()
     promises = promises_res.data or []
     kept = sum(1 for p in promises if p.get("status") == "kept")
+
+    def _domain(url: str) -> str:
+        try:
+            host = url.split("//", 1)[1].split("/", 1)[0].lower()
+            host = host.removeprefix("www.").removeprefix("amp.")
+            parts = host.split(".")
+            return parts[-2] if len(parts) >= 2 else host
+        except Exception:
+            return "source"
+
+    def _build_top_sources(pool: list[tuple], n: int = 3) -> list[dict]:
+        """Pick the n highest-impact source URLs from an incident pool.
+        Highest severity wins; ties broken by most-recent incident_date.
+        Prefers non-google-news, non-reddit URLs (direct press articles)."""
+        # Highest severity first; ties broken by most recent incident_date.
+        ranked = sorted(pool, key=lambda t: (t[0], t[1]), reverse=True)
+        out: list[dict] = []
+        for sev, dt, iid, title, urls, vstat in ranked:
+            if not urls:
+                continue
+            preferred = next(
+                (u for u in urls
+                 if "news.google.com" not in u and "reddit.com" not in u),
+                urls[0],
+            )
+            out.append({
+                "url": preferred,
+                "outlet": _domain(preferred),
+                "incident_id": iid,
+                "incident_title": title,
+                "incident_date": dt or None,
+                "verification_status": vstat,
+            })
+            if len(out) >= n:
+                break
+        return out
+
+    # Build per-widget top-source lists. Map raw categories to the widget keys
+    # the dashboard already exposes (Power & EB is a merged widget, etc.).
+    top_sources: dict[str, list[dict]] = {}
+    for c in TRACKED_CATEGORIES:
+        top_sources[c] = _build_top_sources(by_category[c])
+    # Power & EB merge — combine pools so the widget reflects the merged count
+    top_sources["power_eb"] = _build_top_sources(
+        by_category["power_cut"] + by_category["eb_failure"]
+    )
+    top_sources["credit_stealing"] = _build_top_sources(credit_pool)
 
     out = {
         "govt_day":                 settings.govt_day_number,
@@ -157,6 +223,10 @@ async def get_dashboard_stats():
         "cross_verified_count":     cross_verified_count,   # 2+ outlets agree, or admin
         "press_verified_count":     press_verified_count,   # 1 press outlet (Hindu/SunNews etc.)
         "community_pending_count":  community_pending_count, # Reddit / social only
+        # Per-widget top sources — each StatCard renders up to 3 chips
+        # linking to the highest-impact press articles behind that count.
+        # Keys: TRACKED_CATEGORIES + 'power_eb' (merged widget) + 'credit_stealing'.
+        "top_sources":              top_sources,
     }
     return out
 
