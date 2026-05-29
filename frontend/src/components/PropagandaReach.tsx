@@ -1,9 +1,10 @@
 'use client';
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { PropagandaSummary } from '@/lib/api';
 import {
   AlertTriangle, ExternalLink, Megaphone, Eye, EyeOff,
-  TrendingUp, Info,
+  TrendingUp, Info, ChevronRight,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -99,13 +100,25 @@ export default function PropagandaReach() {
         </div>
       )}
 
-      {/* Two-column asymmetry view */}
+      {/* Two-column asymmetry view — both cards click into their
+          respective drilldown lists. Accountability -> /incidents
+          (all verified failures). Pro-TVK -> /propaganda (all fakes
+          and their debunks). Hover state mirrors the dashboard
+          widget pattern from BaselineDelta/StatCard. */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
-        {/* Accountability side */}
-        <div className="rounded-lg border border-emerald-800/40 bg-emerald-950/15 p-4">
+        {/* Accountability side -> /incidents */}
+        <Link
+          href="/incidents"
+          className="group/card rounded-lg border border-emerald-800/40 bg-emerald-950/15 p-4 hover:border-emerald-600/60 hover:bg-emerald-950/25 transition-all block"
+          aria-label="View all verified accountability incidents"
+        >
           <div className="flex items-center justify-between mb-2">
             <div className="text-[11px] text-emerald-300/70 uppercase tracking-wider font-medium flex items-center gap-1">
               <Eye size={11} /> Accountability documented
+              <ChevronRight
+                size={11}
+                className="text-emerald-400/40 opacity-0 group-hover/card:opacity-100 group-hover/card:translate-x-0.5 transition-all"
+              />
             </div>
             <TrendingUp size={12} className="text-emerald-400 opacity-50" />
           </div>
@@ -118,13 +131,21 @@ export default function PropagandaReach() {
           <div className="text-[11px] text-emerald-500/70 mt-3">
             What our pipeline has surfaced and cross-verified.
           </div>
-        </div>
+        </Link>
 
-        {/* Propaganda side */}
-        <div className="rounded-lg border border-rose-800/40 bg-rose-950/15 p-4">
+        {/* Propaganda side -> /propaganda */}
+        <Link
+          href="/propaganda"
+          className="group/card rounded-lg border border-rose-800/40 bg-rose-950/15 p-4 hover:border-rose-600/60 hover:bg-rose-950/25 transition-all block"
+          aria-label="View all tracked pro-TVK propaganda + debunks"
+        >
           <div className="flex items-center justify-between mb-2">
             <div className="text-[11px] text-rose-300/70 uppercase tracking-wider font-medium flex items-center gap-1">
               <EyeOff size={11} /> Pro-TVK content tracked
+              <ChevronRight
+                size={11}
+                className="text-rose-400/40 opacity-0 group-hover/card:opacity-100 group-hover/card:translate-x-0.5 transition-all"
+              />
             </div>
             <Megaphone size={12} className="text-rose-400 opacity-50" />
           </div>
@@ -144,7 +165,7 @@ export default function PropagandaReach() {
           <div className="text-[11px] text-rose-500/70 mt-3">
             What our system caught — a tiny slice of actual volume.
           </div>
-        </div>
+        </Link>
       </div>
 
       {/* Asymmetry ratio — the headline number */}
