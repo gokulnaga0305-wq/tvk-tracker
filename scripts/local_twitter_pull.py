@@ -121,32 +121,60 @@ def _parse_nitter_rss(xml_text: str) -> list[dict]:
 
 
 def _post_to_webhook(items: list[dict], actor_id: str = "local_nitter_pull") -> dict:
-    """Send items to the backend's /api/ingest/apify-webhook in a single batch."""
-    url = f"{BACKEND}/api/ingest/apify-webhook"
-    body = {
-        "actorId": actor_id,
-        # datasetId is required by ApifyWebhookPayload schema. We're not
-        # actually an Apify run, so synthesize a stable id derived from
-        # the actor + current minute (deterministic but unique per pull).
-        "datasetId": f"local-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M')}",
-        "items": items,
-    }
-    req = urllib.request.Request(
-        url,
-        method="POST",
-        data=json.dumps(body).encode(),
-        headers={
-            "Content-Type": "application/json",
-            "x-apify-secret": ADMIN_SECRET,
-        },
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=60) as r:
-            return json.loads(r.read())
-    except urllib.error.HTTPError as e:
-        return {"_error": True, "code": e.code, "body": e.read().decode()[:200]}
-    except Exception as e:
-        return {"_error": True, "msg": f"{type(e).__name__}: {str(e)[:120]}"}
+    """Send items to the backend's /api/ingest/apify-webhook.
+
+    Chunked at CHUNK_SIZE to prevent HF Spaces' BackgroundTasks from
+    queuing more than it can process. Each item takes ~30s in the AI
+    pipeline (Groq extraction + Google News cross-reference), so a
+    single batch of 50+ items piles up and risks HF terminating tasks.
+    Chunks of 8 with a CHUNK_PAUSE_SEC wait between drains naturally.
+
+    Returns the LAST chunk's response. Per-chunk failures are logged
+    but don't abort the run.
+    """
+    CHUNK_SIZE = 8
+    CHUNK_PAUSE_SEC = 240   # 4 minutes — drain ~8 items at 30s each
+    import time as _time
+    last_resp = {"queued": 0}
+    total_queued = 0
+    n_chunks = (len(items) + CHUNK_SIZE - 1) // CHUNK_SIZE
+    for i in range(0, len(items), CHUNK_SIZE):
+        chunk = items[i:i + CHUNK_SIZE]
+        chunk_num = i // CHUNK_SIZE + 1
+        url = f"{BACKEND}/api/ingest/apify-webhook"
+        body = {
+            "actorId": actor_id,
+            # datasetId is required by ApifyWebhookPayload schema. We're
+            # not actually an Apify run, so synthesize a stable id per chunk.
+            "datasetId": f"local-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M')}-c{chunk_num}",
+            "items": chunk,
+        }
+        req = urllib.request.Request(
+            url,
+            method="POST",
+            data=json.dumps(body).encode(),
+            headers={
+                "Content-Type": "application/json",
+                "x-apify-secret": ADMIN_SECRET,
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                last_resp = json.loads(r.read())
+                total_queued += last_resp.get("queued", 0)
+                print(f"      chunk {chunk_num}/{n_chunks}: queued {last_resp.get('queued', 0)}/{len(chunk)}")
+        except urllib.error.HTTPError as e:
+            last_resp = {"_error": True, "code": e.code, "body": e.read().decode()[:200]}
+            print(f"      chunk {chunk_num}/{n_chunks}: ERROR {last_resp}")
+        except Exception as e:
+            last_resp = {"_error": True, "msg": f"{type(e).__name__}: {str(e)[:120]}"}
+            print(f"      chunk {chunk_num}/{n_chunks}: ERROR {last_resp}")
+        # Wait for HF to drain THIS chunk before sending the next one.
+        # Skip the wait on the final chunk.
+        if i + CHUNK_SIZE < len(items):
+            print(f"      ... waiting {CHUNK_PAUSE_SEC}s for HF to drain chunk {chunk_num} ...")
+            _time.sleep(CHUNK_PAUSE_SEC)
+    return {"queued": total_queued, "last": last_resp}
 
 
 def _is_recent(pub_iso: str, cutoff: datetime) -> bool:
