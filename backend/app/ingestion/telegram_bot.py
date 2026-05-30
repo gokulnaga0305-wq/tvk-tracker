@@ -510,19 +510,27 @@ async def handle_update(update: dict[str, Any]) -> None:
     # Hard date gate — same as the AI pipeline elsewhere
     from datetime import date as _date
     inc_date_s = extracted.get("incident_date")
+    _ev(chat_id, "date_gate_check", date=inc_date_s)
     if inc_date_s:
         try:
             if _date.fromisoformat(inc_date_s) < _date(2026, 5, 11):
+                _ev(chat_id, "date_gate_rejected", date=inc_date_s)
                 _send_message(chat_id,
                     f"Not added: incident is pre-May-11 2026 "
                     f"({inc_date_s}). The tracker only covers the TVK admin era."
                 )
                 return
-        except Exception:
-            pass
+        except Exception as e:
+            _ev(chat_id, "date_gate_parse_error", err=str(e)[:80])
 
     # Fuzzy dedup against recent incidents
-    duplicate = _find_duplicate(extracted)
+    _ev(chat_id, "dedup_start")
+    try:
+        duplicate = _find_duplicate(extracted)
+    except Exception as e:
+        _ev(chat_id, "dedup_error", err=str(e)[:140])
+        duplicate = None
+    _ev(chat_id, "dedup_done", found=bool(duplicate))
     if duplicate:
         _send_message(chat_id,
             f"ℹ️ Already on dashboard ({int(duplicate['_match_ratio']*100)}% match):\n"
@@ -574,12 +582,18 @@ async def handle_update(update: dict[str, Any]) -> None:
             extracted.get("incident_date"),
         ),
     }
+    _ev(chat_id, "insert_attempt",
+        title=payload["title"][:60],
+        category=payload["category"],
+        date=payload["incident_date"])
     try:
         res = db.table("incidents").insert(payload).execute()
         if not res.data:
+            _ev(chat_id, "insert_no_data")
             _send_message(chat_id, "Insert failed (no row returned). Check backend logs.")
             return
         new_id = res.data[0]["id"]
+        _ev(chat_id, "insert_ok", id=new_id[:8])
         # Audit
         try:
             db.table("incident_audit").insert({
@@ -598,5 +612,6 @@ async def handle_update(update: dict[str, Any]) -> None:
             f"{DASHBOARD_URL}/incidents/{new_id}"
         )
     except Exception as e:
+        _ev(chat_id, "insert_exception", err=f"{type(e).__name__}: {str(e)[:140]}")
         logger.error("Telegram bot insert failed: %s", e)
         _send_message(chat_id, f"Insert error: {str(e)[:200]}")
