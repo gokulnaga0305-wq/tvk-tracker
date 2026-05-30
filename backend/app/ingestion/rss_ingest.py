@@ -60,19 +60,83 @@ USER_AGENT = (
 #                   single source counts as press_verified or holds at
 #                   pending_verification)
 #   rss_url       — the feed URL
+#
+# Major architectural shift on 2026-05-29: nitter.net exposes every
+# Twitter handle as a free RSS feed. We were paying Apify $0.00025
+# per tweet for the same content. Probed 11 handles, all return ~20
+# items with today's timestamps. Apify is now optional backup only.
+NITTER = "https://nitter.net"
 SOURCES_RSS: list[dict[str, str]] = [
-    # ---- Tamil press (single post = press_verified) ----
+    # ---- Govt-tier handles via Nitter (replaces Apify monitor-handles) ----
     {
-        "source_label": "rss_sparkplus",
-        "tier":         "online_native",
-        "rss_url":      "https://sparkpluz.com/feed/",
-        "name":         "Spark+",
+        "source_label": "twitter_CMOTamilnadu",
+        "tier":         "govt_announcement",
+        "rss_url":      f"{NITTER}/CMOTamilnadu/rss",
+        "name":         "@CMOTamilnadu (CM Office TN)",
     },
     {
-        "source_label": "rss_puthiyathalaimurai",
+        "source_label": "twitter_TNDIPRNEWS",
+        "tier":         "govt_announcement",
+        "rss_url":      f"{NITTER}/TNDIPRNEWS/rss",
+        "name":         "@TNDIPRNEWS (TN DIPR)",
+    },
+    # ---- Tamil press via Nitter (single tweet = press_verified) ----
+    {
+        "source_label": "twitter_sunnewstamil",
+        "tier":         "established_press",
+        "rss_url":      f"{NITTER}/sunnewstamil/rss",
+        "name":         "@sunnewstamil (Sun News Tamil)",
+    },
+    {
+        "source_label": "twitter_News18TamilNadu",
+        "tier":         "established_press",
+        "rss_url":      f"{NITTER}/News18TamilNadu/rss",
+        "name":         "@News18TamilNadu",
+    },
+    {
+        "source_label": "twitter_SparkPluz_",
+        "tier":         "online_native",
+        "rss_url":      f"{NITTER}/SparkPluz_/rss",
+        "name":         "@SparkPluz_ (Spark+)",
+    },
+    {
+        "source_label": "twitter_PttvNewsX",
+        "tier":         "regional_press",
+        "rss_url":      f"{NITTER}/PttvNewsX/rss",
+        "name":         "@PttvNewsX (Puthiya Thalaimurai)",
+    },
+    {
+        "source_label": "twitter_youturn_in",
+        "tier":         "online_native",
+        "rss_url":      f"{NITTER}/youturn_in/rss",
+        "name":         "@youturn_in (YouTurn fact-check)",
+    },
+    # ---- Social-tier handles via Nitter (single tweet = pending) ----
+    {
+        "source_label": "twitter_DMKITwing",
+        "tier":         "social_media",
+        "rss_url":      f"{NITTER}/DMKITwing/rss",
+        "name":         "@DMKITwing (DMK opposition)",
+    },
+    {
+        "source_label": "twitter_dstock_insights",
+        "tier":         "social_media",
+        "rss_url":      f"{NITTER}/dstock_insights/rss",
+        "name":         "@dstock_insights (TN data + satire)",
+    },
+    # ---- Direct press-site RSS (kept as redundancy — different cadence
+    #      than the tweet stream, articles often have fuller body) ----
+    {
+        "source_label": "rss_sparkplus_site",
+        "tier":         "online_native",
+        "rss_url":      "https://sparkpluz.com/feed/",
+        "name":         "Spark+ (site)",
+    },
+    {
+        "source_label": "rss_puthiyathalaimurai_site",
         "tier":         "regional_press",
         "rss_url":      "https://puthiyathalaimurai.com/feed/",
-        "name":         "Puthiya Thalaimurai",
+        "name":         "Puthiya Thalaimurai (site)",
     },
     # ---- Reddit (single post = pending_verification, needs press echo) ----
     {
@@ -87,10 +151,9 @@ SOURCES_RSS: list[dict[str, str]] = [
         "rss_url":      "https://www.reddit.com/r/TamilnaduDiscussion/.rss",
         "name":         "r/TamilnaduDiscussion",
     },
-    # ---- Google News aggregator (each item link is the actual press URL;
-    #      process_article + corroboration will assign the real outlet
-    #      tier from the URL host, so we set a placeholder tier here
-    #      that gets overridden downstream) ----
+    # ---- Google News aggregator (catches every English outlet that
+    #      covers TVK — Hindu, NIE, DT Next, etc. without per-outlet
+    #      scraping) ----
     {
         "source_label": "rss_gnews_tvk",
         "tier":         "established_press",
