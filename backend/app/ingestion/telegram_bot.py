@@ -354,6 +354,38 @@ def _extract_url_from_caption(caption: str) -> str:
 # ---------------------------------------------------------------------------
 # Auth: only allow whitelisted chat IDs
 # ---------------------------------------------------------------------------
+def _clamp_severity(raw: Any) -> int:
+    """Coerce AI's severity output to a valid int in [1,5].
+
+    The DB has `severity int check (severity between 1 and 5)`; the AI
+    has been observed returning out-of-range ints (0, 6, 10) and even
+    strings ('high', 'critical'). Without this clamp the insert blows
+    up with a `incidents_severity_check` violation and the upload is
+    dropped on the floor.
+    """
+    if raw is None:
+        return 3
+    if isinstance(raw, str):
+        s = raw.strip().lower()
+        mapping = {"low": 2, "medium": 3, "moderate": 3, "high": 4,
+                   "severe": 5, "critical": 5, "extreme": 5, "fatal": 5}
+        if s in mapping:
+            return mapping[s]
+        try:
+            raw = int(float(s))
+        except Exception:
+            return 3
+    try:
+        n = int(raw)
+    except Exception:
+        return 3
+    if n < 1:
+        return 1
+    if n > 5:
+        return 5
+    return n
+
+
 def _is_allowed_chat(chat_id: int) -> bool:
     raw = (settings.telegram_allowed_chat_ids or "").strip()
     if not raw:
@@ -543,12 +575,12 @@ async def handle_update(update: dict[str, Any]) -> None:
     # Insert as admin_verified (you uploaded it, you vouch for it)
     db = get_db()
     payload = {
-        "title":              extracted["title"][:200],
-        "summary":            extracted["summary"][:2000],
+        "title":              (extracted.get("title") or "Untitled incident")[:200],
+        "summary":            (extracted.get("summary") or extracted.get("title") or "")[:2000],
         "category":           extracted.get("category", "other"),
         "incident_date":      extracted.get("incident_date") or date.today().isoformat(),
         "location":           extracted.get("location"),
-        "severity":           extracted.get("severity", 3),
+        "severity":           _clamp_severity(extracted.get("severity")),
         "ai_confidence":      extracted.get("confidence", 0.85),
         "status":             "approved",
         "verification_status": "admin_verified",
