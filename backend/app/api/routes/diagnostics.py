@@ -113,6 +113,37 @@ async def usage_summary() -> dict[str, Any]:
         "tier": "pay-as-you-go (no usage API exposed)",
     }
 
+    # ---- Twitter-to-RSS bridge reachability from HF runtime ----------
+    # Diagnoses why Nitter sources aren't producing output. If HF can
+    # reach the bridges that work locally, the issue is parsing.
+    # If HF cannot reach them, we need a different route.
+    bridge_probes: dict[str, Any] = {}
+    test_urls = [
+        ("nitter.net",                 "https://nitter.net/sunnewstamil/rss"),
+        ("nitter.privacydev.net",      "https://nitter.privacydev.net/sunnewstamil/rss"),
+        ("nitter.poast.org",           "https://nitter.poast.org/sunnewstamil/rss"),
+        ("rsshub.app",                 "https://rsshub.app/twitter/user/sunnewstamil"),
+        ("twiiit.com",                 "https://twiiit.com/sunnewstamil/rss"),
+        # Baseline — confirms outbound HTTP works at all
+        ("github.com (baseline)",      "https://github.com"),
+    ]
+    import urllib.request as _ur, urllib.error as _ue
+    for label, url in test_urls:
+        try:
+            req = _ur.Request(url, headers={"User-Agent": "TVKTracker/1.0"})
+            with _ur.urlopen(req, timeout=8) as r:
+                body = r.read(2000)
+                bridge_probes[label] = {
+                    "status": r.status,
+                    "bytes":  len(body),
+                    "is_feed": b"<rss" in body[:200].lower() or b"<feed" in body[:200].lower(),
+                }
+        except _ue.HTTPError as e:
+            bridge_probes[label] = {"http_error": e.code}
+        except Exception as e:
+            bridge_probes[label] = {"error": f"{type(e).__name__}: {str(e)[:90]}"}
+    out["twitter_rss_bridges"] = bridge_probes
+
     # ---- AI chain currently in use -----------------------------------
     from app.ingestion.ai_processor import _get_client_chain
     chain = _get_client_chain()
