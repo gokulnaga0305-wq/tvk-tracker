@@ -222,6 +222,75 @@ def _extract_incident(*, ocr_text: str, caption: str, source_url: str) -> Option
         return None
 
 
+def _extract_incident_from_image(*, image_bytes: bytes, caption: str, source_url: str) -> Optional[dict]:
+    """Vision-model extraction — reads the image directly, skipping OCR.
+
+    Works much better than 'OCR + then AI on the text' for:
+      - mobile-compressed screenshots (Tamil glyphs survive better when
+        read pixel-by-pixel vs OCR'd to text first)
+      - multi-panel composites (vision model sees layout context, not
+        just a wall of de-positioned text)
+      - mixed-language headlines (Tamil + English in same image)
+      - tweets/social posts with images (extracts both the post text
+        AND any sub-images at once)
+
+    Uses Groq's llama-3.2-90b-vision-preview (free tier). Falls back
+    to None on failure — caller can then attempt the OCR+text path
+    if Vision API is configured.
+    """
+    if not settings.groq_api_key:
+        return None
+    from openai import OpenAI
+    db = get_db()
+    schemes_block = _load_dmk_schemes_for_prompt(db)
+    b64 = base64.b64encode(image_bytes).decode()
+    prompt_text = EXTRACTION_PROMPT.format(
+        url=source_url or "telegram_upload",
+        source="telegram_admin_upload",
+        published=date.today().isoformat(),
+        title=caption[:100] if caption else "Telegram-uploaded screenshot",
+        text=(
+            f"USER CAPTION: {caption}\n\n"
+            f"--- IMAGE BELOW — read all text (Tamil + English), "
+            f"understand the layout, identify the incident ---"
+        ),
+        dmk_schemes=schemes_block,
+        today=date.today().isoformat(),
+    )
+    client = OpenAI(
+        api_key=settings.groq_api_key,
+        base_url="https://api.groq.com/openai/v1",
+    )
+    # Groq's multimodal models — try newer first, fall back
+    for model in ("meta-llama/llama-4-scout-17b-16e-instruct",
+                  "llama-3.2-90b-vision-preview",
+                  "llama-3.2-11b-vision-preview"):
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                max_tokens=900,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": [
+                        {"type": "text", "text": prompt_text},
+                        {"type": "image_url", "image_url": {
+                            "url": f"data:image/jpeg;base64,{b64}",
+                        }},
+                    ]},
+                ],
+            )
+            raw = resp.choices[0].message.content
+            try:
+                return json.loads(_strip_code_fences(raw))
+            except Exception:
+                logger.warning("Vision model returned invalid JSON: %s", raw[:200])
+                continue
+        except Exception as e:
+            logger.warning("Vision model %s failed: %s", model, e)
+            continue
+    return None
+
+
 # ---------------------------------------------------------------------------
 # Caption URL extraction (so admin can paste a press URL alongside image)
 # ---------------------------------------------------------------------------
@@ -300,8 +369,8 @@ async def handle_update(update: dict[str, Any]) -> None:
             _send_message(chat_id, "Upload an image of a news article/screenshot to add it to the dashboard.")
         return
 
-    # Immediate ack so user knows we received it. OCR + AI take 20-45s.
-    _send_message(chat_id, "📥 Got it — OCR + AI extraction in progress (~30s)...")
+    # Immediate ack so user knows we received it. Vision-AI takes ~15-30s.
+    _send_message(chat_id, "Got it — reading image (~20s)...")
 
     # Pick the file_id to download. Prefer original-quality document
     # if user attached as file, otherwise pick the largest photo variant.
@@ -315,43 +384,38 @@ async def handle_update(update: dict[str, Any]) -> None:
         _send_message(chat_id, "Couldn't download the image. Try again?")
         return
 
-    # OCR — Vision API call. Returns extracted text or '' on failure.
-    ocr_text = _ocr_via_vision(image_bytes)
-    ocr_len = len(ocr_text.strip())
-
-    # If the user gave us a caption with useful text, we can run AI
-    # extraction even without OCR text. Combined OCR + caption only
-    # needs to be > 30 chars for the AI to have something to work with.
-    combined_len = ocr_len + len(caption.strip())
-    if combined_len < 30:
-        _send_message(chat_id,
-            f"Couldn't extract readable text from this image (OCR: {ocr_len} chars, "
-            f"caption: {len(caption)} chars).\n\n"
-            f"Three things to try:\n"
-            f"• Upload as a FILE (paperclip → File) instead of a photo — "
-            f"Telegram doesn't compress files, OCR quality is much better\n"
-            f"• Send single-source screenshots (one article, not a "
-            f"composite of multiple panels)\n"
-            f"• Add a caption describing the incident (works as fallback "
-            f"context even if OCR fails)"
-        )
-        return
-    elif ocr_len < 30 and caption:
-        # OCR weak but caption present — proceed with caption + whatever
-        # OCR we got. Don't bail.
-        _send_message(chat_id,
-            f"OCR extracted only {ocr_len} chars; using your caption as primary context."
-        )
-
     # Pull a URL from the caption if present (used as source_url)
     source_url = _extract_url_from_caption(caption)
 
-    # AI extract
-    extracted = _extract_incident(
-        ocr_text=ocr_text,
+    # Vision-first extraction — Groq's llama vision model reads the
+    # image directly (Tamil + English, multi-panel, compressed mobile
+    # screenshots all work). Skips OCR entirely. If vision fails, fall
+    # back to Google Vision OCR + text-only AI extract.
+    extracted = _extract_incident_from_image(
+        image_bytes=image_bytes,
         caption=caption,
         source_url=source_url,
     )
+    extraction_path = "vision"
+
+    if not extracted:
+        # Fall back to OCR + text-AI path
+        ocr_text = _ocr_via_vision(image_bytes)
+        ocr_len = len(ocr_text.strip())
+        combined_len = ocr_len + len(caption.strip())
+        if combined_len < 30:
+            _send_message(chat_id,
+                f"Couldn't extract anything readable from this image.\n"
+                f"  vision model: failed\n"
+                f"  ocr: {ocr_len} chars\n"
+                f"  caption: {len(caption)} chars\n\n"
+                f"Try a clearer screenshot or add a caption describing what's in it."
+            )
+            return
+        extracted = _extract_incident(
+            ocr_text=ocr_text, caption=caption, source_url=source_url,
+        )
+        extraction_path = "ocr_fallback"
     if not extracted:
         _send_message(chat_id, "AI extraction failed. Check the image or try again in a moment.")
         return
@@ -404,12 +468,12 @@ async def handle_update(update: dict[str, Any]) -> None:
         ],
         "source_count":       1,
         "ai_raw":             {
-            "telegram_source": True,
-            "caption":         caption,
-            "ocr_text":        ocr_text[:4000],
-            "from_chat_id":    chat_id,
-            "ingested_at":     datetime.now(timezone.utc).isoformat(),
-            "tags_extra":      (extracted.get("tags_extra") or []),
+            "telegram_source":  True,
+            "caption":          caption,
+            "extraction_path":  extraction_path,  # 'vision' or 'ocr_fallback'
+            "from_chat_id":     chat_id,
+            "ingested_at":      datetime.now(timezone.utc).isoformat(),
+            "tags_extra":       (extracted.get("tags_extra") or []),
         },
         "is_credit_steal":    extracted.get("is_credit_steal", False),
         "press_sentiment":    extracted.get("press_sentiment"),
