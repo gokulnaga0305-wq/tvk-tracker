@@ -98,20 +98,66 @@ def _send_message(chat_id: int, text: str, parse_mode: str | None = None) -> Non
         logger.warning("Telegram sendMessage failed: %s", res["_error"])
 
 
-def _download_photo(file_id: str) -> Optional[bytes]:
-    """Two-step: getFile -> downloadFile from telegram CDN."""
+def _download_photo(file_id: str) -> tuple[Optional[bytes], Optional[str]]:
+    """Two-step: getFile -> downloadFile from telegram CDN.
+
+    Returns (bytes, None) on success, or (None, error_message) on failure
+    so callers can surface the real error to the admin instead of a
+    generic 'try again'.
+    """
     meta = _tg_api("getFile", {"file_id": file_id})
     if meta.get("_error") or not meta.get("ok"):
-        logger.warning("getFile failed: %s", meta)
-        return None
-    file_path = meta["result"]["file_path"]
+        err = meta.get("_error") or str(meta)[:200]
+        return None, f"getFile_failed: {err[:150]}"
+    file_path = meta["result"].get("file_path")
+    if not file_path:
+        return None, f"getFile_no_path: {meta.get('result')}"
     url = f"https://api.telegram.org/file/bot{settings.telegram_bot_token}/{file_path}"
-    try:
-        with urllib.request.urlopen(url, timeout=30) as r:
-            return r.read()
-    except Exception as e:
-        logger.warning("Photo download failed: %s", e)
-        return None
+    # Retry once — Telegram CDN occasionally 5xx on the first hit
+    last_err = None
+    import time as _t
+    for attempt in (1, 2):
+        try:
+            with urllib.request.urlopen(url, timeout=45) as r:
+                data = r.read()
+                if data:
+                    return data, None
+                last_err = "empty_body"
+        except urllib.error.HTTPError as e:
+            last_err = f"HTTP {e.code}: {str(e)[:120]}"
+            # 404/410 means file expired — no point retrying
+            if e.code in (404, 410):
+                break
+        except Exception as e:
+            last_err = f"{type(e).__name__}: {str(e)[:120]}"
+        if attempt == 1:
+            _t.sleep(1.5)
+    return None, f"cdn_download_failed: {last_err}"
+
+
+def _download_any_photo_variant(photos: list[dict]) -> tuple[Optional[bytes], Optional[str], Optional[str]]:
+    """Try downloading photo variants from largest to smallest.
+
+    Telegram sends 4 size variants per photo (s/m/x/y). The largest often
+    has the highest fidelity, but is also the most likely to hit CDN
+    failures (bigger file = more chance of partial/timeout). Fall back
+    through the sizes so a bad CDN response on the biggest variant doesn't
+    block the upload.
+
+    Returns (bytes, file_id_used, None) on success or (None, None, last_err).
+    """
+    # Sort largest → smallest by file_size (Telegram supplies it)
+    sorted_variants = sorted(photos, key=lambda p: p.get("file_size") or 0, reverse=True)
+    last_err = None
+    for v in sorted_variants:
+        fid = v.get("file_id")
+        if not fid:
+            continue
+        data, err = _download_photo(fid)
+        if data:
+            return data, fid, None
+        last_err = err
+    return None, None, last_err
 
 
 # ---------------------------------------------------------------------------
@@ -456,19 +502,27 @@ async def handle_update(update: dict[str, Any]) -> None:
     _send_message(chat_id, "Got it — reading image (~20s)...")
     _ev(chat_id, "ack_sent")
 
-    # Pick the file_id to download. Prefer original-quality document
-    # if user attached as file, otherwise pick the largest photo variant.
+    # Pick the file to download. Document uploads have a single file_id.
+    # Photo uploads have 4 size variants — try largest first, fall back
+    # to smaller ones if the Telegram CDN errors on the big one (we've
+    # seen the CDN repeatedly fail to serve specific file_ids).
     if is_image_doc:
         file_id = document["file_id"]
+        image_bytes, dl_err = _download_photo(file_id)
+        file_id_used = file_id
     else:
-        best = max(photos, key=lambda p: p.get("file_size") or 0)
-        file_id = best["file_id"]
-    image_bytes = _download_photo(file_id)
+        image_bytes, file_id_used, dl_err = _download_any_photo_variant(photos)
     if not image_bytes:
-        _ev(chat_id, "download_failed", file_id=file_id[:30])
-        _send_message(chat_id, "Couldn't download the image. Try again?")
+        fid_preview = (file_id_used or "?")[:30]
+        _ev(chat_id, "download_failed", file_id=fid_preview, err=(dl_err or "")[:200])
+        _send_message(chat_id,
+            f"Couldn't download the image from Telegram's servers.\n"
+            f"Error: {(dl_err or 'unknown')[:200]}\n\n"
+            f"Try: re-take the screenshot fresh and send it as a NEW message "
+            f"(don't forward an old one — old Telegram file_ids sometimes expire)."
+        )
         return
-    _ev(chat_id, "download_ok", bytes=len(image_bytes))
+    _ev(chat_id, "download_ok", bytes=len(image_bytes), file_id=(file_id_used or "")[:30])
 
     # Pull a URL from the caption if present (used as source_url)
     source_url = _extract_url_from_caption(caption)
