@@ -123,7 +123,14 @@ def _parse_nitter_rss(xml_text: str) -> list[dict]:
 def _post_to_webhook(items: list[dict], actor_id: str = "local_nitter_pull") -> dict:
     """Send items to the backend's /api/ingest/apify-webhook in a single batch."""
     url = f"{BACKEND}/api/ingest/apify-webhook"
-    body = {"actorId": actor_id, "items": items}
+    body = {
+        "actorId": actor_id,
+        # datasetId is required by ApifyWebhookPayload schema. We're not
+        # actually an Apify run, so synthesize a stable id derived from
+        # the actor + current minute (deterministic but unique per pull).
+        "datasetId": f"local-{datetime.now(timezone.utc).strftime('%Y%m%d-%H%M')}",
+        "items": items,
+    }
     req = urllib.request.Request(
         url,
         method="POST",
