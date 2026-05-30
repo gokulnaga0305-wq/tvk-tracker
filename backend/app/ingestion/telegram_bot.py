@@ -290,6 +290,9 @@ async def handle_update(update: dict[str, Any]) -> None:
             _send_message(chat_id, "Upload an image of a news article/screenshot to add it to the dashboard.")
         return
 
+    # Immediate ack so user knows we received it. OCR + AI take 20-45s.
+    _send_message(chat_id, "📥 Got it — OCR + AI extraction in progress (~30s)...")
+
     # Pick the largest photo variant
     best = max(photos, key=lambda p: p.get("file_size") or 0)
     image_bytes = _download_photo(best["file_id"])
