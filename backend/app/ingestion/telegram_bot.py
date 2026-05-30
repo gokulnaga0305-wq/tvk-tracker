@@ -48,6 +48,22 @@ logger = logging.getLogger(__name__)
 
 DASHBOARD_URL = "https://tvk-tracker.vercel.app"
 
+# Ring buffer of per-step diagnostics for the LAST ~50 Telegram
+# processing attempts. Lets us debug "no reply" failures remotely
+# via /api/webhook/telegram/recent-events without HF log access.
+import collections as _collections
+import time as _time
+_RECENT_EVENTS: _collections.deque = _collections.deque(maxlen=50)
+
+
+def _ev(chat_id, step: str, **detail) -> None:
+    _RECENT_EVENTS.appendleft({
+        "chat_id":   chat_id,
+        "step":      step,
+        "t":         _time.time(),
+        **detail,
+    })
+
 
 # ---------------------------------------------------------------------------
 # Telegram Bot API helpers
@@ -357,8 +373,11 @@ async def handle_update(update: dict[str, Any]) -> None:
     msg = update.get("message") or update.get("channel_post") or {}
     chat = msg.get("chat") or {}
     chat_id = chat.get("id")
+    _ev(chat_id, "handler_entered", has_photo=bool(msg.get("photo")),
+        has_document=bool(msg.get("document")),
+        has_text=bool(msg.get("text")))
     if not chat_id or not _is_allowed_chat(chat_id):
-        # Silent ignore — don't acknowledge unknown chats at all.
+        _ev(chat_id, "rejected_unauthorized_chat")
         return
 
     # Telegram represents image uploads two ways:
@@ -400,8 +419,10 @@ async def handle_update(update: dict[str, Any]) -> None:
             _send_message(chat_id, "Upload an image of a news article/screenshot to add it to the dashboard.")
         return
 
+    _ev(chat_id, "image_detected", photos=len(photos), is_image_doc=is_image_doc)
     # Immediate ack so user knows we received it. Vision-AI takes ~15-30s.
     _send_message(chat_id, "Got it — reading image (~20s)...")
+    _ev(chat_id, "ack_sent")
 
     # Pick the file_id to download. Prefer original-quality document
     # if user attached as file, otherwise pick the largest photo variant.
@@ -412,8 +433,10 @@ async def handle_update(update: dict[str, Any]) -> None:
         file_id = best["file_id"]
     image_bytes = _download_photo(file_id)
     if not image_bytes:
+        _ev(chat_id, "download_failed", file_id=file_id[:30])
         _send_message(chat_id, "Couldn't download the image. Try again?")
         return
+    _ev(chat_id, "download_ok", bytes=len(image_bytes))
 
     # Pull a URL from the caption if present (used as source_url)
     source_url = _extract_url_from_caption(caption)
@@ -422,18 +445,24 @@ async def handle_update(update: dict[str, Any]) -> None:
     # image directly (Tamil + English, multi-panel, compressed mobile
     # screenshots all work). Skips OCR entirely. If vision fails, fall
     # back to Google Vision OCR + text-only AI extract.
+    _ev(chat_id, "vision_extract_start")
     extracted = _extract_incident_from_image(
         image_bytes=image_bytes,
         caption=caption,
         source_url=source_url,
     )
     extraction_path = "vision"
+    _ev(chat_id, "vision_extract_done",
+        got_result=bool(extracted),
+        is_relevant=(extracted.get("is_relevant") if extracted else None))
 
     if not extracted:
         # Fall back to OCR + text-AI path
+        _ev(chat_id, "ocr_fallback_start")
         ocr_text = _ocr_via_vision(image_bytes)
         ocr_len = len(ocr_text.strip())
         combined_len = ocr_len + len(caption.strip())
+        _ev(chat_id, "ocr_fallback_done", ocr_chars=ocr_len, caption_chars=len(caption))
         if combined_len < 30:
             _send_message(chat_id,
                 f"Couldn't extract anything readable from this image.\n"
@@ -447,6 +476,7 @@ async def handle_update(update: dict[str, Any]) -> None:
             ocr_text=ocr_text, caption=caption, source_url=source_url,
         )
         extraction_path = "ocr_fallback"
+        _ev(chat_id, "ocr_text_extract_done", got_result=bool(extracted))
     if not extracted:
         _send_message(chat_id, "AI extraction failed. Check the image or try again in a moment.")
         return

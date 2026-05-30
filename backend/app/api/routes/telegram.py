@@ -77,6 +77,20 @@ async def telegram_webhook(
         return {"status": "error", "detail": str(e)[:200]}
 
 
+@router.get("/telegram/recent-events")
+async def telegram_recent_events() -> dict[str, Any]:
+    """Per-step diagnostic of the last ~50 Telegram processing attempts.
+    Lets us debug 'no reply' failures remotely without HF log access."""
+    from app.ingestion.telegram_bot import _RECENT_EVENTS
+    now = time.time()
+    out = []
+    for entry in _RECENT_EVENTS:
+        e = dict(entry)
+        e["seconds_ago"] = round(now - e.pop("t"))
+        out.append(e)
+    return {"recent_events": out, "count": len(out)}
+
+
 @router.get("/telegram/recent-chats")
 async def telegram_recent_chats() -> dict[str, Any]:
     """List chat_ids that have hit the webhook recently. Used so the
