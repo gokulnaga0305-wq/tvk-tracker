@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openrouter_api_key: str = ""
     groq_api_key: str = ""
+    telegram_bot_token: str = ""
+    telegram_allowed_chat_ids: str = ""    # comma-separated whitelist
+    google_vision_api_key: str = ""
     apify_api_token: str = ""
     google_fact_check_api_key: str = ""
     huggingface_api_key: str = ""

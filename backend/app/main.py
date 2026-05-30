@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.api.routes import stats, incidents, promises, members, ingest, baselines, citizen, dmk_archive, economic, defections, cron, propaganda, diagnostics
+from app.api.routes import stats, incidents, promises, members, ingest, baselines, citizen, dmk_archive, economic, defections, cron, propaganda, diagnostics, telegram
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -33,6 +33,7 @@ app.include_router(defections.router, prefix="/api")
 app.include_router(cron.router, prefix="/api")
 app.include_router(propaganda.router, prefix="/api")
 app.include_router(diagnostics.router, prefix="/api")
+app.include_router(telegram.router, prefix="/api")
 
 
 @app.get("/health")
