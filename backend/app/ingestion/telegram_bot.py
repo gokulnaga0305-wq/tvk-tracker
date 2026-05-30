@@ -315,14 +315,33 @@ async def handle_update(update: dict[str, Any]) -> None:
         _send_message(chat_id, "Couldn't download the image. Try again?")
         return
 
-    # OCR
+    # OCR — Vision API call. Returns extracted text or '' on failure.
     ocr_text = _ocr_via_vision(image_bytes)
-    if not ocr_text or len(ocr_text.strip()) < 30:
+    ocr_len = len(ocr_text.strip())
+
+    # If the user gave us a caption with useful text, we can run AI
+    # extraction even without OCR text. Combined OCR + caption only
+    # needs to be > 30 chars for the AI to have something to work with.
+    combined_len = ocr_len + len(caption.strip())
+    if combined_len < 30:
         _send_message(chat_id,
-            "Couldn't extract readable text from this image. "
-            "Try a clearer screenshot, or attach a higher-resolution version."
+            f"Couldn't extract readable text from this image (OCR: {ocr_len} chars, "
+            f"caption: {len(caption)} chars).\n\n"
+            f"Three things to try:\n"
+            f"• Upload as a FILE (paperclip → File) instead of a photo — "
+            f"Telegram doesn't compress files, OCR quality is much better\n"
+            f"• Send single-source screenshots (one article, not a "
+            f"composite of multiple panels)\n"
+            f"• Add a caption describing the incident (works as fallback "
+            f"context even if OCR fails)"
         )
         return
+    elif ocr_len < 30 and caption:
+        # OCR weak but caption present — proceed with caption + whatever
+        # OCR we got. Don't bail.
+        _send_message(chat_id,
+            f"OCR extracted only {ocr_len} chars; using your caption as primary context."
+        )
 
     # Pull a URL from the caption if present (used as source_url)
     source_url = _extract_url_from_caption(caption)
