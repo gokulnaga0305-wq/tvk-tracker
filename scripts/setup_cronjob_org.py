@@ -174,6 +174,20 @@ JOBS = [
         "schedule":       _make_schedule(hours=[4], minutes=[30], wdays=[0]),
         "headers":        {"x-admin-secret": ADMIN_SECRET},
     },
+    {
+        "title":          "TVK · press RSS ingest",
+        "url":            f"{BACKEND}/api/cron/scrape-press-rss?max_items_per_source=20",
+        "requestMethod":  METHOD_POST,
+        # Every 30 min (top + bottom of every hour, IST).
+        # Cheap: no Apify cost, only HTTP fetches + Groq AI (free).
+        # Pulls Spark+, Puthiya Thalaimurai, r/TVKFiles,
+        # r/TamilnaduDiscussion, and Google News (TVK keywords).
+        # This is the primary live-news ingestion path now that we're
+        # off Apify for press handles. The 2 govt handles stay on Apify
+        # (different cron job above) since govt-tier has no RSS.
+        "schedule":       _make_schedule(minutes=[0, 30]),
+        "headers":        {"x-admin-secret": ADMIN_SECRET},
+    },
 ]
 
 

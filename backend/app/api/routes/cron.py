@@ -197,7 +197,43 @@ async def cron_promise_audit(
 
 
 # ---------------------------------------------------------------------------
-# Weekly fact-check scraper (NewsMeter, YouTurn)
+# Press + Reddit + Google News RSS ingestion (free-tier replacement
+# for most Apify Twitter scraping)
+# ---------------------------------------------------------------------------
+@router.post("/scrape-press-rss")
+async def cron_scrape_press_rss(
+    background_tasks: BackgroundTasks,
+    max_items_per_source: int = Query(25, ge=1, le=100,
+        description="Cap on items pulled per RSS source per run"),
+    x_admin_secret: Optional[str] = Header(None),
+):
+    """Pull every registered RSS source (Spark+, Puthiya Thalaimurai,
+    r/TVKFiles, r/TamilnaduDiscussion, Google News TVK keyword) and
+    AI-process each item through the same process_article pipeline as
+    Apify-monitored tweets.
+
+    Free-tier replacement for most of the Apify scraping load.
+    Recommended cadence: every 30 min (cheap — just HTTP fetches +
+    Groq AI extraction).
+    """
+    _require_admin(x_admin_secret)
+    from app.ingestion.rss_ingest import ingest_all_sources
+
+    async def _go():
+        try:
+            results = await ingest_all_sources(max_items_per_source=max_items_per_source)
+            total_processed = sum(r.get("processed", 0) for r in results)
+            logger.info("rss_ingest run: %d items processed across %d sources",
+                        total_processed, len(results))
+        except Exception as e:
+            logger.error("rss_ingest background task failed: %s", e)
+
+    background_tasks.add_task(lambda: __import__("asyncio").run(_go()))
+    return {"status": "queued", "max_items_per_source": max_items_per_source}
+
+
+# ---------------------------------------------------------------------------
+# Weekly fact-check scraper (NewsMeter)
 # ---------------------------------------------------------------------------
 @router.post("/scrape-factcheckers")
 async def cron_scrape_factcheckers(
