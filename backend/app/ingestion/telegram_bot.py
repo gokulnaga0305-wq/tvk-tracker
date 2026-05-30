@@ -144,19 +144,35 @@ def _normalize_for_match(text: str) -> str:
     return re.sub(r"[^a-z0-9 ]+", "", (text or "").lower()).strip()
 
 
-def _find_duplicate(extracted: dict, lookback_days: int = 30) -> Optional[dict]:
-    """Return the most-similar existing approved incident if title-ratio > 0.65.
+def _event_sig(category: str, location: str | None, incident_date: str | None) -> str:
+    """Coarse event signature — matches identical (category, normalized
+    location, incident_date) triples. Catches the case where AI words
+    the title differently each time but extracts the same underlying
+    event."""
+    loc = re.sub(r"[^a-z0-9]+", "", (location or "").lower())[:30]
+    return f"{(category or '').lower()}:{loc}:{incident_date or ''}"
 
-    Uses difflib's SequenceMatcher on normalized title+summary. Cheap,
-    fast, no AI cost. False-positive rate is bounded by the 0.65 cutoff
-    + comparing only last 30 days of incidents.
+
+def _find_duplicate(extracted: dict, lookback_days: int = 30) -> Optional[dict]:
+    """Return the most-similar existing approved incident.
+
+    Two-layer dedup:
+      A. Event-signature exact match — (category, normalized location,
+         incident_date) triple. Most reliable when AI worded the title
+         differently across uploads (e.g. 'SC-Christians' vs 'Dalits').
+      B. Fuzzy title+summary similarity >= 0.55 — backstop for when
+         AI got slightly-off date or location.
+
+    Threshold dropped 0.65 -> 0.55 after the AI extracted the same
+    Tenkasi sickle-attack image with different wordings each time,
+    pushing ratio below the old cutoff.
     """
     db = get_db()
     since = (datetime.now(timezone.utc) - timedelta(days=lookback_days)).date().isoformat()
     try:
         r = (
             db.table("incidents")
-            .select("id, title, summary, category, location, incident_date")
+            .select("id, title, summary, category, location, incident_date, event_signature")
             .eq("status", "approved")
             .gte("incident_date", since)
             .execute()
@@ -165,6 +181,20 @@ def _find_duplicate(extracted: dict, lookback_days: int = 30) -> Optional[dict]:
     except Exception:
         return None
 
+    # Layer A: event-signature exact match (cheap; usually wins on
+    # repeat uploads where AI extracts same category+location+date)
+    new_sig = _event_sig(
+        extracted.get("category", ""),
+        extracted.get("location"),
+        extracted.get("incident_date"),
+    )
+    for row in rows:
+        if row.get("event_signature") == new_sig and new_sig != ":":
+            row["_match_ratio"] = 1.0
+            row["_match_via"] = "event_signature"
+            return row
+
+    # Layer B: fuzzy similarity on title+summary head
     target = _normalize_for_match(
         f"{extracted.get('title', '')} {extracted.get('summary', '')[:200]}"
     )
@@ -182,8 +212,9 @@ def _find_duplicate(extracted: dict, lookback_days: int = 30) -> Optional[dict]:
         if ratio > best_ratio:
             best_ratio = ratio
             best_match = row
-    if best_match and best_ratio >= 0.65:
+    if best_match and best_ratio >= 0.55:
         best_match["_match_ratio"] = round(best_ratio, 2)
+        best_match["_match_via"] = "fuzzy_title"
         return best_match
     return None
 
@@ -479,6 +510,13 @@ async def handle_update(update: dict[str, Any]) -> None:
         "press_sentiment":    extracted.get("press_sentiment"),
         "image_urls":         [],
         "member_ids":         [],
+        # event_signature lets future Telegram uploads dedup against
+        # this row even if the AI words the title differently next time
+        "event_signature":    _event_sig(
+            extracted.get("category", ""),
+            extracted.get("location"),
+            extracted.get("incident_date"),
+        ),
     }
     try:
         res = db.table("incidents").insert(payload).execute()
