@@ -9,7 +9,9 @@ Setup: see docs/telegram-bot-setup.md
 """
 from __future__ import annotations
 import asyncio
+import collections
 import logging
+import time
 from typing import Any, Optional
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
 from app.config import settings
@@ -17,6 +19,12 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/webhook", tags=["webhook"])
+
+# Ring buffer of (chat_id, username/title, timestamp) for the last
+# webhook hits. Lets the admin self-discover their chat_id without
+# disabling the webhook (Telegram forbids getUpdates+webhook together).
+# Survives only until the next HF redeploy — but that's all you need.
+_RECENT_CHATS: collections.deque = collections.deque(maxlen=50)
 
 
 @router.post("/telegram")
@@ -37,10 +45,44 @@ async def telegram_webhook(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
+    # Record every chat that hits us — for the recent-chats diagnostic
+    # endpoint. Useful so admin can self-discover their chat_id without
+    # disabling the webhook (which would require Telegram getUpdates).
+    msg = payload.get("message") or payload.get("channel_post") or {}
+    chat = msg.get("chat") or {}
+    cid = chat.get("id")
+    if cid:
+        _RECENT_CHATS.appendleft({
+            "chat_id":    cid,
+            "type":       chat.get("type"),
+            "name":       chat.get("first_name") or chat.get("title"),
+            "username":   chat.get("username"),
+            "text_preview": (msg.get("text") or msg.get("caption") or "")[:60],
+            "seen_at":    time.time(),
+        })
+
     # Process in background so Telegram's retry timeout doesn't fire.
     from app.ingestion.telegram_bot import handle_update
     background_tasks.add_task(lambda: asyncio.run(handle_update(payload)))
     return {"status": "queued"}
+
+
+@router.get("/telegram/recent-chats")
+async def telegram_recent_chats() -> dict[str, Any]:
+    """List chat_ids that have hit the webhook recently. Used so the
+    admin can self-discover the correct chat_id to put into the
+    TELEGRAM_ALLOWED_CHAT_IDS env var.
+
+    No auth — payload contains no secrets. Ring buffer survives only
+    until next HF redeploy."""
+    now = time.time()
+    out = []
+    for entry in _RECENT_CHATS:
+        out.append({
+            **entry,
+            "seconds_ago": round(now - entry["seen_at"]),
+        })
+    return {"recent_chats": out, "count": len(out)}
 
 
 @router.get("/telegram/health")
