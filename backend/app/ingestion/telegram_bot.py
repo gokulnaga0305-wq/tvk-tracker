@@ -261,7 +261,17 @@ async def handle_update(update: dict[str, Any]) -> None:
         # Silent ignore — don't acknowledge unknown chats at all.
         return
 
+    # Telegram represents image uploads two ways:
+    #  - `photo`: compressed inline image (mobile/standard upload)
+    #  - `document`: original-quality file (Telegram Web drag-drop often
+    #    uses this for images, also when user explicitly attaches as
+    #    file). We accept both transparently.
     photos = msg.get("photo") or []
+    document = msg.get("document") or {}
+    is_image_doc = (
+        document
+        and (document.get("mime_type") or "").startswith("image/")
+    )
     caption = (msg.get("caption") or "").strip()
 
     # /start handshake — confirm the bot is alive for new admins
@@ -276,7 +286,7 @@ async def handle_update(update: dict[str, Any]) -> None:
         )
         return
 
-    if not photos:
+    if not photos and not is_image_doc:
         # Text-only message — could be a URL with no image. If it's a
         # URL, also process via the existing manual-ingest path. For
         # MVP, prompt for image.
@@ -293,9 +303,14 @@ async def handle_update(update: dict[str, Any]) -> None:
     # Immediate ack so user knows we received it. OCR + AI take 20-45s.
     _send_message(chat_id, "📥 Got it — OCR + AI extraction in progress (~30s)...")
 
-    # Pick the largest photo variant
-    best = max(photos, key=lambda p: p.get("file_size") or 0)
-    image_bytes = _download_photo(best["file_id"])
+    # Pick the file_id to download. Prefer original-quality document
+    # if user attached as file, otherwise pick the largest photo variant.
+    if is_image_doc:
+        file_id = document["file_id"]
+    else:
+        best = max(photos, key=lambda p: p.get("file_size") or 0)
+        file_id = best["file_id"]
+    image_bytes = _download_photo(file_id)
     if not image_bytes:
         _send_message(chat_id, "Couldn't download the image. Try again?")
         return

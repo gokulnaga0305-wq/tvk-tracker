@@ -61,18 +61,18 @@ async def telegram_webhook(
             "seen_at":    time.time(),
         })
 
-    # Process SYNCHRONOUSLY — earlier observation showed HF Spaces kills
-    # BackgroundTasks for long-running work (image OCR + AI extraction
-    # takes 20-45s, BG tasks get terminated before completion). Telegram
-    # webhooks have a 60s timeout, so we have margin. If processing ever
-    # exceeds 60s, Telegram retries — process_article dedups by URL so
-    # retries can't cause duplicates anyway.
+    # Process inside a thread executor so the long blocking I/O work
+    # (Vision OCR, Groq AI, Supabase writes — all via urllib) doesn't
+    # stall FastAPI's event loop and starve other requests. We still
+    # `await` it so the request only returns after processing finishes;
+    # Telegram's 60s webhook timeout gives us plenty of headroom.
     from app.ingestion.telegram_bot import handle_update
+    loop = asyncio.get_running_loop()
     try:
-        await handle_update(payload)
+        await loop.run_in_executor(None, lambda: asyncio.run(handle_update(payload)))
         return {"status": "processed"}
     except Exception as e:
-        logger.error("telegram handle_update sync failed: %s", e, exc_info=True)
+        logger.error("telegram handle_update failed: %s", e, exc_info=True)
         # Return 200 anyway so Telegram doesn't retry indefinitely
         return {"status": "error", "detail": str(e)[:200]}
 
