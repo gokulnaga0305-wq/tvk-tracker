@@ -480,10 +480,32 @@ async def handle_update(update: dict[str, Any]) -> None:
     if not extracted:
         _send_message(chat_id, "AI extraction failed. Check the image or try again in a moment.")
         return
+    # ADMIN-UPLOAD TRUST OVERRIDE:
+    # The AI's relevance gate is calibrated for unsupervised Twitter/RSS
+    # ingestion where most content is opinion/spam. For admin Telegram
+    # uploads, the admin already filtered by deciding to upload — we
+    # respect that judgment. The AI extraction still runs (for category
+    # / location / date structuring) but is_relevant=False does NOT block.
+    #
+    # Edge case: AI couldn't extract a usable title at all.  Bail in
+    # that case — there's nothing useful to insert.
     if not extracted.get("is_relevant"):
-        reason = (extracted.get("reason") or "not a trackable TVK incident")[:200]
-        _send_message(chat_id, f"Not added: {reason}")
-        return
+        _ev(chat_id, "ai_relevance_overridden", ai_reason=extracted.get("reason"))
+        # If the AI couldn't even produce a title, the extraction is
+        # too thin to be useful even with the override.
+        if not (extracted.get("title") or "").strip():
+            reason = (extracted.get("reason") or "AI couldn't structure the image")[:200]
+            _send_message(chat_id,
+                f"Couldn't extract a usable incident from this image.\n"
+                f"AI said: {reason}\n\n"
+                f"Add a caption describing what's in it and re-upload — "
+                f"that'll give the AI enough context to structure it."
+            )
+            return
+        # Otherwise: proceed. The admin uploaded it, the admin vouches.
+        # Mark this in ai_raw so we can audit which incidents got the
+        # override later.
+        extracted["_admin_override"] = True
 
     # Hard date gate — same as the AI pipeline elsewhere
     from datetime import date as _date
@@ -529,12 +551,16 @@ async def handle_update(update: dict[str, Any]) -> None:
         ],
         "source_count":       1,
         "ai_raw":             {
-            "telegram_source":  True,
-            "caption":          caption,
-            "extraction_path":  extraction_path,  # 'vision' or 'ocr_fallback'
-            "from_chat_id":     chat_id,
-            "ingested_at":      datetime.now(timezone.utc).isoformat(),
-            "tags_extra":       (extracted.get("tags_extra") or []),
+            "telegram_source":   True,
+            "caption":           caption,
+            "extraction_path":   extraction_path,  # 'vision' or 'ocr_fallback'
+            "from_chat_id":      chat_id,
+            "ingested_at":       datetime.now(timezone.utc).isoformat(),
+            "tags_extra":        (extracted.get("tags_extra") or []),
+            # Whether the AI said is_relevant=False but admin override
+            # let it through. Useful for retroactive QA.
+            "admin_override":    bool(extracted.get("_admin_override")),
+            "ai_reason":         extracted.get("reason"),
         },
         "is_credit_steal":    extracted.get("is_credit_steal", False),
         "press_sentiment":    extracted.get("press_sentiment"),
