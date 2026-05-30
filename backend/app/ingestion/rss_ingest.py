@@ -61,71 +61,26 @@ USER_AGENT = (
 #                   pending_verification)
 #   rss_url       — the feed URL
 #
-# Major architectural shift on 2026-05-29: nitter.net exposes every
-# Twitter handle as a free RSS feed. We were paying Apify $0.00025
-# per tweet for the same content. Probed 11 handles, all return ~20
-# items with today's timestamps. Apify is now optional backup only.
-NITTER = "https://nitter.net"
+# Architecture note (2026-05-30): Twitter-to-RSS bridges (nitter.net,
+# rsshub.app, twiiit.com, all known Nitter mirrors) are BLOCKED from
+# HuggingFace Spaces' IP range — proven via /api/diagnostics/usage
+# probe returning 403 / RemoteDisconnected on every attempt. The
+# bridges work from a residential / developer IP but not from HF.
+# That means we cannot live-scrape Twitter for free on the cloud.
+#
+# Paths to Twitter content from HF:
+#   1. Apify (paid, ~$0.50/mo for 2 govt handles at 2h cadence)
+#   2. Google News RSS with outlet/handle keywords — catches news
+#      content from these outlets when other sites cover them
+#   3. Direct press-site RSS for outlets that expose one (Spark+,
+#      Puthiya Thalaimurai)
+#
+# Apify monitor-handles cron remains the canonical path for the 2
+# govt handles (CMOTamilnadu, TNDIPRNEWS) — their content is
+# unavailable any other way. Free $5/mo tier handles this comfortably.
 SOURCES_RSS: list[dict[str, str]] = [
-    # ---- Govt-tier handles via Nitter (replaces Apify monitor-handles) ----
-    {
-        "source_label": "twitter_CMOTamilnadu",
-        "tier":         "govt_announcement",
-        "rss_url":      f"{NITTER}/CMOTamilnadu/rss",
-        "name":         "@CMOTamilnadu (CM Office TN)",
-    },
-    {
-        "source_label": "twitter_TNDIPRNEWS",
-        "tier":         "govt_announcement",
-        "rss_url":      f"{NITTER}/TNDIPRNEWS/rss",
-        "name":         "@TNDIPRNEWS (TN DIPR)",
-    },
-    # ---- Tamil press via Nitter (single tweet = press_verified) ----
-    {
-        "source_label": "twitter_sunnewstamil",
-        "tier":         "established_press",
-        "rss_url":      f"{NITTER}/sunnewstamil/rss",
-        "name":         "@sunnewstamil (Sun News Tamil)",
-    },
-    {
-        "source_label": "twitter_News18TamilNadu",
-        "tier":         "established_press",
-        "rss_url":      f"{NITTER}/News18TamilNadu/rss",
-        "name":         "@News18TamilNadu",
-    },
-    {
-        "source_label": "twitter_SparkPluz_",
-        "tier":         "online_native",
-        "rss_url":      f"{NITTER}/SparkPluz_/rss",
-        "name":         "@SparkPluz_ (Spark+)",
-    },
-    {
-        "source_label": "twitter_PttvNewsX",
-        "tier":         "regional_press",
-        "rss_url":      f"{NITTER}/PttvNewsX/rss",
-        "name":         "@PttvNewsX (Puthiya Thalaimurai)",
-    },
-    {
-        "source_label": "twitter_youturn_in",
-        "tier":         "online_native",
-        "rss_url":      f"{NITTER}/youturn_in/rss",
-        "name":         "@youturn_in (YouTurn fact-check)",
-    },
-    # ---- Social-tier handles via Nitter (single tweet = pending) ----
-    {
-        "source_label": "twitter_DMKITwing",
-        "tier":         "social_media",
-        "rss_url":      f"{NITTER}/DMKITwing/rss",
-        "name":         "@DMKITwing (DMK opposition)",
-    },
-    {
-        "source_label": "twitter_dstock_insights",
-        "tier":         "social_media",
-        "rss_url":      f"{NITTER}/dstock_insights/rss",
-        "name":         "@dstock_insights (TN data + satire)",
-    },
-    # ---- Direct press-site RSS (kept as redundancy — different cadence
-    #      than the tweet stream, articles often have fuller body) ----
+    # ---- Direct press-site RSS (the only outlets that publish
+    #      working RSS feeds reachable from HF) ----
     {
         "source_label": "rss_sparkplus_site",
         "tier":         "online_native",
@@ -165,6 +120,28 @@ SOURCES_RSS: list[dict[str, str]] = [
         "tier":         "established_press",
         "rss_url":      "https://news.google.com/rss/search?q=Tamilaga+Vettri+Kazhagam&hl=en-IN&gl=IN&ceid=IN:en",
         "name":         "Google News (TVK full name)",
+    },
+    # Google News queries specifically biased toward catching content
+    # from the Twitter handles HF can no longer reach directly. These
+    # queries return any article that quotes/references the outlet —
+    # so a Sun News tweet that becomes a news story flows in this way.
+    {
+        "source_label": "rss_gnews_sunnews",
+        "tier":         "established_press",
+        "rss_url":      "https://news.google.com/rss/search?q=%22Sun+News%22+Tamil+Nadu+TVK&hl=en-IN&gl=IN&ceid=IN:en",
+        "name":         "Google News (Sun News + TVK)",
+    },
+    {
+        "source_label": "rss_gnews_news18",
+        "tier":         "established_press",
+        "rss_url":      "https://news.google.com/rss/search?q=%22News18%22+Tamil+Nadu+TVK&hl=en-IN&gl=IN&ceid=IN:en",
+        "name":         "Google News (News18 + TVK)",
+    },
+    {
+        "source_label": "rss_gnews_vijay_cm",
+        "tier":         "established_press",
+        "rss_url":      "https://news.google.com/rss/search?q=%22CM+Vijay%22+%22Tamil+Nadu%22&hl=en-IN&gl=IN&ceid=IN:en",
+        "name":         "Google News (CM Vijay)",
     },
 ]
 
