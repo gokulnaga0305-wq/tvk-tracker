@@ -577,21 +577,45 @@ async def handle_update(update: dict[str, Any]) -> None:
     # that case — there's nothing useful to insert.
     if not extracted.get("is_relevant"):
         _ev(chat_id, "ai_relevance_overridden", ai_reason=extracted.get("reason"))
-        # If the AI couldn't even produce a title, the extraction is
-        # too thin to be useful even with the override.
+        # If the AI couldn't even produce a title, salvage via OCR so we
+        # never silently drop an admin upload. Fact-check graphics,
+        # tweet screenshots, and multi-panel composites often confuse
+        # the vision model into saying "no specific incident" — but the
+        # underlying text is still there, we just need to extract it
+        # mechanically. Stage as pending_review so the admin classifies
+        # in the dashboard rather than letting AI hallucinate a category.
         if not (extracted.get("title") or "").strip():
-            reason = (extracted.get("reason") or "AI couldn't structure the image")[:200]
-            _send_message(chat_id,
-                f"Couldn't extract a usable incident from this image.\n"
-                f"AI said: {reason}\n\n"
-                f"Add a caption describing what's in it and re-upload — "
-                f"that'll give the AI enough context to structure it."
-            )
-            return
-        # Otherwise: proceed. The admin uploaded it, the admin vouches.
-        # Mark this in ai_raw so we can audit which incidents got the
-        # override later.
-        extracted["_admin_override"] = True
+            _ev(chat_id, "ocr_salvage_start")
+            ocr_text = _ocr_via_vision(image_bytes)
+            ocr_clean = re.sub(r"\s+", " ", ocr_text).strip()
+            _ev(chat_id, "ocr_salvage_done", chars=len(ocr_clean))
+            if len(ocr_clean) >= 20:
+                # Pick the first non-trivial line as a title hint
+                first_line = next(
+                    (ln.strip() for ln in ocr_text.splitlines()
+                     if len(ln.strip()) >= 15),
+                    ocr_clean[:120]
+                )
+                extracted["title"] = first_line[:120]
+                extracted["summary"] = ocr_clean[:1500]
+                extracted["category"] = extracted.get("category") or "unclassified"
+                extracted["_admin_override"] = True
+                extracted["_ocr_salvaged"] = True
+                # Stage as pending_review — admin classifies in dashboard
+                extracted["_pending_review"] = True
+            else:
+                # Truly nothing — no AI structure, no OCR text. Give up.
+                reason = (extracted.get("reason") or "AI couldn't structure the image")[:200]
+                _send_message(chat_id,
+                    f"Couldn't extract anything from this image.\n"
+                    f"AI said: {reason}\n"
+                    f"OCR yielded: {len(ocr_clean)} chars\n\n"
+                    f"Add a caption describing what's in it and re-upload."
+                )
+                return
+        else:
+            # Otherwise: proceed. The admin uploaded it, the admin vouches.
+            extracted["_admin_override"] = True
 
     # Hard date gate — same as the AI pipeline elsewhere
     from datetime import date as _date
@@ -626,7 +650,11 @@ async def handle_update(update: dict[str, Any]) -> None:
         )
         return
 
-    # Insert as admin_verified (you uploaded it, you vouch for it)
+    # Insert as admin_verified (you uploaded it, you vouch for it).
+    # Exception: OCR-salvaged uploads land as pending_review so the
+    # admin can classify them via the dashboard — these are the ones
+    # the AI couldn't structure on its own.
+    is_pending = bool(extracted.get("_pending_review"))
     db = get_db()
     payload = {
         "title":              (extracted.get("title") or "Untitled incident")[:200],
@@ -636,8 +664,8 @@ async def handle_update(update: dict[str, Any]) -> None:
         "location":           extracted.get("location"),
         "severity":           _clamp_severity(extracted.get("severity")),
         "ai_confidence":      extracted.get("confidence", 0.85),
-        "status":             "approved",
-        "verification_status": "admin_verified",
+        "status":             "pending_review" if is_pending else "approved",
+        "verification_status": "pending_verification" if is_pending else "admin_verified",
         # If caption had a URL we use it as the source. Otherwise the
         # source IS the Telegram upload + admin trust.
         "source_urls":        [source_url] if source_url else [
@@ -654,6 +682,8 @@ async def handle_update(update: dict[str, Any]) -> None:
             # Whether the AI said is_relevant=False but admin override
             # let it through. Useful for retroactive QA.
             "admin_override":    bool(extracted.get("_admin_override")),
+            "ocr_salvaged":      bool(extracted.get("_ocr_salvaged")),
+            "pending_review":    is_pending,
             "ai_reason":         extracted.get("reason"),
         },
         "is_credit_steal":    extracted.get("is_credit_steal", False),
@@ -691,12 +721,20 @@ async def handle_update(update: dict[str, Any]) -> None:
             }).execute()
         except Exception:
             pass
-        _send_message(chat_id,
-            f"NEW INCIDENT ADDED\n"
-            f"Title: {extracted['title']}\n"
-            f"Category: {extracted['category']} · severity {extracted.get('severity', 3)}\n"
-            f"{DASHBOARD_URL}/incidents/{new_id}"
-        )
+        if is_pending:
+            _send_message(chat_id,
+                f"STAGED FOR REVIEW (AI couldn't auto-classify)\n"
+                f"Title: {payload['title']}\n"
+                f"Pulled via OCR. Classify it at:\n"
+                f"{DASHBOARD_URL}/admin/incidents/{new_id}"
+            )
+        else:
+            _send_message(chat_id,
+                f"NEW INCIDENT ADDED\n"
+                f"Title: {extracted['title']}\n"
+                f"Category: {extracted.get('category', 'other')} · severity {payload['severity']}\n"
+                f"{DASHBOARD_URL}/incidents/{new_id}"
+            )
     except Exception as e:
         _ev(chat_id, "insert_exception", err=f"{type(e).__name__}: {str(e)[:140]}")
         logger.error("Telegram bot insert failed: %s", e)
