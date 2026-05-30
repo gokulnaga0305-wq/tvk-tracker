@@ -144,6 +144,46 @@ async def usage_summary() -> dict[str, Any]:
             bridge_probes[label] = {"error": f"{type(e).__name__}: {str(e)[:90]}"}
     out["twitter_rss_bridges"] = bridge_probes
 
+    # ---- Per-source freshness ----------------------------------------
+    # Answers "when was each source last successfully scraped?". Anything
+    # > 6h for a press source is suspect; > 24h means an outright break.
+    # User can see at a glance which feeds are stale.
+    try:
+        from app.database import get_db as _gdb
+        from datetime import datetime as _dt, timezone as _tz
+        db = _gdb()
+        # Recent sources by outlet — grouped by outlet, max scraped_at each
+        r = db.table("sources").select("outlet,scraped_at").order(
+            "scraped_at", desc=True
+        ).limit(500).execute()
+        latest_by_outlet: dict[str, str] = {}
+        for row in (r.data or []):
+            outlet = row.get("outlet") or "unknown"
+            ts = row.get("scraped_at")
+            if outlet not in latest_by_outlet and ts:
+                latest_by_outlet[outlet] = ts
+        now = _dt.now(_tz.utc)
+        freshness = []
+        for outlet, ts in sorted(latest_by_outlet.items()):
+            try:
+                dt = _dt.fromisoformat(ts.replace("Z", "+00:00"))
+                age_hours = (now - dt).total_seconds() / 3600
+                tier_health = "fresh" if age_hours < 6 else ("stale" if age_hours < 24 else "broken")
+                freshness.append({
+                    "outlet": outlet,
+                    "last_scraped": ts,
+                    "age_hours": round(age_hours, 1),
+                    "health": tier_health,
+                })
+            except Exception:
+                continue
+        out["source_freshness"] = freshness
+        out["sources_broken"] = [f for f in freshness if f["health"] == "broken"][:20]
+        out["sources_stale"]  = [f for f in freshness if f["health"] == "stale"][:20]
+        out["sources_fresh_count"] = sum(1 for f in freshness if f["health"] == "fresh")
+    except Exception as e:
+        out["source_freshness"] = {"error": f"{type(e).__name__}: {str(e)[:100]}"}
+
     # ---- AI chain currently in use -----------------------------------
     from app.ingestion.ai_processor import _get_client_chain
     chain = _get_client_chain()
