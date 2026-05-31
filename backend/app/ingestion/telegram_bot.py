@@ -163,39 +163,112 @@ def _download_any_photo_variant(photos: list[dict]) -> tuple[Optional[bytes], Op
 # ---------------------------------------------------------------------------
 # OCR — Google Vision (best Tamil quality on the free tier)
 # ---------------------------------------------------------------------------
-def _ocr_via_vision(image_bytes: bytes) -> str:
-    """OCR via Google Vision API. Returns extracted text or '' on failure.
+def _ocr_via_vision(image_bytes: bytes) -> tuple[str, Optional[str]]:
+    """OCR via Google Vision API. Returns (text, error_msg).
 
     Free tier: 1000 calls/month — way more than admin upload volume.
+    On any failure returns ('', error_msg) so callers can surface why.
     """
     if not settings.google_vision_api_key:
-        logger.warning("GOOGLE_VISION_API_KEY not configured — OCR disabled")
-        return ""
+        return "", "GOOGLE_VISION_API_KEY not configured"
+    # DOCUMENT_TEXT_DETECTION is more accurate than TEXT_DETECTION for
+    # dense / multi-block layouts (which fact-check posters and tweets
+    # screenshot like 100% of the time).
     url = f"https://vision.googleapis.com/v1/images:annotate?key={settings.google_vision_api_key}"
     payload = {
         "requests": [{
             "image": {"content": base64.b64encode(image_bytes).decode()},
-            "features": [{"type": "TEXT_DETECTION", "maxResults": 1}],
-            # Hint at Tamil + English for better script detection
+            "features": [{"type": "DOCUMENT_TEXT_DETECTION", "maxResults": 1}],
             "imageContext": {"languageHints": ["ta", "en"]},
         }]
     }
     req = urllib.request.Request(
-        url,
-        method="POST",
+        url, method="POST",
         data=json.dumps(payload).encode(),
         headers={"Content-Type": "application/json"},
     )
     try:
         with urllib.request.urlopen(req, timeout=30) as r:
             data = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        body = e.read().decode()[:300]
+        return "", f"HTTP {e.code}: {body}"
     except Exception as e:
-        logger.warning("Vision OCR failed: %s", e)
-        return ""
+        return "", f"{type(e).__name__}: {str(e)[:120]}"
+    # Vision API can return per-request errors inside responses[0].error
+    resp0 = (data.get("responses") or [{}])[0]
+    if resp0.get("error"):
+        return "", f"vision_error: {resp0['error'].get('message', '')[:200]}"
     try:
-        return data["responses"][0]["fullTextAnnotation"]["text"]
+        return resp0["fullTextAnnotation"]["text"], None
     except (KeyError, IndexError):
-        return ""
+        # No text detected — not necessarily an error
+        return "", "no_text_detected"
+
+
+def _describe_image_via_vision_llm(image_bytes: bytes, caption: str) -> Optional[dict]:
+    """Ask the Groq vision LLM to just describe the image with no
+    relevance gate. Used as a salvage path when the main extraction
+    returns is_relevant=False with no title — for fact-check graphics,
+    propaganda posters, multi-panel composites that the structured
+    incident-extraction prompt rejects but admin uploaded anyway.
+
+    Returns {title, summary, ocr_text} or None on failure.
+    """
+    if not settings.groq_api_key:
+        return None
+    from openai import OpenAI
+    b64 = base64.b64encode(image_bytes).decode()
+    prompt = (
+        "Read this image carefully. It was uploaded by a Tamil Nadu "
+        "political accountability dashboard admin. Return ONLY a JSON "
+        "object with these fields (no markdown, no commentary):\n"
+        "{\n"
+        '  "title":   <short headline in English, 8-15 words, summarizing the main claim/event in the image>,\n'
+        '  "summary": <2-4 sentence factual summary in English of what the image shows — include any names, places, dates, numbers, organizations visible>,\n'
+        '  "ocr_text": <all visible text in the image, in original languages (Tamil/English), separated by newlines>\n'
+        "}\n\n"
+        f"User caption (may be empty): {caption[:300]}\n\n"
+        "Be factual. Do not editorialize. If the image is a fact-check "
+        "graphic, describe what claim is being checked and what the "
+        "verdict is."
+    )
+    client = OpenAI(
+        api_key=settings.groq_api_key,
+        base_url="https://api.groq.com/openai/v1",
+    )
+    for model in ("meta-llama/llama-4-scout-17b-16e-instruct",
+                  "llama-3.2-90b-vision-preview",
+                  "llama-3.2-11b-vision-preview"):
+        try:
+            resp = client.chat.completions.create(
+                model=model,
+                max_tokens=900,
+                messages=[
+                    {"role": "user", "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {
+                            "url": f"data:image/jpeg;base64,{b64}",
+                        }},
+                    ]},
+                ],
+            )
+            raw = resp.choices[0].message.content
+            try:
+                return json.loads(_strip_code_fences(raw))
+            except Exception:
+                # Some models wrap JSON in prose — try to find the {...}
+                m = re.search(r"\{[\s\S]+\}", raw)
+                if m:
+                    try:
+                        return json.loads(m.group(0))
+                    except Exception:
+                        pass
+                continue
+        except Exception as e:
+            logger.warning("describe_image vision model %s failed: %s", model, e)
+            continue
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -545,10 +618,10 @@ async def handle_update(update: dict[str, Any]) -> None:
     if not extracted:
         # Fall back to OCR + text-AI path
         _ev(chat_id, "ocr_fallback_start")
-        ocr_text = _ocr_via_vision(image_bytes)
+        ocr_text, ocr_err = _ocr_via_vision(image_bytes)
         ocr_len = len(ocr_text.strip())
         combined_len = ocr_len + len(caption.strip())
-        _ev(chat_id, "ocr_fallback_done", ocr_chars=ocr_len, caption_chars=len(caption))
+        _ev(chat_id, "ocr_fallback_done", ocr_chars=ocr_len, caption_chars=len(caption), err=ocr_err)
         if combined_len < 30:
             _send_message(chat_id,
                 f"Couldn't extract anything readable from this image.\n"
@@ -585,31 +658,61 @@ async def handle_update(update: dict[str, Any]) -> None:
         # mechanically. Stage as pending_review so the admin classifies
         # in the dashboard rather than letting AI hallucinate a category.
         if not (extracted.get("title") or "").strip():
-            _ev(chat_id, "ocr_salvage_start")
-            ocr_text = _ocr_via_vision(image_bytes)
-            ocr_clean = re.sub(r"\s+", " ", ocr_text).strip()
-            _ev(chat_id, "ocr_salvage_done", chars=len(ocr_clean))
-            if len(ocr_clean) >= 20:
-                # Pick the first non-trivial line as a title hint
+            # Salvage path: try TWO ways to get text out of the image
+            #   1. Ask Groq vision LLM to describe it with no relevance
+            #      gate (Groq already proved it can READ the image in the
+            #      first extraction — it just refused to structure it as
+            #      an incident, which is the prompt's fault, not vision's)
+            #   2. Fall back to Google Vision OCR if Groq describe fails
+            _ev(chat_id, "salvage_describe_start")
+            described = _describe_image_via_vision_llm(image_bytes, caption)
+            describe_title = (described or {}).get("title", "").strip()
+            describe_summary = (described or {}).get("summary", "").strip()
+            describe_ocr = (described or {}).get("ocr_text", "").strip()
+            _ev(chat_id, "salvage_describe_done",
+                got_title=bool(describe_title),
+                title_len=len(describe_title),
+                ocr_chars=len(describe_ocr))
+
+            ocr_text, ocr_err, ocr_clean = "", None, ""
+            if not describe_title:
+                # Vision-describe failed — try Google Vision OCR
+                _ev(chat_id, "salvage_ocr_start")
+                ocr_text, ocr_err = _ocr_via_vision(image_bytes)
+                ocr_clean = re.sub(r"\s+", " ", ocr_text).strip()
+                _ev(chat_id, "salvage_ocr_done",
+                    chars=len(ocr_clean), err=ocr_err)
+
+            if describe_title:
+                extracted["title"]   = describe_title[:200]
+                extracted["summary"] = (describe_summary or describe_ocr or describe_title)[:1500]
+                extracted["category"] = extracted.get("category") or "unclassified"
+                extracted["_admin_override"]   = True
+                extracted["_vision_described"] = True
+                extracted["_pending_review"]   = True
+                # Stash the raw OCR-from-vision into ai_raw for searchability
+                if describe_ocr:
+                    extracted["_raw_ocr"] = describe_ocr[:4000]
+            elif len(ocr_clean) >= 20:
                 first_line = next(
                     (ln.strip() for ln in ocr_text.splitlines()
                      if len(ln.strip()) >= 15),
                     ocr_clean[:120]
                 )
-                extracted["title"] = first_line[:120]
+                extracted["title"]   = first_line[:120]
                 extracted["summary"] = ocr_clean[:1500]
                 extracted["category"] = extracted.get("category") or "unclassified"
-                extracted["_admin_override"] = True
-                extracted["_ocr_salvaged"] = True
-                # Stage as pending_review — admin classifies in dashboard
-                extracted["_pending_review"] = True
+                extracted["_admin_override"]  = True
+                extracted["_ocr_salvaged"]    = True
+                extracted["_pending_review"]  = True
             else:
-                # Truly nothing — no AI structure, no OCR text. Give up.
+                # Both salvage paths failed — surface ALL reasons to admin
                 reason = (extracted.get("reason") or "AI couldn't structure the image")[:200]
                 _send_message(chat_id,
                     f"Couldn't extract anything from this image.\n"
-                    f"AI said: {reason}\n"
-                    f"OCR yielded: {len(ocr_clean)} chars\n\n"
+                    f"  AI extract: {reason}\n"
+                    f"  Vision describe: {'ok' if describe_title else 'no title returned'}\n"
+                    f"  OCR: {len(ocr_clean)} chars ({ocr_err or 'ok'})\n\n"
                     f"Add a caption describing what's in it and re-upload."
                 )
                 return
