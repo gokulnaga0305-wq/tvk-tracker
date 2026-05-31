@@ -12,7 +12,7 @@ import { CATEGORY_LABELS } from '@/lib/constants';
 import Link from 'next/link';
 import {
   DollarSign, Skull, ShieldAlert, Users, CheckSquare, Copy, AlertTriangle,
-  Zap, ZapOff, Wine, Megaphone, ShieldOff, Flame, Clock, Landmark, FileX,
+  Zap, ZapOff, Wine, ShieldOff, Flame, Clock, Landmark, FileX,
 } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -171,7 +171,12 @@ export default function DashboardPage() {
                                             icon={ZapOff} color="text-amber-400" />
           <StatCard label="Alcohol Menace" value={stats.alcohol_menace_count ?? 0} verified={stats.alcohol_menace_verified} topSources={stats.top_sources?.alcohol_menace} href="alcohol_menace" icon={Wine}      color="text-pink-400" />
           <StatCard label="Police Excess"  value={stats.police_excess_count ?? 0}  verified={stats.police_excess_verified} topSources={stats.top_sources?.police_excess}  href="police_excess"  icon={ShieldOff}  color="text-red-400" />
-          <StatCard label="Fake News"      value={stats.fake_news_count ?? 0}      verified={stats.fake_news_verified}     topSources={stats.top_sources?.fake_news}      href="fake_news"      icon={Megaphone}  color="text-fuchsia-400" />
+          {/* Fake News stat card removed — the press-reported fake_news pool is now
+              surfaced inside the PropagandaReach widget alongside the curated
+              propaganda_events count, so the dashboard shows ONE fake/misleading
+              story (e.g. "23 fake/misleading: 20 curated + 3 press-reported")
+              instead of two contradictory top-level numbers (23 propaganda vs
+              3 fake news). The /category/fake_news drilldown still works. */}
           <StatCard label="Civic Failure"  value={(stats as any).civic_failure_count ?? 0}
                                             verified={(stats as any).civic_failure_verified}
                                             topSources={stats.top_sources?.civic_failure}

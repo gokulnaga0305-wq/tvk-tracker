@@ -182,6 +182,18 @@ export interface PropagandaSummary {
     reach_estimate?: number;
     debunk_reach_estimate?: number;
   }>;
+  // Press-reported fake news (auto-tagged incidents) — folded into this
+  // widget so the dashboard shows ONE fake/misleading number, not two
+  // separate widgets with overlapping language and contradictory counts.
+  press_reported_fake_news_count?: number;
+  press_reported_fake_news_recent?: Array<{
+    id: string;
+    title: string;
+    url?: string;
+    incident_date?: string;
+    verification_status?: string;
+  }>;
+  total_fake_or_misleading?: number;
   honest_disclaimer: string;
 }
 

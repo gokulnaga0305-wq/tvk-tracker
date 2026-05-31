@@ -133,7 +133,11 @@ export default function PropagandaReach() {
           </div>
         </Link>
 
-        {/* Propaganda side -> /propaganda */}
+        {/* Propaganda side -> /propaganda
+            Headline is the COMBINED total (curated propaganda + press-
+            reported fake news) so the user sees one fake/misleading
+            number, not two contradictory ones. Both pools are linked
+            below for transparency about how the total was assembled. */}
         <Link
           href="/propaganda"
           className="group/card rounded-lg border border-rose-800/40 bg-rose-950/15 p-4 hover:border-rose-600/60 hover:bg-rose-950/25 transition-all block"
@@ -141,7 +145,7 @@ export default function PropagandaReach() {
         >
           <div className="flex items-center justify-between mb-2">
             <div className="text-[11px] text-rose-300/70 uppercase tracking-wider font-medium flex items-center gap-1">
-              <EyeOff size={11} /> Pro-TVK content tracked
+              <EyeOff size={11} /> Fake / misleading content
               <ChevronRight
                 size={11}
                 className="text-rose-400/40 opacity-0 group-hover/card:opacity-100 group-hover/card:translate-x-0.5 transition-all"
@@ -149,17 +153,29 @@ export default function PropagandaReach() {
             </div>
             <Megaphone size={12} className="text-rose-400 opacity-50" />
           </div>
-          <div className="flex items-baseline gap-3">
-            <span className="text-3xl font-bold text-rose-300">
-              {data.propaganda_events_tracked}
+          <div className="text-3xl font-bold text-rose-300">
+            {data.total_fake_or_misleading ??
+              (data.confirmed_fake_or_active +
+                (data.press_reported_fake_news_count ?? 0))}
+          </div>
+          {/* Sub-stats that explain the headline number */}
+          <div className="text-[11px] text-rose-300/70 mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+            <span>
+              <strong className="text-rose-200">
+                {data.confirmed_fake_or_active}
+              </strong>{' '}
+              curated propaganda (with reach data)
             </span>
-            {data.confirmed_fake_or_active > 0 && (
-              <span className="text-xs text-rose-400/70">
-                {data.confirmed_fake_or_active} fake/misleading
+            {(data.press_reported_fake_news_count ?? 0) > 0 && (
+              <span>
+                <strong className="text-rose-200">
+                  {data.press_reported_fake_news_count}
+                </strong>{' '}
+                press-reported fake news
               </span>
             )}
           </div>
-          <div className="text-xs text-gray-500 mt-1">
+          <div className="text-xs text-gray-500 mt-1.5">
             manufactured-achievement videos, dubbed footage, fake quotes
           </div>
           <div className="text-[11px] text-rose-500/70 mt-3">

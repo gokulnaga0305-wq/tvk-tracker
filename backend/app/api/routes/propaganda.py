@@ -170,6 +170,50 @@ async def propaganda_summary():
         t = r.get("propaganda_type") or "other"
         type_counts[t] = type_counts.get(t, 0) + 1
 
+    # Press-reported fake news — separate pool from propaganda_events.
+    # These are incidents auto-tagged with category=fake_news (or having
+    # fake_news in ai_raw.tags_extra) by the AI from press/reddit
+    # ingestion. They cover the same beat as propaganda_events but
+    # arrive via a different pipeline: press reports of misleading
+    # claims that didn't get manually curated with reach data. We
+    # surface them in the same widget so admins / readers see ONE fake-
+    # content story, not two contradictory numbers.
+    try:
+        inc_res = (
+            db.table("incidents")
+            .select("id, title, source_urls, incident_date, "
+                    "verification_status, category, ai_raw")
+            .eq("status", "approved")
+            .gte("incident_date", govt_start)
+            .execute()
+        )
+        all_incidents = inc_res.data or []
+    except Exception:
+        all_incidents = []
+
+    fake_news_incidents = []
+    for inc in all_incidents:
+        cat = (inc.get("category") or "").lower()
+        raw = inc.get("ai_raw") or {}
+        tags = []
+        if isinstance(raw, dict):
+            tags = [str(t).lower() for t in (raw.get("tags_extra") or [])
+                    if isinstance(t, str)]
+        if cat == "fake_news" or "fake_news" in tags:
+            fake_news_incidents.append({
+                "id":      inc["id"],
+                "title":   inc.get("title"),
+                "url":     (inc.get("source_urls") or [None])[0],
+                "incident_date": inc.get("incident_date"),
+                "verification_status": inc.get("verification_status"),
+            })
+    press_reported_fake_news = len(fake_news_incidents)
+    # Newest first, top 5 for the widget list
+    fake_news_incidents.sort(
+        key=lambda x: x.get("incident_date") or "", reverse=True
+    )
+    fake_news_incidents = fake_news_incidents[:5]
+
     return {
         "accountability_events_documented":  accountability_events,
         "propaganda_events_tracked":         total_propaganda,
@@ -180,6 +224,12 @@ async def propaganda_summary():
         "asymmetry_ratio":                   asymmetry_ratio,
         "type_breakdown":                    type_counts,
         "recent_debunks":                    recent_debunks,
+        # Press-reported fake-news pool (was a separate top-level StatCard
+        # on the main dashboard; folded in here for a single coherent story)
+        "press_reported_fake_news_count":    press_reported_fake_news,
+        "press_reported_fake_news_recent":   fake_news_incidents,
+        # Combined for at-a-glance display: curated propaganda + press-reported
+        "total_fake_or_misleading":          confirmed_fake + press_reported_fake_news,
         "honest_disclaimer": (
             "These numbers reflect propaganda we've TRACKED, not the full volume "
             "circulating. The real asymmetry is almost certainly larger — most pro-TVK "
