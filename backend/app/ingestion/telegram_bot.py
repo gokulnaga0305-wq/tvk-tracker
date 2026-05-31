@@ -225,31 +225,58 @@ def _ocr_via_vision(image_bytes: bytes) -> tuple[str, Optional[str]]:
 
 
 def _describe_image_via_vision_llm(image_bytes: bytes, caption: str) -> Optional[dict]:
-    """Ask the Groq vision LLM to just describe the image with no
-    relevance gate. Used as a salvage path when the main extraction
-    returns is_relevant=False with no title — for fact-check graphics,
-    propaganda posters, multi-panel composites that the structured
-    incident-extraction prompt rejects but admin uploaded anyway.
+    """Ask the Groq vision LLM to FULLY CLASSIFY the image as a TVK-era
+    incident. Used when the main extraction returns is_relevant=False
+    (the structured incident prompt is calibrated for skeptical
+    unsupervised ingestion; admin uploads need a more permissive prompt
+    that trusts the admin's judgment).
 
-    Returns {title, summary, ocr_text} or None on failure.
+    Returns a full incident dict {title, summary, category, severity,
+    location, incident_date, is_credit_steal, ocr_text} OR None on
+    failure. With full classification, the caller can land the row
+    as 'approved' instead of staging it for manual review.
     """
     if not settings.groq_api_key:
         return None
     from openai import OpenAI
     b64 = base64.b64encode(image_bytes).decode()
+    today_iso = date.today().isoformat()
     prompt = (
-        "Read this image carefully. It was uploaded by a Tamil Nadu "
-        "political accountability dashboard admin. Return ONLY a JSON "
-        "object with these fields (no markdown, no commentary):\n"
+        "You are classifying a news image for a Tamil Nadu political "
+        "accountability dashboard tracking the TVK government (Vijay's "
+        "party, sworn in May 11 2026). It was uploaded by the dashboard "
+        "ADMIN — so it IS relevant to TVK accountability. Your job is "
+        "to read the Tamil/English text and STRUCTURE it.\n\n"
+        "Return ONLY a JSON object (no markdown, no commentary):\n"
         "{\n"
-        '  "title":   <short headline in English, 8-15 words, summarizing the main claim/event in the image>,\n'
-        '  "summary": <2-4 sentence factual summary in English of what the image shows — include any names, places, dates, numbers, organizations visible>,\n'
-        '  "ocr_text": <all visible text in the image, in original languages (Tamil/English), separated by newlines>\n'
+        '  "title":         <English headline, 8-15 words, factual>,\n'
+        '  "summary":       <2-4 sentences in English: what happened, who, where, any numbers>,\n'
+        '  "category":      <pick ONE: murders, sexual_assault, crimes_women_kids, '
+        'corruption, police_excess, custodial_death, honour_killing, alcohol_menace, '
+        'power_cut, eb_failure, broken_promise, attack_on_press, fake_news, '
+        'propaganda_event, dravidian_attack, credit_steal, civic_failure, '
+        'economic_failure, governance, other>,\n'
+        '  "severity":      <integer 1-5: 1=minor 3=serious 5=fatal/major>,\n'
+        '  "location":      <city/district name in English, or null>,\n'
+        '  "incident_date": <YYYY-MM-DD if visible in image, else null>,\n'
+        '  "is_credit_steal": <true if TVK claims credit for DMK-era work, else false>,\n'
+        '  "ocr_text":      <all visible text, Tamil+English, newline-separated>\n'
         "}\n\n"
+        f"Today's date: {today_iso}. TVK govt era: anything from 2026-05-11 onward.\n"
         f"User caption (may be empty): {caption[:300]}\n\n"
-        "Be factual. Do not editorialize. If the image is a fact-check "
-        "graphic, describe what claim is being checked and what the "
-        "verdict is."
+        "RULES:\n"
+        "- Be factual. Extract from what is VISIBLE in the image. Do NOT "
+        "invent details that aren't shown.\n"
+        "- If the image is in Tamil, translate to English for title/summary.\n"
+        "- Pick the most specific category. 'other' only if nothing fits.\n"
+        "- If a date is shown in the image (top-right corner of news graphics "
+        "is common), parse it into YYYY-MM-DD.\n"
+        "- For police harassment/atrocity by police → use police_excess.\n"
+        "- For violence against women → sexual_assault or crimes_women_kids.\n"
+        "- For murder/killing → murders.\n"
+        "- For fact-check graphics about TVK claims → propaganda_event.\n"
+        "- If image clearly shows NO incident (just a logo, blank, etc), "
+        'return {"title": ""} so caller knows to skip.'
     )
     client = OpenAI(
         api_key=settings.groq_api_key,
@@ -894,15 +921,42 @@ async def handle_update(update: dict[str, Any]) -> None:
                     chars=len(ocr_clean), err=ocr_err)
 
             if describe_title:
+                # Vision-describe returns a FULLY classified incident now
+                # (category, severity, location, date, credit_steal). Use
+                # those values — they're better than the failed first
+                # extraction's nulls. Only fall back to 'unclassified'/
+                # pending_review if vision-describe also failed to provide
+                # a category.
+                describe_cat       = ((described or {}).get("category") or "").strip()
+                describe_severity  = (described or {}).get("severity")
+                describe_location  = ((described or {}).get("location") or "").strip()
+                describe_date      = ((described or {}).get("incident_date") or "").strip()
+                describe_credit    = bool((described or {}).get("is_credit_steal"))
+
                 extracted["title"]   = describe_title[:200]
                 extracted["summary"] = (describe_summary or describe_ocr or describe_title)[:1500]
-                extracted["category"] = extracted.get("category") or "unclassified"
                 extracted["_admin_override"]   = True
                 extracted["_vision_described"] = True
-                extracted["_pending_review"]   = True
-                # Stash the raw OCR-from-vision into ai_raw for searchability
                 if describe_ocr:
                     extracted["_raw_ocr"] = describe_ocr[:4000]
+
+                if describe_cat and describe_cat != "other":
+                    # Full classification — auto-approve, NOT pending review.
+                    # Admin can still retag via "tag under X" if AI got it
+                    # wrong, but the default is to trust the salvage pass
+                    # since admin already vouched by uploading.
+                    extracted["category"]         = describe_cat
+                    extracted["severity"]         = describe_severity
+                    extracted["location"]         = describe_location or extracted.get("location")
+                    extracted["incident_date"]    = describe_date or extracted.get("incident_date")
+                    extracted["is_credit_steal"]  = describe_credit
+                    extracted["confidence"]       = 0.7  # salvage path is lower-confidence
+                    # NOTE: NOT setting _pending_review — this lands as approved
+                else:
+                    # Vision-describe returned a title but no good category.
+                    # Stage as pending so admin classifies manually.
+                    extracted["category"] = "other"
+                    extracted["_pending_review"] = True
             elif len(ocr_clean) >= 20:
                 first_line = next(
                     (ln.strip() for ln in ocr_text.splitlines()
