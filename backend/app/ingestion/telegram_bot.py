@@ -505,6 +505,147 @@ def _clamp_severity(raw: Any) -> int:
     return n
 
 
+# ---------------------------------------------------------------------------
+# Per-chat "most recent incident" pointer — lets admin issue follow-up
+# commands without re-stating the incident ID. Survives until next HF
+# redeploy, which is fine (commands are reactive, not async).
+# ---------------------------------------------------------------------------
+_LAST_INCIDENT_BY_CHAT: dict[int, str] = {}
+
+_UUID_RE = re.compile(
+    r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+    re.I,
+)
+
+
+def _extract_incident_id(text: str) -> Optional[str]:
+    """Pull an incident UUID from a URL, raw UUID, or short prefix."""
+    if not text:
+        return None
+    m = _UUID_RE.search(text)
+    return m.group(0).lower() if m else None
+
+
+# Category synonyms — admin's natural-language → canonical category.
+# Keep this LOW: only the categories admins actually retag toward.
+_CATEGORY_SYNONYMS: dict[str, str] = {
+    "credit steal":     "credit_steal_meta",  # special: also flips flag
+    "credit stealing":  "credit_steal_meta",
+    "credit theft":     "credit_steal_meta",
+    "credit":           "credit_steal_meta",
+    "propaganda":       "propaganda_event",
+    "fact check":       "propaganda_event",
+    "factcheck":        "propaganda_event",
+    "murder":           "law_and_order",
+    "murders":          "law_and_order",
+    "law order":        "law_and_order",
+    "law and order":    "law_and_order",
+    "promise":          "broken_promise",
+    "broken promise":   "broken_promise",
+    "dravidian":        "dravidian_attack",
+    "economy":          "economic_failure",
+    "economic":         "economic_failure",
+}
+
+
+def _parse_admin_command(text: str) -> Optional[dict]:
+    """Parse a plain-text command into a structured update dict.
+
+    Supports natural-language tags an admin might type while looking at
+    their phone, NOT a strict CLI. Returns None if no command detected.
+
+    Examples that work:
+      "tag under credit stealing"           → {category: credit_steal_meta, is_credit_steal: true}
+      "credit steal"                        → same
+      "severity 4"                          → {severity: 4}
+      "set severity to 5"                   → {severity: 5}
+      "category propaganda"                 → {category: propaganda_event}
+      "location chennai"                    → {location: 'chennai'}
+      "delete" / "reject" / "not relevant"  → {status: rejected}
+      "approve"                             → {status: approved, verification_status: admin_verified}
+      "credit"                              → {is_credit_steal: true}
+    """
+    if not text:
+        return None
+    s = text.strip().lower()
+    updates: dict[str, Any] = {}
+
+    # Severity: "severity 4", "set severity to 5", "sev 3"
+    m = re.search(r"\bsev(?:erity)?\s+(?:to\s+)?(\d)\b", s)
+    if m:
+        sev = int(m.group(1))
+        if 1 <= sev <= 5:
+            updates["severity"] = sev
+
+    # Explicit "category X" prefix → look up synonym
+    m = re.search(r"\b(?:category|cat|tag(?:\s+under|\s+as)?)\s+([a-z_ ]+?)(?:\s+(?:severity|location|$)|$)", s)
+    if m:
+        phrase = m.group(1).strip()
+        # Best-match synonym
+        for k, v in _CATEGORY_SYNONYMS.items():
+            if k in phrase:
+                if v == "credit_steal_meta":
+                    updates["category"] = "credit_steal"
+                    updates["is_credit_steal"] = True
+                else:
+                    updates["category"] = v
+                break
+
+    # Bare synonym match (no "category" prefix needed) — only if no
+    # category was set above
+    if "category" not in updates:
+        for k, v in _CATEGORY_SYNONYMS.items():
+            if re.search(rf"\b{re.escape(k)}\b", s):
+                if v == "credit_steal_meta":
+                    updates["category"] = "credit_steal"
+                    updates["is_credit_steal"] = True
+                else:
+                    updates["category"] = v
+                break
+
+    # Location: "location chennai", "in chennai"
+    m = re.search(r"\b(?:location|loc|in)\s+([a-z][a-z ]{2,40})", s)
+    if m:
+        loc = m.group(1).strip().title()
+        # Strip trailing common words that bleed in
+        loc = re.sub(r"\s+(Severity|Category|Tag)$", "", loc, flags=re.I)
+        updates["location"] = loc
+
+    # Status verbs
+    if re.search(r"\b(delete|reject|remove|not\s+relevant|drop)\b", s):
+        updates["status"] = "rejected"
+    elif re.search(r"\b(approve|approved|verified|ok|publish)\b", s):
+        updates["status"] = "approved"
+        updates["verification_status"] = "admin_verified"
+
+    return updates or None
+
+
+def _apply_incident_update(incident_id: str, updates: dict, chat_id: int) -> Optional[dict]:
+    """Apply admin command updates to an incident. Returns the new row
+    (or None on failure)."""
+    db = get_db()
+    try:
+        res = db.table("incidents").update(updates).eq("id", incident_id).execute()
+    except Exception as e:
+        logger.error("Telegram command update failed: %s", e)
+        return None
+    if not res.data:
+        return None
+    # Audit trail
+    try:
+        db.table("incident_audit").insert({
+            "incident_id": incident_id,
+            "action":      "updated",
+            "actor":       "telegram_bot",
+            "to_value":    json.dumps(updates),
+            "reason":      f"Admin command from chat {chat_id}",
+        }).execute()
+    except Exception:
+        pass
+    return res.data[0]
+
+
 def _is_allowed_chat(chat_id: int) -> bool:
     raw = (settings.telegram_allowed_chat_ids or "").strip()
     if not raw:
@@ -548,26 +689,77 @@ async def handle_update(update: dict[str, Any]) -> None:
     text = (msg.get("text") or "").strip()
     if text.startswith("/start") or text.startswith("/help"):
         _send_message(chat_id,
-            "TVK Tracker bot — upload a screenshot of a news article, "
-            "tweet, or social post and I'll extract the incident, "
-            "check for duplicates, and add it to the dashboard.\n\n"
-            "Optionally include the source URL in the caption.\n\n"
+            "TVK Tracker bot — upload a screenshot and I'll extract the "
+            "incident, check for duplicates, and add it to the dashboard.\n\n"
+            "After upload, you can tag the incident with plain text:\n"
+            "  • \"tag under credit stealing\" / \"credit\"\n"
+            "  • \"category propaganda\" / \"category murders\"\n"
+            "  • \"severity 4\"\n"
+            "  • \"location chennai\"\n"
+            "  • \"delete\" / \"reject\" / \"approve\"\n\n"
+            "Commands apply to your most recent incident, or reply to a "
+            f"specific bot message to target that one.\n\n"
             f"Dashboard: {DASHBOARD_URL}"
         )
         return
 
     if not photos and not is_image_doc:
-        # Text-only message — could be a URL with no image. If it's a
-        # URL, also process via the existing manual-ingest path. For
-        # MVP, prompt for image.
-        if text and _URL_RE.search(text):
-            _send_message(chat_id,
-                "I see a URL but no image. Image uploads work best — "
-                "I OCR + extract from screenshots. URL-only ingestion "
-                "isn't wired in this MVP; paste the screenshot."
-            )
-        else:
-            _send_message(chat_id, "Upload an image of a news article/screenshot to add it to the dashboard.")
+        # Text-only message. Three paths:
+        #  A. Reply to a bot message with an incident URL → command on that
+        #  B. Bare command (e.g. "credit steal") → apply to most recent
+        #     incident from this chat
+        #  C. URL → not yet implemented, prompt for image
+        #  D. Anything else → upload prompt
+        if text:
+            # Look for incident ID in the message the user replied to
+            target_id = None
+            reply_to = msg.get("reply_to_message") or {}
+            reply_text = (reply_to.get("text") or "") + " " + (reply_to.get("caption") or "")
+            if reply_text:
+                target_id = _extract_incident_id(reply_text)
+            # Or pulled out of the admin's own message text
+            if not target_id:
+                target_id = _extract_incident_id(text)
+            # Or default to "most recent" pointer for this chat
+            if not target_id:
+                target_id = _LAST_INCIDENT_BY_CHAT.get(chat_id)
+
+            cmd = _parse_admin_command(text)
+            _ev(chat_id, "text_command_received",
+                has_target=bool(target_id),
+                target=(target_id or "")[:8],
+                parsed_keys=list(cmd.keys()) if cmd else [])
+
+            if cmd and target_id:
+                updated = _apply_incident_update(target_id, cmd, chat_id)
+                if updated:
+                    diff = ", ".join(f"{k}={v}" for k, v in cmd.items())
+                    _send_message(chat_id,
+                        f"✓ Updated: {diff}\n"
+                        f"\"{updated.get('title', '')[:80]}\"\n"
+                        f"{DASHBOARD_URL}/incidents/{target_id}"
+                    )
+                else:
+                    _send_message(chat_id,
+                        f"Update failed — incident {target_id[:8]} not found or DB rejected the change."
+                    )
+                return
+            if cmd and not target_id:
+                _send_message(chat_id,
+                    "I understood the command but no target incident found.\n"
+                    "Reply to a bot message containing the incident link, "
+                    "or upload an image first then send the command."
+                )
+                return
+            if _URL_RE.search(text):
+                _send_message(chat_id,
+                    "I see a URL but no image. Image uploads work best — "
+                    "I OCR + extract from screenshots. URL-only ingestion "
+                    "isn't wired in this MVP; paste the screenshot."
+                )
+                return
+
+        _send_message(chat_id, "Upload an image of a news article/screenshot to add it to the dashboard.")
         return
 
     _ev(chat_id, "image_detected", photos=len(photos), is_image_doc=is_image_doc)
@@ -813,6 +1005,8 @@ async def handle_update(update: dict[str, Any]) -> None:
             return
         new_id = res.data[0]["id"]
         _ev(chat_id, "insert_ok", id=new_id[:8])
+        # Remember for follow-up text commands ("tag under credit stealing", etc.)
+        _LAST_INCIDENT_BY_CHAT[chat_id] = new_id
         # Audit
         try:
             db.table("incident_audit").insert({
