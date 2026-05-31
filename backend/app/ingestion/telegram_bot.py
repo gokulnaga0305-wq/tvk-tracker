@@ -69,23 +69,41 @@ def _ev(chat_id, step: str, **detail) -> None:
 # Telegram Bot API helpers
 # ---------------------------------------------------------------------------
 def _tg_api(method: str, payload: dict | None = None) -> dict:
+    """Call Telegram Bot API with retry on SSL/network timeouts.
+
+    Telegram's CDN occasionally drops SSL handshakes from HF's IPs
+    (saw multiple 'handshake operation timed out' failures in the
+    wild). Without retry, a one-off network glitch kills the entire
+    upload. Three attempts with backoff fix ~95% of these.
+    """
     if not settings.telegram_bot_token:
         return {"_error": "TELEGRAM_BOT_TOKEN not configured"}
     url = f"https://api.telegram.org/bot{settings.telegram_bot_token}/{method}"
     data = json.dumps(payload).encode() if payload else None
-    req = urllib.request.Request(
-        url,
-        method="POST" if payload else "GET",
-        data=data,
-        headers={"Content-Type": "application/json"} if payload else {},
-    )
-    try:
-        with urllib.request.urlopen(req, timeout=20) as r:
-            return json.loads(r.read())
-    except urllib.error.HTTPError as e:
-        return {"_error": f"HTTP {e.code}: {e.read().decode()[:200]}"}
-    except Exception as e:
-        return {"_error": f"{type(e).__name__}: {str(e)[:120]}"}
+    import time as _t
+    last_err = None
+    for attempt in (1, 2, 3):
+        req = urllib.request.Request(
+            url,
+            method="POST" if payload else "GET",
+            data=data,
+            headers={"Content-Type": "application/json"} if payload else {},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=20) as r:
+                return json.loads(r.read())
+        except urllib.error.HTTPError as e:
+            # 4xx errors are not transient — don't retry, just return
+            body = e.read().decode()[:200]
+            if 400 <= e.code < 500:
+                return {"_error": f"HTTP {e.code}: {body}"}
+            last_err = f"HTTP {e.code}: {body}"
+        except Exception as e:
+            last_err = f"{type(e).__name__}: {str(e)[:120]}"
+        # Backoff: 0.8s, 2s before retry
+        if attempt < 3:
+            _t.sleep(0.8 * attempt)
+    return {"_error": last_err}
 
 
 def _send_message(chat_id: int, text: str, parse_mode: str | None = None) -> None:

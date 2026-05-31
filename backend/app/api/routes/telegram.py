@@ -1,9 +1,9 @@
 """Telegram bot webhook endpoint.
 
 Receives raw Telegram Update payloads, validates the request via the
-secret token Telegram is configured to include, and hands processing
-off to a BackgroundTask. Responds 200 quickly so Telegram doesn't
-retry.
+secret token Telegram is configured to include, and processes them in
+a background daemon thread. Always responds 200 in <50ms so Telegram
+never times out and never retries.
 
 Setup: see docs/telegram-bot-setup.md
 """
@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 import collections
 import logging
+import threading
 import time
 from typing import Any, Optional
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
@@ -25,6 +26,39 @@ router = APIRouter(prefix="/webhook", tags=["webhook"])
 # disabling the webhook (Telegram forbids getUpdates+webhook together).
 # Survives only until the next HF redeploy — but that's all you need.
 _RECENT_CHATS: collections.deque = collections.deque(maxlen=50)
+
+# Update_id dedup ring. Telegram retries the SAME update_id when our
+# handler takes too long or returns a non-200. Tracking the last 500
+# update_ids means a retry is silently dropped instead of duplicate-
+# processing the same upload (which would create a 2nd incident row).
+_SEEN_UPDATE_IDS: collections.deque = collections.deque(maxlen=500)
+_SEEN_UPDATE_IDS_SET: set = set()
+
+
+def _is_duplicate_update(update_id: Any) -> bool:
+    if not update_id:
+        return False
+    if update_id in _SEEN_UPDATE_IDS_SET:
+        return True
+    _SEEN_UPDATE_IDS.append(update_id)
+    _SEEN_UPDATE_IDS_SET.add(update_id)
+    # Evict oldest if buffer wrapped
+    while len(_SEEN_UPDATE_IDS_SET) > _SEEN_UPDATE_IDS.maxlen:
+        old = _SEEN_UPDATE_IDS.popleft()
+        _SEEN_UPDATE_IDS_SET.discard(old)
+    return False
+
+
+def _process_update_async(payload: dict) -> None:
+    """Drive handle_update from a daemon thread. Owns its own event loop
+    so we never collide with FastAPI's. Swallows all errors after logging
+    — the user already got an ack; failures are debuggable via /recent-
+    events."""
+    try:
+        from app.ingestion.telegram_bot import handle_update
+        asyncio.run(handle_update(payload))
+    except Exception as e:
+        logger.error("Background handle_update failed: %s", e, exc_info=True)
 
 
 @router.post("/telegram")
@@ -45,6 +79,13 @@ async def telegram_webhook(
     except Exception:
         raise HTTPException(status_code=400, detail="Invalid JSON")
 
+    # Dedup: Telegram retries the same update_id when our handler is slow.
+    # Without this, a slow-but-successful first attempt + a retry produces
+    # TWO incident rows for one upload.
+    update_id = payload.get("update_id")
+    if _is_duplicate_update(update_id):
+        return {"status": "duplicate", "update_id": update_id}
+
     # Record every chat that hits us — for the recent-chats diagnostic
     # endpoint. Useful so admin can self-discover their chat_id without
     # disabling the webhook (which would require Telegram getUpdates).
@@ -61,20 +102,18 @@ async def telegram_webhook(
             "seen_at":    time.time(),
         })
 
-    # Process inside a thread executor so the long blocking I/O work
-    # (Vision OCR, Groq AI, Supabase writes — all via urllib) doesn't
-    # stall FastAPI's event loop and starve other requests. We still
-    # `await` it so the request only returns after processing finishes;
-    # Telegram's 60s webhook timeout gives us plenty of headroom.
-    from app.ingestion.telegram_bot import handle_update
-    loop = asyncio.get_running_loop()
-    try:
-        await loop.run_in_executor(None, lambda: asyncio.run(handle_update(payload)))
-        return {"status": "processed"}
-    except Exception as e:
-        logger.error("telegram handle_update failed: %s", e, exc_info=True)
-        # Return 200 anyway so Telegram doesn't retry indefinitely
-        return {"status": "error", "detail": str(e)[:200]}
+    # Fire-and-forget: spawn a daemon thread to do the slow work (OCR,
+    # vision LLM, Supabase writes — all blocking I/O) and return 200
+    # IMMEDIATELY (<50ms). Telegram is satisfied → it won't retry, won't
+    # consider us failed, won't double-process. The user sees the ack
+    # message from inside handle_update, then the final result.
+    #
+    # daemon=True so threads don't block process shutdown on HF redeploys.
+    # No queue/pool — Python's threading scales fine for our 1-30 msg/day
+    # volume, and HF gives us ~2GB RAM so concurrent threads are cheap.
+    t = threading.Thread(target=_process_update_async, args=(payload,), daemon=True)
+    t.start()
+    return {"status": "accepted", "update_id": update_id}
 
 
 @router.get("/telegram/recent-events")
