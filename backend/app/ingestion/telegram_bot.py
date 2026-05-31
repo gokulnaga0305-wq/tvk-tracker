@@ -273,10 +273,24 @@ def _describe_image_via_vision_llm(image_bytes: bytes, caption: str) -> Optional
         "is common), parse it into YYYY-MM-DD.\n"
         "- For police harassment/atrocity by police → use police_excess.\n"
         "- For violence against women → sexual_assault or crimes_women_kids.\n"
-        "- For murder/killing → murders.\n"
+        "- For murder/killing/sickle attack/honour killing → murders.\n"
         "- For fact-check graphics about TVK claims → propaganda_event.\n"
-        "- If image clearly shows NO incident (just a logo, blank, etc), "
-        'return {"title": ""} so caller knows to skip.'
+        "\n"
+        "IMPORTANT — DO NOT GET CONFUSED BY VIDEO/LIVE OVERLAYS:\n"
+        "Many uploads are SCREENSHOTS of news TV channels (Sun News, "
+        "Polimer, Thanthi, Puthiya Thalaimurai, Kalaignar) or YouTube "
+        "news clips. These have overlays like 'BREAKING NEWS', 'LIVE', "
+        "play-button icons, video duration timestamps, channel logos.\n"
+        "  - IGNORE those overlays. They are CHROME, not content.\n"
+        "  - The Tamil/English text in the center/headline strip IS the "
+        "incident — read it and structure it.\n"
+        "  - 'Social media post' / 'video thumbnail' is NOT a valid reason "
+        "to skip — a news clip about a real event IS the event.\n"
+        "\n"
+        "ONLY return {\"title\": \"\"} when the image truly contains NO "
+        "extractable text and NO discernible event (e.g. a blank screen, "
+        "a pure logo, a meme with no factual claim). When in doubt, "
+        "RETURN A TITLE — the admin already vouched by uploading."
     )
     client = OpenAI(
         api_key=settings.groq_api_key,
