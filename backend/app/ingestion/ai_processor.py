@@ -483,18 +483,17 @@ def _get_client_chain() -> list[tuple[OpenAI, str]]:
     """
     chain: list[tuple[OpenAI, str]] = []
     if settings.groq_api_key:
-        # Groq free tier is gated by tokens-per-day (TPD), NOT req/day.
-        # llama-3.1-8b-instant has 500K TPD (5x the 70b's 100K), enough
-        # to ingest a full day's TVK content without hitting the wall.
-        # 8B quality is slightly lower than 70B but more than adequate
-        # for our structured-extract task (the prompt does heavy lifting).
-        # We list 8b FIRST so steady-state ingestion goes through it,
-        # then 70b as a backup if 8b errors / hits its own limit.
+        # FULL-extraction chain. The extraction prompt is ~6K tokens, so
+        # we CANNOT use llama-3.1-8b-instant here — its tokens-per-minute
+        # cap is 6K and the request 413s ("request too large"). 70b has
+        # no TPM wall (only a 100K tokens/DAY cap), so it's the Groq model
+        # for full extraction. The cheap relevance GATE (see _get_gate_chain
+        # + _passes_relevance_gate) runs on 8b first and filters out ~70%
+        # of junk so this expensive 70b/OpenRouter path runs far less often.
         groq_client = OpenAI(
             api_key=settings.groq_api_key,
             base_url="https://api.groq.com/openai/v1",
         )
-        chain.append((groq_client, "llama-3.1-8b-instant"))
         chain.append((groq_client, "llama-3.3-70b-versatile"))
     if settings.openrouter_api_key:
         chain.append((OpenAI(
@@ -511,6 +510,120 @@ def _get_client_chain() -> list[tuple[OpenAI, str]]:
             base_url="https://api.anthropic.com/v1",
         ), "claude-haiku-4-5"))
     return chain
+
+
+def _get_gate_chain() -> list[tuple[OpenAI, str]]:
+    """Provider chain for the CHEAP relevance gate (~300-token prompt).
+
+    Order is deliberately different from the full-extraction chain:
+      0. Groq llama-3.1-8b-instant — TINY prompt fits its 6K TPM, and it
+         has a 500K tokens/DAY bucket (5x the 70b). Gate calls are cheap
+         and plentiful here — exactly what a high-volume pre-filter needs.
+      1. Groq llama-3.3-70b-versatile — backup if 8b errors.
+      2. OpenRouter Haiku — paid last resort (rarely reached for a gate).
+
+    The gate's whole purpose is to AVOID burning the expensive chain on
+    obvious junk, so it must run on the highest-capacity cheapest model.
+    """
+    chain: list[tuple[OpenAI, str]] = []
+    if settings.groq_api_key:
+        groq_client = OpenAI(
+            api_key=settings.groq_api_key,
+            base_url="https://api.groq.com/openai/v1",
+        )
+        chain.append((groq_client, "llama-3.1-8b-instant"))
+        chain.append((groq_client, "llama-3.3-70b-versatile"))
+    if settings.openrouter_api_key:
+        chain.append((OpenAI(
+            api_key=settings.openrouter_api_key,
+            base_url="https://openrouter.ai/api/v1",
+            default_headers={
+                "HTTP-Referer": "https://tvk-tracker.vercel.app",
+                "X-Title": "TVK Tracker",
+            },
+        ), "anthropic/claude-haiku-4.5"))
+    return chain
+
+
+# Cheap pre-filter prompt. ~300 tokens. Kills obvious non-incidents
+# (cabinet news, opinion, national politics, pre-May-11 events) BEFORE
+# they reach the 6K-token full-extraction prompt. Biased toward
+# relevant=true on uncertainty so it never silently drops a real incident.
+GATE_SYSTEM_PROMPT = (
+    "You are a fast, strict binary classifier for a Tamil Nadu TVK-government "
+    "accountability tracker. You output ONLY compact JSON, nothing else."
+)
+
+GATE_PROMPT = """TVK govt took office 2026-05-11. Article published: {published}.
+
+TITLE: {title}
+TEXT: {text_head}
+
+Output ONLY this JSON: {{"relevant": true}} or {{"relevant": false}}
+
+relevant=TRUE if this is a SPECIFIC Tamil Nadu event dated ON OR AFTER 2026-05-11:
+- a crime with a named victim/place (murder, assault, rape, theft, kidnap, honour killing, caste/communal attack, child abuse, petrol-bomb)
+- a named corruption case / scam / bribe / tender irregularity
+- a civic failure at a named place (power cut, water shortage, flood, sewage, hospital failure)
+- a TVK policy decision with concrete impact (scheme launch/cancel, fare hike, closure, license action)
+- a broken or delayed government promise
+- a politician defecting TO TVK
+- an attack on a named journalist or media outlet
+- TVK claiming credit for a DMK-era scheme
+
+relevant=FALSE for: cabinet/portfolio/swearing-in news, party alliances forming,
+generic speeches/press conferences, opinion/editorial/columns, "X criticised Y"
+he-said-she-said, election commentary, DMK/Stalin reactions, movies/sports/celebrity,
+national news (Modi/BJP/RSS/parliament) not specific to TN, weather forecasts alone,
+crime-statistic AGGREGATES (no single named incident), and ANY event before 2026-05-11.
+
+When genuinely unsure, answer {{"relevant": true}} — a fuller check runs next."""
+
+
+def _passes_relevance_gate(item) -> tuple[bool, str]:
+    """Cheap pre-filter. Returns (should_proceed, reason).
+
+    should_proceed=True  -> route to the expensive full extraction
+    should_proceed=False -> skip; obvious junk, save the tokens
+
+    FAIL-OPEN by design: any AI error, missing provider, or unparseable
+    response returns True so a gate hiccup never drops a real incident.
+    The only thing that returns False is the model clearly saying
+    relevant=false on a tiny, cheap call.
+    """
+    chain = _get_gate_chain()
+    if not chain:
+        return True, "no_gate_provider"
+    prompt = GATE_PROMPT.format(
+        published=getattr(item, "published_at", None) or "?",
+        title=(getattr(item, "title", "") or "")[:200],
+        text_head=(getattr(item, "text", "") or "")[:1500],
+    )
+    messages = [
+        {"role": "system", "content": GATE_SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]
+    last_err = None
+    for client, model in chain:
+        try:
+            resp = client.chat.completions.create(
+                model=model, max_tokens=20, messages=messages,
+            )
+            raw = (resp.choices[0].message.content or "").strip()
+            low = raw.lower()
+            # Explicit false → skip. Everything else → proceed (fail-open).
+            if '"relevant": false' in low or '"relevant":false' in low or \
+               "'relevant': false" in low:
+                return False, "gate_rejected"
+            return True, "gate_passed"
+        except Exception as e:
+            last_err = e
+            if _is_quota_or_rate_error(e):
+                continue  # try next provider in the gate chain
+            continue
+    # Whole gate chain failed → fail-open, let full extraction decide
+    logger.warning("Relevance gate chain failed (%s); failing open", last_err)
+    return True, "gate_error_failopen"
 
 
 def _is_quota_or_rate_error(exc: Exception) -> bool:
@@ -675,6 +788,18 @@ async def process_article(item: ApifyWebhookItem) -> None:
     existing = db.table("sources").select("id").eq("url", item.url).execute()
     if existing.data:
         logger.debug("Already processed: %s", item.url)
+        return
+
+    # ---- 0.5. CHEAP RELEVANCE GATE ----
+    # Most ingested items (cabinet news, opinion, national politics, etc.)
+    # are NOT trackable incidents. Running the 6K-token full-extraction
+    # prompt on all of them exhausts the free-tier daily token budget in
+    # ~12 articles. This ~300-token gate (on the cheap 8B model with a
+    # 500K/day bucket) filters the obvious junk first. Fail-open: on any
+    # gate error it returns True and the full extractor still runs.
+    proceed, gate_reason = _passes_relevance_gate(item)
+    if not proceed:
+        logger.debug("Gate rejected (%s): %s", gate_reason, item.url)
         return
 
     # ---- 1. Claude extraction ----

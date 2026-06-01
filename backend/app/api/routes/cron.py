@@ -274,3 +274,114 @@ async def cron_keep_warm():
     the idle-shutdown threshold.
     Schedule every 5 minutes."""
     return {"status": "warm", "govt_day": settings.govt_day_number}
+
+
+# ---------------------------------------------------------------------------
+# Ingestion watchdog — the thing that ENDS manual "are we up to date?" checks
+# ---------------------------------------------------------------------------
+@router.post("/ingestion-watchdog")
+async def cron_ingestion_watchdog(
+    stale_hours: int = Query(4, ge=1, le=48,
+        description="Alert if zero incidents created in this many hours"),
+    x_admin_secret: Optional[str] = Header(None),
+):
+    """Health-check ingestion and PING THE ADMIN ON TELEGRAM if it stalled.
+
+    Converts 'the admin has to keep manually checking the dashboard' into
+    'the system tells the admin when it needs attention'. Checks:
+      1. Were any incidents created in the last `stale_hours`?
+      2. Is at least one AI provider actually answering?
+      3. Is the Apify token still valid / OpenRouter still funded?
+
+    If anything is wrong, sends ONE concise Telegram message to every
+    allowed chat id. Schedule on cron-job.org every 2-3 hours.
+
+    Returns the health summary so cron-job.org logs are useful too.
+    """
+    _require_admin(x_admin_secret)
+    from datetime import datetime, timezone, timedelta
+    from app.database import get_db
+
+    db = get_db()
+    now = datetime.now(timezone.utc)
+    problems: list[str] = []
+    summary: dict = {"checked_at": now.isoformat()}
+
+    # 1. Ingestion freshness — any incident rows created recently?
+    since = (now - timedelta(hours=stale_hours)).isoformat()
+    try:
+        r = db.table("incidents").select("id", count="exact").gte("created_at", since).execute()
+        recent_count = r.count or 0
+    except Exception as e:
+        recent_count = -1
+        problems.append(f"DB count failed: {str(e)[:80]}")
+    summary["incidents_last_%dh" % stale_hours] = recent_count
+    if recent_count == 0:
+        problems.append(f"No incidents ingested in {stale_hours}h")
+
+    # 2. AI provider liveness — fire one trivial probe through the chain
+    try:
+        from app.ingestion.ai_processor import _get_client_chain, _get_gate_chain
+        live = []
+        for label, chain in [("extract", _get_client_chain()), ("gate", _get_gate_chain())]:
+            ok = False
+            for client, model in chain:
+                try:
+                    client.chat.completions.create(
+                        model=model, max_tokens=3,
+                        messages=[{"role": "user", "content": "OK"}],
+                    )
+                    ok = True
+                    live.append(f"{label}:{model.split('/')[-1]}")
+                    break
+                except Exception:
+                    continue
+            if not ok:
+                problems.append(f"No live AI provider for '{label}' chain")
+        summary["ai_live"] = live
+    except Exception as e:
+        problems.append(f"AI probe failed: {str(e)[:80]}")
+
+    # 3. OpenRouter balance (cheap to check; the silent killer all day)
+    try:
+        import json as _json, urllib.request
+        if settings.openrouter_api_key:
+            req = urllib.request.Request(
+                "https://openrouter.ai/api/v1/credits",
+                headers={"Authorization": f"Bearer {settings.openrouter_api_key}"},
+            )
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                data = _json.loads(resp.read()).get("data", {})
+            remaining = (data.get("total_credits", 0) or 0) - (data.get("total_usage", 0) or 0)
+            summary["openrouter_remaining_usd"] = round(remaining, 3)
+            if remaining < 1.0:
+                problems.append(f"OpenRouter low: ${remaining:.2f} left")
+    except Exception as e:
+        summary["openrouter_check"] = f"err: {str(e)[:60]}"
+
+    summary["healthy"] = not problems
+    summary["problems"] = problems
+
+    # 4. If unhealthy, alert admin on Telegram (the whole point)
+    if problems:
+        try:
+            from app.ingestion.telegram_bot import _send_message
+            chat_ids = [c.strip() for c in (settings.telegram_allowed_chat_ids or "").split(",") if c.strip()]
+            msg = (
+                "⚠️ TVK Tracker ingestion needs attention:\n\n"
+                + "\n".join(f"• {p}" for p in problems)
+                + f"\n\nLast {stale_hours}h: {recent_count} incidents."
+                + (f"\nAI live: {', '.join(summary.get('ai_live', [])) or 'NONE'}")
+                + ("\n\nLikely fix: top up OpenRouter (openrouter.ai/credits) "
+                   "or wait for Groq daily reset (midnight UTC).")
+            )
+            for cid in chat_ids:
+                try:
+                    _send_message(int(cid), msg)
+                except Exception:
+                    pass
+            summary["alerted_chats"] = len(chat_ids)
+        except Exception as e:
+            summary["alert_error"] = str(e)[:100]
+
+    return summary
