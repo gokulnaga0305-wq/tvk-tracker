@@ -483,10 +483,19 @@ def _get_client_chain() -> list[tuple[OpenAI, str]]:
     """
     chain: list[tuple[OpenAI, str]] = []
     if settings.groq_api_key:
-        chain.append((OpenAI(
+        # Groq free tier is gated by tokens-per-day (TPD), NOT req/day.
+        # llama-3.1-8b-instant has 500K TPD (5x the 70b's 100K), enough
+        # to ingest a full day's TVK content without hitting the wall.
+        # 8B quality is slightly lower than 70B but more than adequate
+        # for our structured-extract task (the prompt does heavy lifting).
+        # We list 8b FIRST so steady-state ingestion goes through it,
+        # then 70b as a backup if 8b errors / hits its own limit.
+        groq_client = OpenAI(
             api_key=settings.groq_api_key,
             base_url="https://api.groq.com/openai/v1",
-        ), "llama-3.3-70b-versatile"))
+        )
+        chain.append((groq_client, "llama-3.1-8b-instant"))
+        chain.append((groq_client, "llama-3.3-70b-versatile"))
     if settings.openrouter_api_key:
         chain.append((OpenAI(
             api_key=settings.openrouter_api_key,
