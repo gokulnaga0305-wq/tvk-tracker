@@ -194,3 +194,53 @@ async def usage_summary() -> dict[str, Any]:
     out["ai_chain_count"] = len(chain)
 
     return out
+
+
+@router.get("/ai-probe")
+async def ai_probe() -> dict[str, Any]:
+    """Live-test EACH provider in the AI chain independently. Returns
+    per-provider success/failure with the actual error message.
+
+    Use when ingestion silently stops landing rows — this tells you
+    in one curl whether the chain is healthy or which provider died.
+    No auth (response contains no secrets, just provider status).
+    """
+    from app.ingestion.ai_processor import _get_client_chain
+    chain = _get_client_chain()
+    results = []
+    test_messages = [
+        {"role": "system", "content": "You output exactly the token OK and nothing else."},
+        {"role": "user", "content": "OK"},
+    ]
+    for i, (client, model) in enumerate(chain):
+        entry: dict[str, Any] = {
+            "provider_index": i,
+            "model": model,
+            "base_url": str(client.base_url).rstrip("/"),
+        }
+        t0 = datetime.now(timezone.utc)
+        try:
+            resp = client.chat.completions.create(
+                model=model, max_tokens=5, messages=test_messages,
+            )
+            entry["ok"] = True
+            entry["latency_ms"] = int(
+                (datetime.now(timezone.utc) - t0).total_seconds() * 1000
+            )
+            entry["response_preview"] = (resp.choices[0].message.content or "")[:80]
+        except Exception as e:
+            entry["ok"] = False
+            entry["latency_ms"] = int(
+                (datetime.now(timezone.utc) - t0).total_seconds() * 1000
+            )
+            entry["error_type"] = type(e).__name__
+            entry["error"] = str(e)[:300]
+        results.append(entry)
+    healthy = [r for r in results if r.get("ok")]
+    return {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "chain_length": len(chain),
+        "healthy_count": len(healthy),
+        "first_healthy_provider": healthy[0]["model"] if healthy else None,
+        "providers": results,
+    }
