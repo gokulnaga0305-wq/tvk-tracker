@@ -279,26 +279,10 @@ async def cron_keep_warm():
 # ---------------------------------------------------------------------------
 # Ingestion watchdog — the thing that ENDS manual "are we up to date?" checks
 # ---------------------------------------------------------------------------
-@router.post("/ingestion-watchdog")
-async def cron_ingestion_watchdog(
-    stale_hours: int = Query(4, ge=1, le=48,
-        description="Alert if zero incidents created in this many hours"),
-    x_admin_secret: Optional[str] = Header(None),
-):
-    """Health-check ingestion and PING THE ADMIN ON TELEGRAM if it stalled.
-
-    Converts 'the admin has to keep manually checking the dashboard' into
-    'the system tells the admin when it needs attention'. Checks:
-      1. Were any incidents created in the last `stale_hours`?
-      2. Is at least one AI provider actually answering?
-      3. Is the Apify token still valid / OpenRouter still funded?
-
-    If anything is wrong, sends ONE concise Telegram message to every
-    allowed chat id. Schedule on cron-job.org every 2-3 hours.
-
-    Returns the health summary so cron-job.org logs are useful too.
-    """
-    _require_admin(x_admin_secret)
+def _run_ingestion_watchdog(stale_hours: int) -> dict:
+    """The actual health check. Runs in a BackgroundTask (the live AI
+    probes are too slow for a synchronous HF response). Sends a Telegram
+    alert to the admin if anything is wrong."""
     from datetime import datetime, timezone, timedelta
     from app.database import get_db
 
@@ -309,17 +293,17 @@ async def cron_ingestion_watchdog(
 
     # 1. Ingestion freshness — any incident rows created recently?
     since = (now - timedelta(hours=stale_hours)).isoformat()
+    recent_count = -1
     try:
         r = db.table("incidents").select("id", count="exact").gte("created_at", since).execute()
         recent_count = r.count or 0
     except Exception as e:
-        recent_count = -1
         problems.append(f"DB count failed: {str(e)[:80]}")
-    summary["incidents_last_%dh" % stale_hours] = recent_count
+    summary[f"incidents_last_{stale_hours}h"] = recent_count
     if recent_count == 0:
         problems.append(f"No incidents ingested in {stale_hours}h")
 
-    # 2. AI provider liveness — fire one trivial probe through the chain
+    # 2. AI provider liveness — fire one trivial probe through each chain
     try:
         from app.ingestion.ai_processor import _get_client_chain, _get_gate_chain
         live = []
@@ -342,7 +326,7 @@ async def cron_ingestion_watchdog(
     except Exception as e:
         problems.append(f"AI probe failed: {str(e)[:80]}")
 
-    # 3. OpenRouter balance (cheap to check; the silent killer all day)
+    # 3. OpenRouter balance (the silent killer all day)
     try:
         import json as _json, urllib.request
         if settings.openrouter_api_key:
@@ -362,7 +346,7 @@ async def cron_ingestion_watchdog(
     summary["healthy"] = not problems
     summary["problems"] = problems
 
-    # 4. If unhealthy, alert admin on Telegram (the whole point)
+    # 4. Alert admin on Telegram if unhealthy (the whole point)
     if problems:
         try:
             from app.ingestion.telegram_bot import _send_message
@@ -371,7 +355,7 @@ async def cron_ingestion_watchdog(
                 "⚠️ TVK Tracker ingestion needs attention:\n\n"
                 + "\n".join(f"• {p}" for p in problems)
                 + f"\n\nLast {stale_hours}h: {recent_count} incidents."
-                + (f"\nAI live: {', '.join(summary.get('ai_live', [])) or 'NONE'}")
+                + f"\nAI live: {', '.join(summary.get('ai_live', [])) or 'NONE'}"
                 + ("\n\nLikely fix: top up OpenRouter (openrouter.ai/credits) "
                    "or wait for Groq daily reset (midnight UTC).")
             )
@@ -384,4 +368,32 @@ async def cron_ingestion_watchdog(
         except Exception as e:
             summary["alert_error"] = str(e)[:100]
 
+    logger.info("ingestion-watchdog: %s", summary)
     return summary
+
+
+@router.post("/ingestion-watchdog")
+async def cron_ingestion_watchdog(
+    background_tasks: BackgroundTasks,
+    stale_hours: int = Query(4, ge=1, le=48,
+        description="Alert if zero incidents created in this many hours"),
+    x_admin_secret: Optional[str] = Header(None),
+):
+    """Health-check ingestion and PING THE ADMIN ON TELEGRAM if it stalled.
+
+    Converts 'the admin has to keep manually checking the dashboard' into
+    'the system tells the admin when it needs attention'. Checks:
+      1. Were any incidents created in the last `stale_hours`?
+      2. Is at least one AI provider actually answering (extract + gate)?
+      3. Is OpenRouter still funded?
+
+    If anything is wrong, sends ONE concise Telegram message to every
+    allowed chat id. Schedule on cron-job.org every 2-3 hours.
+
+    Returns 202 immediately; the live AI probes run in the background
+    (they're too slow for a synchronous HF response). The Telegram alert
+    fires from the background task.
+    """
+    _require_admin(x_admin_secret)
+    background_tasks.add_task(_run_ingestion_watchdog, stale_hours)
+    return {"status": "queued", "stale_hours": stale_hours}
