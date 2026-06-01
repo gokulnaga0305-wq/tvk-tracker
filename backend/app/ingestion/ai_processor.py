@@ -38,9 +38,16 @@ CONTEXT:
   schemes. Flag "credit stealing" when TVK renames, expands, or relaunches these
   without acknowledgement.
 
-CRITICAL: be STRICT. Set is_relevant=false aggressively. Most articles are political
-narrative, not incidents. Only track articles describing a concrete event with a
-named victim/perpetrator/place OR a specific policy decision with concrete impact.
+CRITICAL: be STRICT on TOPIC, lenient on SOURCE LENGTH. Set is_relevant=false
+aggressively for political narrative, commentary, opinion, and alliance/cabinet
+news. BUT — a SHORT excerpt is NOT a reason to reject a real incident. Many
+sources are tweets or one-line headlines. If the excerpt names a concrete event
+(a murder, a fire, an assault, a defection, a protest, a specific civic failure)
+with a place or a person, set is_relevant=TRUE even if details are thin. Thin
+sourcing lowers CONFIDENCE (score it 0.4-0.6), it does NOT make a real incident
+irrelevant. A one-line tweet "Murder conviction in Thoothukudi student case" is
+a trackable murder — keep it. Only reject for thin sourcing if you cannot even
+tell WHAT happened or WHERE.
 
 Respond ONLY with valid JSON. No markdown fences, no explanation."""
 
@@ -291,6 +298,21 @@ Return JSON with these fields exactly:
 }}
 
 RELEVANCE RULES (be STRICT on opinion/politics, but INCLUSIVE on crime):
+
+THIN-SOURCE RULE (read this first — it's the most common mistake):
+  Do NOT reject a real incident just because the article excerpt is short,
+  is a tweet, or "lacks specifics / casualties / named officials". Source
+  thinness is a CONFIDENCE problem, not a RELEVANCE problem.
+  → If you can tell WHAT happened (murder, fire, assault, defection,
+    protest, power cut, scam) AND roughly WHERE (district/town/named
+    place) — set is_relevant=TRUE and lower confidence to 0.4-0.6.
+  → Examples that MUST be kept even from a one-line tweet:
+      "Thoothukudi student murder: accused convicted" → murders, keep.
+      "Fire at Kancheepuram Municipal Corporation depot" → civic_failure, keep.
+      "7 Dalits injured in sickle attacks in Tenkasi" → communal_violence, keep.
+      "AIADMK MLA X resigns, joins TVK" → defection, keep.
+  → Only reject for thinness if you genuinely cannot tell what the event
+    IS or where it happened.
 
 HARD DATE GATE — MUST PASS BEFORE ANYTHING ELSE:
   TVK government took oath on May 11, 2026.  This dashboard is an
