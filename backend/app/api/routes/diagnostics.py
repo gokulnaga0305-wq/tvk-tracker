@@ -244,3 +244,77 @@ async def ai_probe() -> dict[str, Any]:
         "first_healthy_provider": healthy[0]["model"] if healthy else None,
         "providers": results,
     }
+
+
+@router.get("/ai-probe-real")
+async def ai_probe_real() -> dict[str, Any]:
+    """Stress-test the AI chain with a REAL-SIZED extraction prompt.
+
+    The trivial /ai-probe endpoint can pass while real ingestion fails
+    if the issue is prompt length / TPM throttling. This calls each
+    provider with the actual SYSTEM_PROMPT + a realistic EXTRACTION
+    payload (~3-4K tokens). Surfaces token-limit / TPM errors that
+    only show up on production-size requests."""
+    from app.ingestion.ai_processor import (
+        _get_client_chain, SYSTEM_PROMPT, EXTRACTION_PROMPT,
+        _load_dmk_schemes_for_prompt,
+    )
+    from app.database import get_db
+    db = get_db()
+    try:
+        schemes_block = _load_dmk_schemes_for_prompt(db)
+    except Exception:
+        schemes_block = "(unavailable)"
+    test_text = (
+        "A 45-year-old farmer in Cuddalore was found dead Sunday after "
+        "TNEB power cut. Family blamed TVK govt failure to maintain rural "
+        "EB infra. Third such death this week since May 11."
+    ) * 20  # ~2K chars
+    prompt = EXTRACTION_PROMPT.format(
+        url="https://test/probe",
+        source="probe",
+        published="2026-06-01",
+        title="Farmer death after power cut in Cuddalore",
+        text=test_text,
+        dmk_schemes=schemes_block,
+        today="2026-06-01",
+    )
+    chain = _get_client_chain()
+    results = []
+    msgs = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user", "content": prompt},
+    ]
+    sys_len = len(SYSTEM_PROMPT)
+    usr_len = len(prompt)
+    for i, (client, model) in enumerate(chain):
+        entry: dict[str, Any] = {
+            "provider_index": i,
+            "model": model,
+            "base_url": str(client.base_url).rstrip("/"),
+            "system_chars": sys_len,
+            "user_chars": usr_len,
+        }
+        t0 = datetime.now(timezone.utc)
+        try:
+            resp = client.chat.completions.create(
+                model=model, max_tokens=1024, messages=msgs,
+            )
+            entry["ok"] = True
+            entry["latency_ms"] = int(
+                (datetime.now(timezone.utc) - t0).total_seconds() * 1000
+            )
+            entry["response_chars"] = len(resp.choices[0].message.content or "")
+            entry["response_preview"] = (resp.choices[0].message.content or "")[:200]
+        except Exception as e:
+            entry["ok"] = False
+            entry["latency_ms"] = int(
+                (datetime.now(timezone.utc) - t0).total_seconds() * 1000
+            )
+            entry["error_type"] = type(e).__name__
+            entry["error"] = str(e)[:500]
+        results.append(entry)
+    return {
+        "checked_at": datetime.now(timezone.utc).isoformat(),
+        "providers": results,
+    }
