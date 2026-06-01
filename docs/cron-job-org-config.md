@@ -1,8 +1,22 @@
 # cron-job.org migration — copy-paste config
 
-Migration replaces 6 GitHub Actions scheduled workflows (which got
+Migration replaces the GitHub Actions scheduled workflows (which got
 throttled 3-5h past their configured times on the free tier) with
-cron-job.org jobs that hit new `/api/cron/*` endpoints on the backend.
+cron-job.org jobs that hit `/api/cron/*` endpoints on the backend.
+
+### Quick reference — all 8 jobs (account timezone = Asia/Kolkata)
+
+| # | Job | Schedule (IST) | Auth |
+|---|---|---|---|
+| 1 | keep HF warm | every 5 min | none |
+| 2 | monitor handles | every 1 hour | secret |
+| 3 | trickle verify | every 30 min | secret |
+| 4 | **nightly full sweep** | **06:00** (after Groq reset) | secret |
+| 5 | meter snapshot | 23:30 | secret |
+| 6 | promise audit | 00:00 | secret |
+| 7 | **press RSS ingest** (new) | every 30 min | secret |
+| 8 | **ingestion watchdog** (new) | every 3 hours | secret |
+
 
 **Cost delta: zero.** cron-job.org is free unlimited. Apify scrapes
 cost the same as before (~$0.50/month). HF Spaces handles the work
@@ -12,16 +26,40 @@ on free tier (kept warm by the new `/api/cron/keep-warm` job itself).
 
 ---
 
+## ⚠️ TIMEZONE — read this first
+
+cron-job.org runs every job in **your account's timezone**
+(Settings → Account → Timezone), NOT in UTC. So a job you enter as
+"06:00" fires at 6 AM in whatever zone your account is set to.
+
+**All daily times in this doc are given in BOTH UTC and IST.** Set your
+cron-job.org account timezone to `Asia/Kolkata`, then enter the **IST**
+times below. (Interval jobs — "every 5 min", "every 30 min", "every
+hour" — ignore timezone entirely; they just fire on the interval.)
+
+### The one timing that actually matters: the Groq token reset
+
+The free AI budget (Groq tokens-per-day) resets at **00:00 UTC = 5:30 AM
+IST**. Any heavy AI job (the nightly full verification sweep) MUST run
+*after* that reset, or it hits the previous day's exhausted budget and
+does nothing. That's why the nightly sweep below is at **06:00 IST**,
+not 03:30 IST.
+
+---
+
 ## Step 1 — Sign up
 
 1. Go to https://cron-job.org/en/
 2. Sign up with email (free)
 3. Verify email
-4. Dashboard → "Create cronjob"
+4. **Settings → Account → Timezone → set to `Asia/Kolkata` (IST)**
+5. Dashboard → "Create cronjob"
 
-## Step 2 — Create six jobs
+## Step 2 — Create eight jobs
 
 For each row below: click "Create cronjob", fill in the fields, save.
+(Was six — Jobs 7 & 8 are new: steady gated RSS ingestion + the
+Telegram stall-alert watchdog.)
 
 ### Job 1 — Keep HF Spaces warm
 
@@ -57,16 +95,21 @@ For each row below: click "Create cronjob", fill in the fields, save.
 | Headers | `x-admin-secret: <YOUR_ADMIN_SECRET>` |
 | Timeout | 60s |
 
-### Job 4 — Nightly full corroboration sweep
+### Job 4 — Nightly full corroboration sweep ⚠️ RESET-ALIGNED
 
 | Field | Value |
 |---|---|
 | Title | `TVK · nightly full sweep` |
 | URL | `https://goknaga-tvk-tracker-backend.hf.space/api/cron/sweep-verify?limit=500&max_age_days=45` |
-| Schedule | Daily at 22:00 UTC (03:30 IST) |
+| Schedule | **Daily at 06:00 IST** (00:30 UTC) |
 | HTTP method | POST |
 | Headers | `x-admin-secret: <YOUR_ADMIN_SECRET>` |
 | Timeout | 60s |
+
+> **Why 06:00 IST, not 03:30:** the Groq daily token budget resets at
+> 00:00 UTC = 5:30 AM IST. Running the heavy AI sweep at 03:30 IST would
+> hit the *previous* day's exhausted budget. 06:00 IST runs it 30 min
+> after a fresh reset — full token budget, maximum throughput.
 
 ### Job 5 — Daily meter snapshot
 
@@ -74,7 +117,7 @@ For each row below: click "Create cronjob", fill in the fields, save.
 |---|---|
 | Title | `TVK · meter snapshot` |
 | URL | `https://goknaga-tvk-tracker-backend.hf.space/api/cron/meter-snapshot` |
-| Schedule | Daily at 18:00 UTC (23:30 IST) |
+| Schedule | Daily at 23:30 IST (18:00 UTC) |
 | HTTP method | POST |
 | Headers | `x-admin-secret: <YOUR_ADMIN_SECRET>` |
 | Timeout | 60s |
@@ -85,10 +128,46 @@ For each row below: click "Create cronjob", fill in the fields, save.
 |---|---|
 | Title | `TVK · promise audit` |
 | URL | `https://goknaga-tvk-tracker-backend.hf.space/api/cron/promise-audit` |
-| Schedule | Daily at 18:30 UTC (24:00 IST) |
+| Schedule | Daily at 00:00 IST (18:30 UTC) |
 | HTTP method | POST |
 | Headers | `x-admin-secret: <YOUR_ADMIN_SECRET>` |
 | Timeout | 60s |
+
+### Job 7 — Press / Reddit / Google-News RSS ingestion (NEW)
+
+The free-tier replacement for most Apify Twitter scraping. Pulls Tamil
+press + Reddit + Google-News keyword feeds and runs each item through
+the cheap relevance gate → full extraction. Cheap because the gate
+filters ~70% of junk before the expensive call.
+
+| Field | Value |
+|---|---|
+| Title | `TVK · press RSS ingest` |
+| URL | `https://goknaga-tvk-tracker-backend.hf.space/api/cron/scrape-press-rss?max_items_per_source=25` |
+| Schedule | Every 30 minutes |
+| HTTP method | POST |
+| Headers | `x-admin-secret: <YOUR_ADMIN_SECRET>` |
+| Timeout | 60s |
+
+### Job 8 — Ingestion watchdog → Telegram alert (NEW)
+
+Checks every few hours: did any incidents land recently? is an AI
+provider alive? is OpenRouter funded? If anything is wrong it pings
+you on Telegram with the exact problem — so you never again have to
+manually check whether ingestion stalled.
+
+| Field | Value |
+|---|---|
+| Title | `TVK · ingestion watchdog` |
+| URL | `https://goknaga-tvk-tracker-backend.hf.space/api/cron/ingestion-watchdog?stale_hours=4` |
+| Schedule | Every 3 hours |
+| HTTP method | POST |
+| Headers | `x-admin-secret: <YOUR_ADMIN_SECRET>` |
+| Timeout | 30s |
+
+> Requires the Telegram bot to be configured (TELEGRAM_BOT_TOKEN +
+> TELEGRAM_ALLOWED_CHAT_IDS on the HF Space — already set). Alerts go
+> to every allowed chat id.
 
 ---
 
@@ -101,7 +180,8 @@ GitHub repo secrets. To retrieve it:
 - OR run locally: `grep ADMIN_SECRET backend/.env`
 
 Paste this value into the `x-admin-secret` header field for each job
-above (except Job 1 — keep-warm is intentionally no-auth).
+above (except Job 1 — keep-warm is intentionally no-auth). Jobs 2-8 all
+use the same secret.
 
 ---
 
