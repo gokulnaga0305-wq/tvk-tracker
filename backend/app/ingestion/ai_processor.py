@@ -533,7 +533,7 @@ def _get_client_chain() -> list[tuple[OpenAI, str]]:
             },
         )
         chain.append((_or, "meta-llama/llama-3.3-70b-instruct:free"))
-        chain.append((_or, "deepseek/deepseek-chat-v3-0324:free"))
+        chain.append((_or, "qwen/qwen3-next-80b-a3b-instruct:free"))
     # Optional extra free tier: Google Gemini (set GEMINI_API_KEY). Free
     # at aistudio.google.com — no credit card. 1,500 req/day, separate
     # bucket from everything above. OpenAI-compatible endpoint.
