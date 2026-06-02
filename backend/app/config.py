@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openrouter_api_key: str = ""
     groq_api_key: str = ""
+    gemini_api_key: str = ""      # optional free fallback (aistudio.google.com)
     telegram_bot_token: str = ""
     telegram_allowed_chat_ids: str = ""    # comma-separated whitelist
     google_vision_api_key: str = ""

@@ -518,14 +518,31 @@ def _get_client_chain() -> list[tuple[OpenAI, str]]:
         )
         chain.append((groq_client, "llama-3.3-70b-versatile"))
     if settings.openrouter_api_key:
-        chain.append((OpenAI(
+        # FREE OpenRouter models — $0 cost. Accounts that have ever
+        # deposited >= $10 lifetime get 1,000 free-model requests/day,
+        # which is plenty as a Groq fallback. We list two free models so
+        # if one is busy/unavailable the other catches the call. The old
+        # paid 'anthropic/claude-haiku-4.5' is intentionally NOT used —
+        # it's what was silently draining the wallet.
+        _or = OpenAI(
             api_key=settings.openrouter_api_key,
             base_url="https://openrouter.ai/api/v1",
             default_headers={
                 "HTTP-Referer": "https://tvk-tracker.vercel.app",
                 "X-Title": "TVK Tracker",
             },
-        ), "anthropic/claude-haiku-4.5"))
+        )
+        chain.append((_or, "meta-llama/llama-3.3-70b-instruct:free"))
+        chain.append((_or, "deepseek/deepseek-chat-v3-0324:free"))
+    # Optional extra free tier: Google Gemini (set GEMINI_API_KEY). Free
+    # at aistudio.google.com — no credit card. 1,500 req/day, separate
+    # bucket from everything above. OpenAI-compatible endpoint.
+    gem = getattr(settings, "gemini_api_key", None)
+    if gem:
+        chain.append((OpenAI(
+            api_key=gem,
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        ), "gemini-2.0-flash"))
     if settings.anthropic_api_key:
         chain.append((OpenAI(
             api_key=settings.anthropic_api_key,
