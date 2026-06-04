@@ -1115,44 +1115,44 @@ async def handle_update(update: dict[str, Any]) -> None:
     # Pull a URL from the caption if present (used as source_url)
     source_url = _extract_url_from_caption(caption)
 
-    # Vision-first extraction — Groq's llama vision model reads the
-    # image directly (Tamil + English, multi-panel, compressed mobile
-    # screenshots all work). Skips OCR entirely. If vision fails, fall
-    # back to Google Vision OCR + text-only AI extract.
-    _ev(chat_id, "vision_extract_start")
-    extracted = _extract_incident_from_image(
-        image_bytes=image_bytes,
-        caption=caption,
-        source_url=source_url,
-    )
-    extraction_path = "vision"
-    _ev(chat_id, "vision_extract_done",
-        got_result=bool(extracted),
-        is_relevant=(extracted.get("is_relevant") if extracted else None))
+    # OCR-FIRST, TEXT-MODEL extraction (faster + more accurate + avoids
+    # the slow/dead Groq VISION models). The healthy fast path is:
+    # Google Vision OCR (reads Tamil accurately) -> Groq 70b TEXT model
+    # (157ms, reliable) via _extract_incident. We only fall back to the
+    # vision model (slow, sometimes dead) if OCR returns nothing — e.g.
+    # billing off, or a pure-image meme with no text.
+    extraction_path = "ocr_text"
+    extracted = None
+    _ev(chat_id, "ocr_first_extract_start")
+    ocr_text, ocr_err = _ocr_via_vision(image_bytes)
+    ocr_len = len((ocr_text or "").strip())
+    _ev(chat_id, "ocr_first_done", chars=ocr_len, err=(ocr_err or "")[:90])
+    if ocr_len >= 40:
+        extracted = _extract_incident(
+            ocr_text=ocr_text, caption=caption, source_url=source_url)
+        _ev(chat_id, "ocr_text_extract_done", got_result=bool(extracted))
+
+    # Vision-model fallback ONLY if OCR gave us nothing usable.
+    if not extracted:
+        _ev(chat_id, "vision_fallback_start", reason="ocr_empty" if ocr_len < 40 else "text_extract_failed")
+        extracted = _extract_incident_from_image(
+            image_bytes=image_bytes, caption=caption, source_url=source_url)
+        extraction_path = "vision_fallback"
+        _ev(chat_id, "vision_fallback_done", got_result=bool(extracted))
 
     if not extracted:
-        # Fall back to OCR + text-AI path
-        _ev(chat_id, "ocr_fallback_start")
-        ocr_text, ocr_err = _ocr_via_vision(image_bytes)
-        ocr_len = len(ocr_text.strip())
-        combined_len = ocr_len + len(caption.strip())
-        _ev(chat_id, "ocr_fallback_done", ocr_chars=ocr_len, caption_chars=len(caption), err=ocr_err)
-        if combined_len < 30:
+        if (ocr_len + len(caption.strip())) < 30:
             _send_message(chat_id,
-                f"Couldn't extract anything readable from this image.\n"
-                f"  vision model: failed\n"
-                f"  ocr: {ocr_len} chars\n"
+                f"Couldn't read anything usable from this image.\n"
+                f"  OCR: {ocr_len} chars ({ocr_err or 'ok'})\n"
                 f"  caption: {len(caption)} chars\n\n"
-                f"Try a clearer screenshot or add a caption describing what's in it."
+                f"Tip: paste the tweet/article LINK instead — I read links "
+                f"more reliably than dense-Tamil screenshots."
             )
-            return
-        extracted = _extract_incident(
-            ocr_text=ocr_text, caption=caption, source_url=source_url,
-        )
-        extraction_path = "ocr_fallback"
-        _ev(chat_id, "ocr_text_extract_done", got_result=bool(extracted))
-    if not extracted:
-        _send_message(chat_id, "AI extraction failed. Check the image or try again in a moment.")
+        else:
+            _send_message(chat_id,
+                "AI extraction failed (providers may be busy). Try again in "
+                "a moment, or paste the source link instead.")
         return
     # ADMIN-UPLOAD TRUST OVERRIDE:
     # The AI's relevance gate is calibrated for unsupervised Twitter/RSS
