@@ -15,8 +15,19 @@ const STATUS_TABS = [
   { key: 'partial', label: 'Partial' },
 ];
 
+// Days a promise is past its deadline while still not kept. Returns null
+// if there's no deadline, it's already kept, or the deadline is in the future.
+function daysOverdue(promise: Promise_): number | null {
+  if (!promise.deadline || promise.status === 'kept') return null;
+  const dl = new Date(promise.deadline).getTime();
+  const now = Date.now();
+  if (now <= dl) return null;
+  return Math.floor((now - dl) / 86_400_000);
+}
+
 function PromiseRow({ promise }: { promise: Promise_ }) {
   const colorClass = PROMISE_STATUS_COLORS[promise.status] || 'bg-gray-700 text-gray-300';
+  const overdue = daysOverdue(promise);
   return (
     <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-4 hover:border-[#333] transition-colors">
       <div className="flex items-start justify-between gap-4">
@@ -25,9 +36,14 @@ function PromiseRow({ promise }: { promise: Promise_ }) {
           {promise.notes && (
             <p className="text-gray-500 text-xs mt-2 italic">{promise.notes}</p>
           )}
-          <div className="flex items-center gap-3 mt-2 text-xs text-gray-600">
+          <div className="flex items-center gap-3 mt-2 text-xs text-gray-600 flex-wrap">
             <span>Category: {promise.category.replace(/_/g, ' ')}</span>
             {promise.deadline && <span>Deadline: {new Date(promise.deadline).toLocaleDateString('en-IN')}</span>}
+            {overdue !== null && (
+              <span className="font-semibold text-red-400 bg-red-950/40 px-2 py-0.5 rounded">
+                ⏱ {overdue} {overdue === 1 ? 'day' : 'days'} overdue, still undelivered
+              </span>
+            )}
           </div>
         </div>
         <div className="flex flex-col items-end gap-2 shrink-0">

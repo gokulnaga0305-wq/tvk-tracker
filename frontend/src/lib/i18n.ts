@@ -25,6 +25,7 @@ export const STRINGS = {
   "nav.members":      { en: "Members",          ta: "உறுப்பினர்கள்" },
   "nav.report":       { en: "Citizen Report",   ta: "குடிமக்கள் தகவல்" },
   "nav.methodology":  { en: "Methodology",      ta: "முறையியல்" },
+  "nav.corrections":  { en: "Corrections",      ta: "திருத்தங்கள்" },
   "nav.about":        { en: "About",            ta: "எங்களைப் பற்றி" },
 
   // ---- Top bar / counters ----

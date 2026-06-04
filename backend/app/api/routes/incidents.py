@@ -318,6 +318,52 @@ async def list_categories():
     return out
 
 
+@router.get("/corrections")
+async def list_corrections(limit: int = Query(100, le=300)):
+    """Public corrections log — every incident we RETRACTED or REJECTED
+    after publishing, with the reason and timestamp.
+
+    Showing our mistakes openly is a credibility feature, not a weakness:
+    a tracker that publishes its retractions is more trustworthy than one
+    that silently deletes them. Used by the /corrections page.
+    """
+    db = get_db()
+    out = []
+    try:
+        res = (
+            db.table("incidents")
+            .select("id, title, category, incident_date, retracted_at, "
+                    "retraction_reason, status, created_at")
+            .or_("status.eq.rejected,retracted_at.not.is.null")
+            .order("retracted_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        rows = res.data or []
+    except Exception:
+        rows = []
+
+    for r in rows:
+        # Only surface entries that carry a genuine correction signal:
+        # an explicit retraction reason, or a post-publish rejection.
+        reason = r.get("retraction_reason")
+        retracted = r.get("retracted_at")
+        if not reason and not retracted and r.get("status") != "rejected":
+            continue
+        out.append({
+            "id":            r["id"],
+            "title":         r.get("title"),
+            "category":      r.get("category"),
+            "incident_date": r.get("incident_date"),
+            "action":        "retracted" if retracted else "rejected",
+            "reason":        reason or "Did not meet the 2-source verification bar after review.",
+            "at":            retracted or r.get("created_at"),
+        })
+    # Newest correction first
+    out.sort(key=lambda x: x.get("at") or "", reverse=True)
+    return {"corrections": out, "count": len(out)}
+
+
 @router.get("/", response_model=list[dict])
 async def list_incidents(
     category: Optional[str] = None,

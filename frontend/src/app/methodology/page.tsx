@@ -248,6 +248,73 @@ export default function MethodologyPage() {
         </p>
       </Section>
 
+      {/* Radical-transparency block: pre-empt the informed critic by naming
+          our own limitations BEFORE they do. A tracker that states its biases
+          is more trustworthy than one that pretends to be neutral. */}
+      <div className="bg-amber-950/20 border border-amber-800/40 rounded-lg p-5 mb-4">
+        <h2 className="text-amber-200 font-semibold mb-3 flex items-center gap-2">
+          <AlertTriangle size={16} className="text-amber-400" />
+          12. Limitations &amp; known biases (read this)
+        </h2>
+        <div className="text-gray-300 text-sm leading-relaxed space-y-3">
+          <p>
+            We hold ourselves to the same standard we ask of the government.
+            Here is where this tracker is weak — stated plainly, so you can
+            judge it honestly:
+          </p>
+          <ul className="ml-5 list-disc space-y-2">
+            <li>
+              <strong className="text-white">Counts are not rates.</strong> A raw
+              total ("23 incidents") grows just because time passes. Wherever
+              possible we show a <em>per-month</em> figure and a{' '}
+              <strong className="text-white">DMK-era baseline</strong> next to it —
+              because "compared to what?" is the only honest question. Numbers
+              without a baseline are context, not proof.
+            </li>
+            <li>
+              <strong className="text-white">Correlation is not causation.</strong>{' '}
+              An incident happening under a government does not prove the
+              government caused it. A murder is a law-and-order data point, not
+              automatically a policy failure. We tag responsibility only where a
+              specific decision or named actor is involved; otherwise it is
+              context for the law-and-order trend, nothing more.
+            </li>
+            <li>
+              <strong className="text-white">Reporting bias.</strong> We can only
+              track what the press reports. More media attention can inflate a
+              category's count without the underlying reality changing. Sparse
+              coverage of a district ≠ peace there.
+            </li>
+            <li>
+              <strong className="text-white">Source asymmetry.</strong> Our feeds
+              skew toward outlets that cover TVK critically. We label every
+              incident's source tier (verified / press-reported / single-source)
+              so you can weight it yourself, and single social-media posts never
+              stand alone as evidence.
+            </li>
+            <li>
+              <strong className="text-white">We have a point of view.</strong> This
+              project is run by people who want accountability for the TVK
+              government. We fight that bias with public sources, a 2-outlet
+              verification rule, a public corrections log, and by recording the
+              government's <em>wins</em> too — but you should read everything here
+              knowing the people behind it are not neutral observers.
+            </li>
+            <li>
+              <strong className="text-white">Economic credit is shared.</strong> No
+              single government "creates" growth. State GDP reflects decades of
+              human-capital investment, geography, entrepreneurs, and central
+              macro-policy. We show baselines and per-capita figures rather than
+              claiming any one administration's sole credit.
+            </li>
+          </ul>
+          <p className="text-amber-200/80">
+            If you find an error, a missing baseline, or an unfair attribution —
+            tell us via the Report page. Corrections are logged publicly.
+          </p>
+        </div>
+      </div>
+
       <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 mt-6 text-center">
         <p className="text-gray-500 text-xs leading-relaxed">
           This platform is built for transparency. We track signal, not noise. We
