@@ -604,6 +604,180 @@ def _extract_url_from_caption(caption: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# URL ingestion — admin can paste a tweet link, news URL, or image URL
+# instead of uploading a screenshot.
+# ---------------------------------------------------------------------------
+_IMG_EXT_RE = re.compile(r"\.(jpg|jpeg|png|webp|gif|bmp)(\?|$)", re.I)
+_DASHBOARD_HOSTS = ("tvk-tracker.vercel.app", "goknaga-tvk-tracker")
+
+
+def _is_dashboard_url(url: str) -> bool:
+    return any(h in url for h in _DASHBOARD_HOSTS)
+
+
+def _download_image_url(url: str) -> Optional[bytes]:
+    """Download an image from a direct URL. Returns bytes or None."""
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            ctype = (r.headers.get("Content-Type") or "").lower()
+            data = r.read()
+            if "image" in ctype or _IMG_EXT_RE.search(url):
+                return data
+    except Exception as e:
+        logger.warning("image URL download failed: %s", e)
+    return None
+
+
+def _fetch_url_text(url: str) -> str:
+    """Fetch a web page / tweet as clean readable text via Jina Reader
+    (r.jina.ai — free, no auth, renders JS so it works on x.com/twitter
+    which are otherwise un-scrapable). Falls back to a raw fetch + HTML
+    strip if Jina is unavailable."""
+    # 1. Jina Reader — best for JS-heavy pages (tweets) and articles
+    try:
+        jina = "https://r.jina.ai/" + url
+        req = urllib.request.Request(jina, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=40) as r:
+            txt = r.read().decode("utf-8", "ignore")
+            if txt and len(txt.strip()) >= 50:
+                return txt[:8000]
+    except Exception as e:
+        logger.warning("Jina reader failed for %s: %s", url, e)
+    # 2. Fallback: raw fetch + crude HTML strip
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            html = r.read().decode("utf-8", "ignore")
+        text = re.sub(r"<script[\s\S]*?</script>|<style[\s\S]*?</style>", " ", html)
+        text = re.sub(r"<[^>]+>", " ", text)
+        text = re.sub(r"\s+", " ", text).strip()
+        return text[:8000]
+    except Exception as e:
+        logger.warning("raw fetch failed for %s: %s", url, e)
+    return ""
+
+
+def _ingest_from_url(chat_id: int, url: str, caption: str) -> None:
+    """Ingest an incident from a pasted URL (tweet / news article / image).
+    Self-contained: fetch -> extract -> date-gate -> dedup -> insert ->
+    reply. Mirrors the image-upload finalize, lands as admin_verified."""
+    is_image = bool(_IMG_EXT_RE.search(url))
+    _ev(chat_id, "url_ingest_start", kind="image" if is_image else "page",
+        url=url[:50])
+    _send_message(chat_id, "Got it — reading the link (~15s)...")
+
+    extracted = None
+    if is_image:
+        img = _download_image_url(url)
+        if img:
+            extracted = _extract_incident_from_image(
+                image_bytes=img, caption=caption, source_url=url)
+    if extracted is None:
+        text = _fetch_url_text(url)
+        _ev(chat_id, "url_text_fetched", chars=len(text))
+        if len(text.strip()) >= 50:
+            extracted = _extract_incident(
+                ocr_text=text, caption=caption, source_url=url)
+        elif not is_image:
+            # last resort: maybe it's actually an image with no extension
+            img = _download_image_url(url)
+            if img:
+                extracted = _extract_incident_from_image(
+                    image_bytes=img, caption=caption, source_url=url)
+
+    if not extracted or not (extracted.get("title") or "").strip():
+        _send_message(chat_id,
+            "Couldn't read a usable incident from that link.\n"
+            "If it's an x.com/twitter post, the page may be login-walled — "
+            "screenshot it and upload the image instead.")
+        return
+
+    # Admin pasted it -> admin vouches; bypass the relevance gate.
+    extracted["_admin_override"] = True
+
+    # Hard date gate
+    from datetime import date as _date
+    inc_date_s = extracted.get("incident_date")
+    if inc_date_s:
+        try:
+            if _date.fromisoformat(inc_date_s) < _date(2026, 5, 11):
+                _send_message(chat_id,
+                    f"Not added: incident is pre-May-11 2026 ({inc_date_s}). "
+                    f"The tracker only covers the TVK admin era.")
+                return
+        except Exception:
+            pass
+
+    # Dedup
+    try:
+        duplicate = _find_duplicate(extracted)
+    except Exception:
+        duplicate = None
+    if duplicate:
+        _send_message(chat_id,
+            f"ℹ️ Already on dashboard ({int(duplicate['_match_ratio']*100)}% match):\n"
+            f"\"{duplicate['title']}\"\n"
+            f"{DASHBOARD_URL}/incidents/{duplicate['id']}\n\n"
+            f"You can ignore this — it's already captured.")
+        return
+
+    db = get_db()
+    payload = {
+        "title":              (extracted.get("title") or "Untitled incident")[:200],
+        "summary":            (extracted.get("summary") or extracted.get("title") or "")[:2000],
+        "category":           extracted.get("category", "other"),
+        "incident_date":      extracted.get("incident_date") or date.today().isoformat(),
+        "location":           extracted.get("location"),
+        "severity":           _clamp_severity(extracted.get("severity")),
+        "ai_confidence":      extracted.get("confidence", 0.8),
+        "status":             "approved",
+        "verification_status": "admin_verified",
+        "source_urls":        [url],
+        "source_count":       1,
+        "ai_raw": {
+            "telegram_source": True, "caption": caption,
+            "extraction_path": "url_paste", "from_chat_id": chat_id,
+            "source_url": url,
+            "ingested_at": datetime.now(timezone.utc).isoformat(),
+            "admin_override": True, "ai_reason": extracted.get("reason"),
+        },
+        "is_credit_steal":    extracted.get("is_credit_steal", False),
+        "press_sentiment":    extracted.get("press_sentiment"),
+        "image_urls":         [],
+        "member_ids":         [],
+        "event_signature":    _event_sig(
+            extracted.get("category", ""), extracted.get("location"),
+            extracted.get("incident_date")),
+    }
+    _ev(chat_id, "url_insert_attempt", title=payload["title"][:50],
+        category=payload["category"])
+    try:
+        res = db.table("incidents").insert(payload).execute()
+        if not res.data:
+            _send_message(chat_id, "Insert failed (no row). Check backend logs.")
+            return
+        new_id = res.data[0]["id"]
+        _LAST_INCIDENT_BY_CHAT[chat_id] = new_id
+        try:
+            db.table("incident_audit").insert({
+                "incident_id": new_id, "action": "created",
+                "actor": "telegram_bot", "to_value": "admin_verified",
+                "reason": f"Telegram URL paste from chat {chat_id}: {url[:120]}",
+            }).execute()
+        except Exception:
+            pass
+        _send_message(chat_id,
+            f"NEW INCIDENT ADDED (from link)\n"
+            f"Title: {payload['title']}\n"
+            f"Category: {payload['category']} · severity {payload['severity']}\n"
+            f"{DASHBOARD_URL}/incidents/{new_id}")
+    except Exception as e:
+        _ev(chat_id, "url_insert_exception", err=f"{type(e).__name__}: {str(e)[:120]}")
+        _send_message(chat_id, f"Insert error: {str(e)[:200]}")
+
+
+# ---------------------------------------------------------------------------
 # Auth: only allow whitelisted chat IDs
 # ---------------------------------------------------------------------------
 def _clamp_severity(raw: Any) -> int:
@@ -865,6 +1039,16 @@ async def handle_update(update: dict[str, Any]) -> None:
             if not target_id:
                 target_id = _LAST_INCIDENT_BY_CHAT.get(chat_id)
 
+            # URL INGESTION — if the message contains an EXTERNAL content
+            # URL (not a dashboard link), ingest it directly (tweet / news /
+            # image). Checked before command parsing so a pasted link is
+            # treated as ingestion, not a tag command. A dashboard incident
+            # URL in a reply is NOT treated as content (it's a command target).
+            url_m = _URL_RE.search(text)
+            if url_m and not _is_dashboard_url(url_m.group(0)):
+                _ingest_from_url(chat_id, url_m.group(0), caption=text[:300])
+                return
+
             cmd = _parse_admin_command(text)
             _ev(chat_id, "text_command_received",
                 has_target=bool(target_id),
@@ -892,15 +1076,11 @@ async def handle_update(update: dict[str, Any]) -> None:
                     "or upload an image first then send the command."
                 )
                 return
-            if _URL_RE.search(text):
-                _send_message(chat_id,
-                    "I see a URL but no image. Image uploads work best — "
-                    "I OCR + extract from screenshots. URL-only ingestion "
-                    "isn't wired in this MVP; paste the screenshot."
-                )
-                return
-
-        _send_message(chat_id, "Upload an image of a news article/screenshot to add it to the dashboard.")
+        _send_message(chat_id,
+            "Send me one of:\n"
+            "• a screenshot of a news article / tweet\n"
+            "• a tweet link, news URL, or image URL\n"
+            "and I'll extract the incident and add it to the dashboard.")
         return
 
     _ev(chat_id, "image_detected", photos=len(photos), is_image_doc=is_image_doc)
