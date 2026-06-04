@@ -186,10 +186,10 @@ export default function DashboardPage() {
 
         {/* Crime stat cards */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
-          <StatCard label="Corruption"          value={stats.corruption_count}        verified={stats.corruption_verified}        topSources={stats.top_sources?.corruption}        href="corruption"        icon={DollarSign}  color="text-yellow-400" />
-          <StatCard label="Murders"             value={stats.murders_count}           verified={stats.murders_verified}           topSources={stats.top_sources?.murders}           href="murders"           icon={Skull}       color="text-red-500" />
-          <StatCard label="Sexual Assaults"     value={stats.sexual_assault_count}    verified={stats.sexual_assault_verified}    topSources={stats.top_sources?.sexual_assault}    href="sexual_assault"    icon={ShieldAlert} color="text-red-400" />
-          <StatCard label="Crimes vs Children"  value={stats.crimes_women_kids_count} verified={stats.crimes_women_kids_verified} topSources={stats.top_sources?.crimes_women_kids} href="crimes_women_kids" icon={Users}       color="text-orange-400" />
+          <StatCard label="Corruption"          value={stats.corruption_count}        verified={stats.corruption_verified}        topSources={stats.top_sources?.corruption}        href="corruption"        icon={DollarSign}  color="text-yellow-400" govtDays={stats.govt_day} />
+          <StatCard label="Murders"             value={stats.murders_count}           verified={stats.murders_verified}           topSources={stats.top_sources?.murders}           href="murders"           icon={Skull}       color="text-red-500" govtDays={stats.govt_day} />
+          <StatCard label="Sexual Assaults"     value={stats.sexual_assault_count}    verified={stats.sexual_assault_verified}    topSources={stats.top_sources?.sexual_assault}    href="sexual_assault"    icon={ShieldAlert} color="text-red-400" govtDays={stats.govt_day} />
+          <StatCard label="Crimes vs Children"  value={stats.crimes_women_kids_count} verified={stats.crimes_women_kids_verified} topSources={stats.top_sources?.crimes_women_kids} href="crimes_women_kids" icon={Users}       color="text-orange-400" govtDays={stats.govt_day} />
           <StatCard
             label="Promises Kept"
             value={stats.promises_kept}

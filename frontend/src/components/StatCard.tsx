@@ -30,10 +30,23 @@ interface Props {
    *  governance, broken_promise, alcohol_menace, fake_news, civic_failure,
    *  police_excess, sexual_assault, crimes_women_kids, etc. */
   href?: string;
+  /** Number of days the TVK government has been in office. When provided
+   *  with a numeric value, the card shows an honest per-month RATE
+   *  ("≈ 5.2/month") under the headline. Raw counts grow just because
+   *  time passes; a rate is the honest figure and pre-empts the
+   *  "counts aren't rates" critique. We do NOT invent a baseline — that
+   *  would be fabrication — we just normalise our own number truthfully. */
+  govtDays?: number;
 }
 
-export default function StatCard({ label, value, sub, icon: Icon, color = 'text-white', verified, topSources, href }: Props) {
+export default function StatCard({ label, value, sub, icon: Icon, color = 'text-white', verified, topSources, href, govtDays }: Props) {
   const numericValue = typeof value === 'number' ? value : undefined;
+  // Honest per-month rate: count / days-in-office * 30, shown only when we
+  // have a real day count and a non-trivial value.
+  const perMonth =
+    govtDays && govtDays > 0 && numericValue !== undefined && numericValue > 0
+      ? (numericValue / govtDays) * 30
+      : null;
   const leadVerified =
     verified !== undefined &&
     numericValue !== undefined;
@@ -100,6 +113,14 @@ export default function StatCard({ label, value, sub, icon: Icon, color = 'text-
       )}
       {leadVerified && community === 0 && numericValue! > 0 && (
         <div className="text-[11px] text-gray-600 -mt-1">all press-confirmed</div>
+      )}
+      {perMonth !== null && (
+        <div
+          className="text-[11px] text-gray-500"
+          title="Honest rate: our count normalised per 30 days in office. Raw totals grow with time; a rate doesn't."
+        >
+          ≈ {perMonth.toFixed(perMonth >= 10 ? 0 : 1)}/month
+        </div>
       )}
 
       {/* Top press sources behind the count. Chips link straight to the
