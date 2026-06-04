@@ -3,6 +3,7 @@ import { DashboardStats } from '@/lib/api';
 import { useLocale, LocaleToggle } from './LocaleProvider';
 import { MobileMenuButton } from './Sidebar';
 import { StringKey } from '@/lib/i18n';
+import ChennaiClock from './ChennaiClock';
 
 function Chip({ labelKey, count, color }: { labelKey: StringKey; count: number; color: string }) {
   const { t } = useLocale();
@@ -30,7 +31,8 @@ export default function TopBar({ stats }: { stats: DashboardStats }) {
             {t('top.day')} {stats.govt_day}
           </span>
         </span>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2 sm:gap-3">
+          <ChennaiClock />
           <LocaleToggle />
           <a
             href="/report"
