@@ -255,7 +255,8 @@ def _describe_image_via_vision_llm(image_bytes: bytes, caption: str) -> Optional
         'corruption, police_excess, custodial_death, honour_killing, alcohol_menace, '
         'power_cut, eb_failure, broken_promise, attack_on_press, fake_news, '
         'propaganda_event, dravidian_attack, credit_steal, civic_failure, '
-        'economic_failure, federalism, language_imposition, governance, other>,\n'
+        'economic_failure, federalism, language_imposition, political_event, '
+        'governance, other>,\n'
         '  "severity":      <integer 1-5: 1=minor 3=serious 5=fatal/major>,\n'
         '  "location":      <city/district name in English, or null>,\n'
         '  "incident_date": <YYYY-MM-DD if visible in image, else null>,\n'
@@ -290,6 +291,10 @@ def _describe_image_via_vision_llm(image_bytes: bytes, caption: str) -> Optional
         "- For violence against women → sexual_assault or crimes_women_kids.\n"
         "- For murder/killing/sickle attack/honour killing → murders.\n"
         "- For fact-check graphics about TVK claims → propaganda_event.\n"
+        "- POLITICAL/PARTY/CEREMONIAL (rally, roadshow, alliance, Rajya Sabha "
+        "seat, CM speech/statement, ribbon-cutting, fan/cult content like "
+        "mannequin worship) → political_event, NOT governance. These are "
+        "political news, not accountability failures.\n"
         "\n"
         "IMPORTANT — DO NOT GET CONFUSED BY VIDEO/LIVE OVERLAYS:\n"
         "Many uploads are SCREENSHOTS of news TV channels (Sun News, "

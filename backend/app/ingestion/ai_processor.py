@@ -80,6 +80,7 @@ Return JSON with these fields exactly:
     "drug_menace", "alcohol_menace", "communal_violence",
     "industrial_flight", "investment_announcement",
     "federalism", "language_imposition", "dravidian_attack",
+    "political_event",
     "other"
   ],
 
@@ -103,6 +104,16 @@ Return JSON with these fields exactly:
       - If it's school-age voter targeting / propaganda aimed at minors
         / film-tie-in mobilisation of youth -> use "youth_targeting"
         (NEW category).
+      - POLITICAL / PARTY / CEREMONIAL events are NOT governance and NOT
+        accountability failures -> use "political_event". This covers:
+        party alliances & seat-sharing (Rajya Sabha seat to X), rallies,
+        roadshows, public meetings, ceremonial inaugurations/ribbon-cuttings,
+        CM speeches & "declares/denies" political statements, general-council
+        meetings, electoral-result court rulings on OLD pre-2026 elections.
+        These are political news, tracked separately — do NOT file them as
+        governance (which is for concrete administrative/policy FAILURES).
+        A purely ceremonial or positioning event with no concrete failure
+        is political_event, often with low confidence.
       - TENDER / PROCUREMENT (commonly under-detected): A story citing
         a SPECIFIC monetary amount + procurement red flag (sub-day
         deadline, sole-source award, no competitive bidding, contractor

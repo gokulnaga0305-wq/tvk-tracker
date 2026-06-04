@@ -268,6 +268,7 @@ CATEGORY_LABELS_BACKEND: dict[str, str] = {
     "youth_targeting":          "Youth Targeting",
     "crowd_management_failure": "Crowd / Rally Failures",
     "governance":               "Governance",
+    "political_event":          "Political / Party",
     "tenders":                  "Tenders / Procurement",
     "power_cut":                "Power Cut",
     "eb_failure":               "EB / TANGEDCO Failure",
