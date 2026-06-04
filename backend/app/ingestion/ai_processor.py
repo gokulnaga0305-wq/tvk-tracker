@@ -535,6 +535,7 @@ def _get_client_chain() -> list[tuple[OpenAI, str]]:
         # + _passes_relevance_gate) runs on 8b first and filters out ~70%
         # of junk so this expensive 70b/OpenRouter path runs far less often.
         groq_client = OpenAI(
+            timeout=40, max_retries=1,
             api_key=settings.groq_api_key,
             base_url="https://api.groq.com/openai/v1",
         )
@@ -547,6 +548,7 @@ def _get_client_chain() -> list[tuple[OpenAI, str]]:
         # paid 'anthropic/claude-haiku-4.5' is intentionally NOT used —
         # it's what was silently draining the wallet.
         _or = OpenAI(
+            timeout=40, max_retries=1,
             api_key=settings.openrouter_api_key,
             base_url="https://openrouter.ai/api/v1",
             default_headers={
@@ -562,11 +564,13 @@ def _get_client_chain() -> list[tuple[OpenAI, str]]:
     gem = getattr(settings, "gemini_api_key", None)
     if gem:
         chain.append((OpenAI(
+            timeout=40, max_retries=1,
             api_key=gem,
             base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
         ), "gemini-2.0-flash"))
     if settings.anthropic_api_key:
         chain.append((OpenAI(
+            timeout=40, max_retries=1,
             api_key=settings.anthropic_api_key,
             base_url="https://api.anthropic.com/v1",
         ), "claude-haiku-4-5"))
@@ -589,6 +593,7 @@ def _get_gate_chain() -> list[tuple[OpenAI, str]]:
     chain: list[tuple[OpenAI, str]] = []
     if settings.groq_api_key:
         groq_client = OpenAI(
+            timeout=40, max_retries=1,
             api_key=settings.groq_api_key,
             base_url="https://api.groq.com/openai/v1",
         )
@@ -596,6 +601,7 @@ def _get_gate_chain() -> list[tuple[OpenAI, str]]:
         chain.append((groq_client, "llama-3.3-70b-versatile"))
     if settings.openrouter_api_key:
         chain.append((OpenAI(
+            timeout=40, max_retries=1,
             api_key=settings.openrouter_api_key,
             base_url="https://openrouter.ai/api/v1",
             default_headers={

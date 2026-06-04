@@ -313,6 +313,7 @@ def _describe_image_via_vision_llm(image_bytes: bytes, caption: str) -> Optional
         "RETURN A TITLE — the admin already vouched by uploading."
     )
     client = OpenAI(
+        timeout=40, max_retries=1,
         api_key=settings.groq_api_key,
         base_url="https://api.groq.com/openai/v1",
     )
@@ -557,6 +558,7 @@ def _extract_incident_from_image(*, image_bytes: bytes, caption: str, source_url
         today=date.today().isoformat(),
     )
     client = OpenAI(
+        timeout=40, max_retries=1,
         api_key=settings.groq_api_key,
         base_url="https://api.groq.com/openai/v1",
     )
