@@ -290,10 +290,35 @@ async def ingest_one_source(source: dict[str, str], *, max_items: int = 25) -> d
     return out
 
 
+def _rotated_sources(sources: list[dict[str, str]]) -> list[dict[str, str]]:
+    """Rotate the source list by a time-derived offset so every source
+    gets to be near the FRONT across the day.
+
+    Why: on HF's free tier the background task running this sweep often
+    dies partway through the loop, never reaching sources lower in the
+    static list. With a fixed order, the same early sources get scraped
+    every run while later ones (e.g. Sun News) starve for days. Rotating
+    the start point each run means that even if only a few sources finish
+    per run, the front of the queue moves — so over a handful of runs
+    every source is covered. Simple, deterministic, no DB lookup, immune
+    to the outlet-vs-source_label naming mismatch.
+    """
+    from datetime import datetime, timezone
+    n = len(sources)
+    if n <= 1:
+        return list(sources)
+    # New start index every ~30 min; walks the whole list over ~n*30 min.
+    slot = int(datetime.now(timezone.utc).timestamp() // 1800)
+    off = slot % n
+    return sources[off:] + sources[:off]
+
+
 async def ingest_all_sources(*, max_items_per_source: int = 25) -> list[dict[str, Any]]:
-    """Sweep every registered RSS source sequentially."""
+    """Sweep every registered RSS source, with a ROTATING start point so HF
+    background-task death never permanently starves the sources lower in the
+    static list (Sun News, News18, etc. were chronically skipped)."""
     results: list[dict[str, Any]] = []
-    for src in SOURCES_RSS:
+    for src in _rotated_sources(SOURCES_RSS):
         try:
             r = await ingest_one_source(src, max_items=max_items_per_source)
             results.append(r)
