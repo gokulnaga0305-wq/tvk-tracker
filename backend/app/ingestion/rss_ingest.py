@@ -126,10 +126,23 @@ SOURCES_RSS: list[dict[str, str]] = [
     # queries return any article that quotes/references the outlet —
     # so a Sun News tweet that becomes a news story flows in this way.
     {
+        # Broadened: the old query (`"Sun News" Tamil Nadu TVK`) was too
+        # narrow and rarely surfaced fresh items, and the rich Sun News
+        # Twitter handle is dead (Apify exhausted). This wider query pulls
+        # Sun News Tamil Nadu coverage broadly; the relevance gate + AI
+        # filter non-TVK items, so widening costs nothing in quality.
         "source_label": "rss_gnews_sunnews",
         "tier":         "established_press",
-        "rss_url":      "https://news.google.com/rss/search?q=%22Sun+News%22+Tamil+Nadu+TVK&hl=en-IN&gl=IN&ceid=IN:en",
-        "name":         "Google News (Sun News + TVK)",
+        "rss_url":      "https://news.google.com/rss/search?q=%22Sun+News%22+%22Tamil+Nadu%22&hl=en-IN&gl=IN&ceid=IN:en",
+        "name":         "Google News (Sun News)",
+    },
+    {
+        # Tamil-language Sun News query — catches Tamil-script coverage the
+        # English query misses (Sun News publishes primarily in Tamil).
+        "source_label": "rss_gnews_sunnews_ta",
+        "tier":         "established_press",
+        "rss_url":      "https://news.google.com/rss/search?q=%E0%AE%9A%E0%AE%A9%E0%AF%8D+%E0%AE%A8%E0%AE%BF%E0%AE%AF%E0%AF%82%E0%AE%B8%E0%AF%8D+%E0%AE%A4%E0%AE%AE%E0%AE%BF%E0%AE%B4%E0%AF%8D%E0%AE%A8%E0%AE%BE%E0%AE%9F%E0%AF%81&hl=ta-IN&gl=IN&ceid=IN:ta",
+        "name":         "Google News (Sun News Tamil)",
     },
     {
         "source_label": "rss_gnews_news18",
