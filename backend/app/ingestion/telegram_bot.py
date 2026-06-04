@@ -518,6 +518,12 @@ def _extract_incident_from_image(*, image_bytes: bytes, caption: str, source_url
     # still rides along for layout/context. Degrades gracefully if OCR is
     # unavailable (billing off / no key) — falls back to pixel reading.
     ocr_text, ocr_err = _ocr_via_vision(image_bytes)
+    # Diagnostic: record whether OCR actually produced text or errored, so
+    # /recent-events tells us if Google Vision billing is the blocker (the
+    # bot can't read dense Tamil well without it). chat_id unknown here, use
+    # None — the recent-events endpoint shows all entries.
+    _ev(None, "ocr_first_result", chars=len((ocr_text or "").strip()),
+        err=(ocr_err or "")[:120])
     ocr_block = ""
     if ocr_text and len(ocr_text.strip()) >= 30:
         ocr_block = (
