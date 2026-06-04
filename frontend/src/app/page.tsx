@@ -191,6 +191,19 @@ export default function DashboardPage() {
         </div>
 
         {/* Crime stat cards */}
+        {/* Honest "sample, not census" guard — our counts are press-reported
+            incidents we've documented, NOT comprehensive crime statistics.
+            Without this, a per-month rate could be misread as TN's actual
+            crime rate. Stating it openly is what keeps the numbers credible
+            (and pre-empts the "your 29 vs NCRB's 1,690" critique). */}
+        <p className="text-[11px] text-gray-500 mb-2 leading-relaxed max-w-3xl">
+          ⓘ These are <span className="text-gray-400">press-reported incidents we&apos;ve documented</span> —
+          a visible sample of what reaches the news, <span className="text-gray-400">not TN&apos;s
+          full crime statistics</span> (for scale, NCRB recorded 1,690 murders in TN in 2022).
+          Read them as &quot;what&apos;s surfacing under this government,&quot; not a complete crime rate.
+          The honest baselines are <a href="/economy" className="text-orange-400 hover:underline">economic</a> and{' '}
+          <a href="/promises" className="text-orange-400 hover:underline">promise delivery</a>, where the figures are comprehensive.
+        </p>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
           <StatCard label="Corruption"          value={stats.corruption_count}        verified={stats.corruption_verified}        topSources={stats.top_sources?.corruption}        href="corruption"        icon={DollarSign}  color="text-yellow-400" govtDays={stats.govt_day} />
           <StatCard label="Murders"             value={stats.murders_count}           verified={stats.murders_verified}           topSources={stats.top_sources?.murders}           href="murders"           icon={Skull}       color="text-red-500" govtDays={stats.govt_day} />
