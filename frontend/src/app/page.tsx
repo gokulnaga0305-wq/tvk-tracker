@@ -7,6 +7,7 @@ import BaselineDelta from '@/components/BaselineDelta';
 import IncumbencyMeter from '@/components/IncumbencyMeter';
 import PropagandaReach from '@/components/PropagandaReach';
 import SectoralCAGR from '@/components/SectoralCAGR';
+import GovScorecard from '@/components/GovScorecard';
 import { DashboardStats, Incident, BaselineRow } from '@/lib/api';
 import { CATEGORY_LABELS } from '@/lib/constants';
 import Link from 'next/link';
@@ -111,6 +112,11 @@ export default function DashboardPage() {
             sees after the header. Self-fetches + 5-min polls — never blocks
             the rest of the dashboard render. */}
         <IncumbencyMeter />
+
+        {/* Government Scorecard — shows wins (delivered promises) alongside
+            failures so the dashboard reads as a scorekeeper, not a
+            prosecutor. Single biggest credibility move for skeptics. */}
+        <GovScorecard />
 
         {/* Propaganda Reach panel — surfaces the asymmetry between what
             we've documented vs what TN voters actually see. User pointed
