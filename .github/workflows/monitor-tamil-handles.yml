@@ -1,4 +1,4 @@
-name: Tamil press + govt-handle monitor (every 2 hours)
+name: Tamil press + govt-handle monitor (every 6 hours — free-tier safe)
 
 # Periodically pulls the last few hours of tweets from:
 #   - 5 independent Tamil press handles (SparkPluz_, PttvNewsX, youturn_in,
@@ -20,17 +20,26 @@ name: Tamil press + govt-handle monitor (every 2 hours)
 # Concurrency guard prevents two runs piling up if a run takes long.
 
 on:
-  # Cron disabled — migrated to cron-job.org which hits /api/cron/monitor-handles
-  # on a reliable 1h schedule (vs 3-5h drift on GH Actions free tier).
-  # workflow_dispatch retained so this can be triggered manually as backup.
-  # schedule:
-  #   - cron: '0 */2 * * *'
+  # Re-enabled as the RELIABLE owner of the Twitter-handle lane. cron-job.org
+  # was NOT firing /api/cron/monitor-handles (last Apify run was 5+ days stale),
+  # so the Tamil-TV handles went dark while the free RSS path kept the rest
+  # fresh. GH Actions runs this self-contained on free infra — no dependency
+  # on cron-job.org or HF being awake.
+  #
+  # Cadence: every 6 hours (4 runs/day). Apify FREE tier is $5/month platform
+  # credit; at ~50 tweets/handle x 5 handles x 4 runs/day x $0.00025 ≈ $4.5/mo,
+  # which stays UNDER the free budget. Running every 2h (the old cadence) would
+  # cost ~$22/mo and exhaust Apify in ~1 week — which is what kept happening.
+  # The Google-News RSS path (every 30 min, free) covers breaking news between
+  # these runs, so 6h on the handles is plenty.
+  schedule:
+    - cron: '15 */6 * * *'   # 00:15, 06:15, 12:15, 18:15 UTC
   workflow_dispatch:
     inputs:
       hours:
-        description: 'Lookback window in hours (default 6)'
+        description: 'Lookback window in hours (default 7)'
         required: false
-        default: '6'
+        default: '7'
 
 concurrency:
   group: tamil-monitor
@@ -65,13 +74,15 @@ jobs:
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
           OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           APIFY_API_TOKEN: ${{ secrets.APIFY_API_TOKEN }}
           GOOGLE_FACT_CHECK_API_KEY: ${{ secrets.GOOGLE_FACT_CHECK_API_KEY }}
           HUGGINGFACE_API_KEY: ${{ secrets.HUGGINGFACE_API_KEY }}
           ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
         run: |
           set -e
-          HOURS="${{ github.event.inputs.hours || '6' }}"
+          HOURS="${{ github.event.inputs.hours || '7' }}"
           echo "::notice::Monitoring Tamil press + govt handles, lookback=${HOURS}h"
           python ../scripts/monitor_tvk_handles.py --hours "${HOURS}" 2>&1 | tee /tmp/monitor.log
 
