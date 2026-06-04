@@ -507,6 +507,30 @@ def _extract_incident_from_image(*, image_bytes: bytes, caption: str, source_url
     db = get_db()
     schemes_block = _load_dmk_schemes_for_prompt(db)
     b64 = base64.b64encode(image_bytes).decode()
+
+    # OCR-FIRST for accuracy. The Groq vision model is unreliable at READING
+    # dense Tamil from pixels — it hallucinated "152 acres in Namakkal" and
+    # "152 doctors to get MBBS" for a tweet that actually says TN was denied
+    # approval power over 152 super-specialty medical courses. Google Vision
+    # OCR reads Tamil far more accurately. So we OCR the exact text first and
+    # feed it to the model as the AUTHORITATIVE source — the model then only
+    # has to translate + classify clean text, not decipher glyphs. The image
+    # still rides along for layout/context. Degrades gracefully if OCR is
+    # unavailable (billing off / no key) — falls back to pixel reading.
+    ocr_text, ocr_err = _ocr_via_vision(image_bytes)
+    ocr_block = ""
+    if ocr_text and len(ocr_text.strip()) >= 30:
+        ocr_block = (
+            "\n\n=== AUTHORITATIVE EXACT TEXT (Google Vision OCR — TRUST THIS "
+            "over your own reading of the pixels) ===\n"
+            f"{ocr_text.strip()[:5000]}\n"
+            "=== END OCR TEXT ===\n"
+            "Base your title/summary on the OCR text above. Translate it to "
+            "English faithfully. Do NOT add facts, numbers, units, or place "
+            "names that are not in this OCR text. Use the image only for "
+            "layout/date context."
+        )
+
     prompt_text = EXTRACTION_PROMPT.format(
         url=source_url or "telegram_upload",
         source="telegram_admin_upload",
@@ -516,6 +540,7 @@ def _extract_incident_from_image(*, image_bytes: bytes, caption: str, source_url
             f"USER CAPTION: {caption}\n\n"
             f"--- IMAGE BELOW — read all text (Tamil + English), "
             f"understand the layout, identify the incident ---"
+            f"{ocr_block}"
         ),
         dmk_schemes=schemes_block,
         today=date.today().isoformat(),

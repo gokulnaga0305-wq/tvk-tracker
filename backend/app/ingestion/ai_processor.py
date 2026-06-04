@@ -299,6 +299,17 @@ Return JSON with these fields exactly:
 
 RELEVANCE RULES (be STRICT on opinion/politics, but INCLUSIVE on crime):
 
+ANTI-HALLUCINATION RULE (read this — wrong facts are worse than vague ones):
+  Use ONLY facts literally present in the text/image. Never invent or guess
+  numbers, UNITS (acres vs seats vs courses vs crore vs km), place names, or
+  actions. A number near a word does NOT fix its meaning — "152 super-
+  specialty medical courses" is NOT "152 acres" and NOT "152 doctors getting
+  MBBS". Read the WHOLE argument, not keywords: a post mentioning "medical"
+  + a number may be a STATE-RIGHTS grievance (Centre denying TN approval
+  powers), not a college being built or a promise. If unsure what happened,
+  write a short LITERAL description — a vague-but-true title beats a
+  specific-but-wrong one, and lower confidence to reflect the uncertainty.
+
 THIN-SOURCE RULE (read this first — it's the most common mistake):
   Do NOT reject a real incident just because the article excerpt is short,
   is a tweet, or "lacks specifics / casualties / named officials". Source
