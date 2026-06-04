@@ -26,14 +26,19 @@ on:
   # fresh. GH Actions runs this self-contained on free infra — no dependency
   # on cron-job.org or HF being awake.
   #
-  # Cadence: every 6 hours (4 runs/day). Apify FREE tier is $5/month platform
-  # credit; at ~50 tweets/handle x 5 handles x 4 runs/day x $0.00025 ≈ $4.5/mo,
-  # which stays UNDER the free budget. Running every 2h (the old cadence) would
-  # cost ~$22/mo and exhaust Apify in ~1 week — which is what kept happening.
-  # The Google-News RSS path (every 30 min, free) covers breaking news between
-  # these runs, so 6h on the handles is plenty.
+  # Cadence: ONCE DAILY. Apify FREE tier is a $5/month HARD limit (when hit:
+  # 403 "Monthly usage hard limit exceeded" — which is exactly what happened,
+  # the credit was exhausted by ~May 29 and the handles went dark). The Twitter
+  # scraper is pay-per-result, so frequent runs WILL exhaust it. Once/day (1 run
+  # x 5 handles x 40 tweets) stays comfortably inside $5/month.
+  #
+  # This is a SUPPLEMENT, not the backbone: the free Google-News RSS path (every
+  # 30 min, $0) already indexes the same Tamil press (Sun News, Puthiya, Polimer,
+  # News18) — which is why the dashboard stayed perfectly current for the 5 days
+  # the Twitter lane was dark. The once-daily handle pull just adds a few items
+  # RSS might miss (raw tweets without a news-article URL).
   schedule:
-    - cron: '15 */6 * * *'   # 00:15, 06:15, 12:15, 18:15 UTC
+    - cron: '15 1 * * *'   # 01:15 UTC = 06:45 IST, daily
   workflow_dispatch:
     inputs:
       hours:
