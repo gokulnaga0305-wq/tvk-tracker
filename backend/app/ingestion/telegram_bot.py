@@ -255,7 +255,7 @@ def _describe_image_via_vision_llm(image_bytes: bytes, caption: str) -> Optional
         'corruption, police_excess, custodial_death, honour_killing, alcohol_menace, '
         'power_cut, eb_failure, broken_promise, attack_on_press, fake_news, '
         'propaganda_event, dravidian_attack, credit_steal, civic_failure, '
-        'economic_failure, governance, other>,\n'
+        'economic_failure, federalism, language_imposition, governance, other>,\n'
         '  "severity":      <integer 1-5: 1=minor 3=serious 5=fatal/major>,\n'
         '  "location":      <city/district name in English, or null>,\n'
         '  "incident_date": <YYYY-MM-DD if visible in image, else null>,\n'
@@ -265,12 +265,27 @@ def _describe_image_via_vision_llm(image_bytes: bytes, caption: str) -> Optional
         f"Today's date: {today_iso}. TVK govt era: anything from 2026-05-11 onward.\n"
         f"User caption (may be empty): {caption[:300]}\n\n"
         "RULES:\n"
-        "- Be factual. Extract from what is VISIBLE in the image. Do NOT "
-        "invent details that aren't shown.\n"
+        "- ANTI-HALLUCINATION (critical): Use ONLY facts literally present "
+        "in the text. Do NOT invent or guess numbers, UNITS (acres vs "
+        "seats vs crore vs km), place names, or actions. If the text says "
+        "'152 super-specialty medical courses/seats', do NOT turn it into "
+        "'152 acres' or a 'medical college in <town>'. If a number's unit "
+        "isn't explicit, keep the exact word shown. If you are unsure what "
+        "happened, write a SHORT literal description, not a confident "
+        "fabrication. A vague-but-true title beats a specific-but-wrong one.\n"
+        "- Read the WHOLE argument, not just keywords. A tweet mentioning "
+        "'medical' + a number is NOT automatically about building a college "
+        "— it may be a grievance about the CENTRE denying TN's powers.\n"
         "- If the image is in Tamil, translate to English for title/summary.\n"
         "- Pick the most specific category. 'other' only if nothing fits.\n"
         "- If a date is shown in the image (top-right corner of news graphics "
         "is common), parse it into YYYY-MM-DD.\n"
+        "- STATE RIGHTS / FEDERALISM: if the text is a grievance about the "
+        "Union/central government overriding TN's authority — denying state "
+        "approval powers, centralising decisions, super-specialty/medical "
+        "seat control, NEET, fund devolution, Governor overreach, "
+        "delimitation → category=federalism. For language (Hindi imposition, "
+        "three-language NEP) → category=language_imposition.\n"
         "- For police harassment/atrocity by police → use police_excess.\n"
         "- For violence against women → sexual_assault or crimes_women_kids.\n"
         "- For murder/killing/sickle attack/honour killing → murders.\n"
@@ -375,18 +390,41 @@ def _find_duplicate(extracted: dict, lookback_days: int = 30) -> Optional[dict]:
     except Exception:
         return None
 
-    # Layer A: event-signature exact match (cheap; usually wins on
-    # repeat uploads where AI extracts same category+location+date)
+    # Layer A: event-signature exact match — but GUARDED. A bare
+    # (category, date) signature with an empty or broad location collides
+    # across totally unrelated incidents (e.g. two 'governance' items on
+    # the same day), which produced false "100% match" rejections that
+    # silently discarded real incidents — e.g. a state-rights tweet
+    # wrongly matched to a road-construction entry. So we only trust the
+    # signature match when BOTH:
+    #   (1) the location is specific (not empty / not a bare state name), AND
+    #   (2) the titles are at least loosely similar (ratio >= 0.35) —
+    #       otherwise the signature collision is spurious.
     new_sig = _event_sig(
         extracted.get("category", ""),
         extracted.get("location"),
         extracted.get("incident_date"),
     )
-    for row in rows:
-        if row.get("event_signature") == new_sig and new_sig != ":":
-            row["_match_ratio"] = 1.0
-            row["_match_via"] = "event_signature"
-            return row
+    new_loc = re.sub(r"[^a-z0-9]+", "", (extracted.get("location") or "").lower())
+    BROAD_LOC = {"tamilnadu", "tn", "india", "chennai"}  # too broad to dedup on alone
+    new_title_norm = _normalize_for_match(
+        f"{extracted.get('title', '')} {extracted.get('summary', '')[:200]}"
+    )
+    if new_loc and len(new_loc) >= 4 and new_loc not in BROAD_LOC:
+        for row in rows:
+            if row.get("event_signature") == new_sig and new_sig != ":":
+                cand = _normalize_for_match(
+                    f"{row.get('title', '')} {(row.get('summary', '') or '')[:200]}"
+                )
+                # Spurious-collision guard: same cat+loc+date but different
+                # event → titles won't match → not a duplicate.
+                if new_title_norm and cand:
+                    tr = difflib.SequenceMatcher(None, new_title_norm, cand).ratio()
+                    if tr < 0.35:
+                        continue
+                row["_match_ratio"] = 1.0
+                row["_match_via"] = "event_signature"
+                return row
 
     # Layer B: fuzzy similarity on title+summary head
     target = _normalize_for_match(
@@ -604,6 +642,14 @@ _CATEGORY_SYNONYMS: dict[str, str] = {
     "dravidian":        "dravidian_attack",
     "economy":          "economic_failure",
     "economic":         "economic_failure",
+    "state rights":     "federalism",
+    "state right":      "federalism",
+    "states rights":    "federalism",
+    "federalism":       "federalism",
+    "federal":          "federalism",
+    "union overreach":  "federalism",
+    "language":         "language_imposition",
+    "hindi imposition": "language_imposition",
 }
 
 
