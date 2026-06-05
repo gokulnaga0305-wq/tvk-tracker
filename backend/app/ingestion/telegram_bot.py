@@ -254,7 +254,7 @@ def _describe_image_via_vision_llm(image_bytes: bytes, caption: str) -> Optional
         '  "category":      <pick ONE: murders, sexual_assault, crimes_women_kids, '
         'corruption, police_excess, custodial_death, honour_killing, alcohol_menace, '
         'power_cut, eb_failure, broken_promise, attack_on_press, fake_news, '
-        'propaganda_event, dravidian_attack, credit_steal, civic_failure, '
+        'propaganda_event, dravidian_attack, credit_stealing, civic_failure, '
         'economic_failure, federalism, language_imposition, political_event, '
         'governance, other>,\n'
         '  "severity":      <integer 1-5: 1=minor 3=serious 5=fatal/major>,\n'
@@ -902,7 +902,7 @@ def _parse_admin_command(text: str) -> Optional[dict]:
         for k, v in _CATEGORY_SYNONYMS.items():
             if k in phrase:
                 if v == "credit_steal_meta":
-                    updates["category"] = "credit_steal"
+                    updates["category"] = "credit_stealing"
                     updates["is_credit_steal"] = True
                 else:
                     updates["category"] = v
@@ -914,7 +914,7 @@ def _parse_admin_command(text: str) -> Optional[dict]:
         for k, v in _CATEGORY_SYNONYMS.items():
             if re.search(rf"\b{re.escape(k)}\b", s):
                 if v == "credit_steal_meta":
-                    updates["category"] = "credit_steal"
+                    updates["category"] = "credit_stealing"
                     updates["is_credit_steal"] = True
                 else:
                     updates["category"] = v
@@ -1261,6 +1261,21 @@ async def handle_update(update: dict[str, Any]) -> None:
         else:
             # Otherwise: proceed. The admin uploaded it, the admin vouches.
             extracted["_admin_override"] = True
+
+    # CAPTION-TAG OVERRIDE: if the admin put a tag command in the image
+    # CAPTION (e.g. "tag under credit stealing"), apply it now — before
+    # insert. This avoids the timing race where a separate "tag under X"
+    # message arrives BEFORE the incident exists (so it has no target).
+    # Tagging during upload is the natural flow and always lands.
+    if caption:
+        cap_cmd = _parse_admin_command(caption)
+        if cap_cmd:
+            _ev(chat_id, "caption_tag_applied", keys=list(cap_cmd.keys()))
+            for k, v in cap_cmd.items():
+                # Don't let a caption command flip status to rejected on upload
+                if k == "status" and v == "rejected":
+                    continue
+                extracted[k] = v
 
     # Hard date gate — same as the AI pipeline elsewhere
     from datetime import date as _date
