@@ -375,6 +375,10 @@ def attempt_corroborate(incident: dict) -> dict:
             "source_urls": new_sources,
             "source_count": len(new_sources),
             "verification_status": "multi_source_verified",
+            # Also flip status to approved — a pending_review item that gets
+            # 2+ press outlets is verified and should appear on the dashboard,
+            # not stay hidden in pending_review.
+            "status": "approved",
         }).eq("id", incident["id"]).execute()
 
         db.table("incident_audit").insert({
@@ -411,11 +415,16 @@ def sweep_pending(
     db = get_db()
     cutoff = (datetime.now(timezone.utc) - timedelta(days=max_age_days)).date().isoformat()
 
+    # BUG FIX: previously only scanned status='approved'. But most pending
+    # items (tvkfiles import, telegram, recovered-from-rejected) land as
+    # status='pending_review', so the sweep never saw them — 200+ orphaned
+    # for weeks. Now scan BOTH statuses; corroboration promotes them to
+    # status='approved' (see attempt_corroborate).
     res = db.table("incidents").select(
-        "id, title, summary, location, incident_date, source_urls, verification_status"
-    ).eq("status", "approved").eq("verification_status", "pending_verification").gte(
-        "incident_date", cutoff
-    ).execute()
+        "id, title, summary, location, incident_date, source_urls, verification_status, status"
+    ).in_("status", ["approved", "pending_review"]).eq(
+        "verification_status", "pending_verification"
+    ).gte("incident_date", cutoff).execute()
     candidates = res.data or []
     if limit:
         candidates = candidates[:limit]
