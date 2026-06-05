@@ -24,7 +24,11 @@ TRACKED_CATEGORIES = [
 # Anything else (pending_verification, retracted) is shown but NOT counted as
 # verified — the dashboard exposes both numbers honestly so the user can see
 # what's confirmed vs what's still single-source.
-VERIFIED_STATUSES = {"multi_source_verified", "admin_verified", "press_verified"}
+# 'single_source' counts toward the headline number (user choice: "counted
+# in, but tagged") — the incident card carries a visible single-source badge,
+# but the count includes it so the dashboard reflects everything that has
+# auto-published after the 24h/48h recheck window.
+VERIFIED_STATUSES = {"multi_source_verified", "admin_verified", "press_verified", "single_source"}
 
 
 @router.get("/dashboard")

@@ -548,14 +548,57 @@ async def update_incident(incident_id: str, body: IncidentUpdate, x_admin_secret
     return res.data[0]
 
 
+def _find_approved_duplicate(db, incident: dict) -> Optional[dict]:
+    """Return an already-APPROVED incident that looks like the same event,
+    so the admin can't double-publish. Same logic family as the Telegram
+    dedup: exact-ish title similarity within the same category, guarded by
+    date proximity."""
+    import difflib, re as _re
+    def norm(t):
+        return _re.sub(r"[^a-z0-9஀-௿]", "", (t or "").lower())[:60]
+    cat = incident.get("category")
+    idate = (incident.get("incident_date") or "")[:10]
+    nt = norm(incident.get("title"))
+    if not nt:
+        return None
+    try:
+        rows = (db.table("incidents")
+                .select("id, title, category, incident_date")
+                .eq("status", "approved").eq("category", cat)
+                .neq("id", incident["id"]).execute().data or [])
+    except Exception:
+        return None
+    for r in rows:
+        rd = (r.get("incident_date") or "")[:10]
+        # within ~2 days
+        if idate and rd and abs((_parse_d(idate) - _parse_d(rd))) > 2:
+            continue
+        ratio = difflib.SequenceMatcher(None, nt, norm(r.get("title"))).ratio()
+        if ratio >= 0.78:
+            r["_match_ratio"] = round(ratio, 2)
+            return r
+    return None
+
+
+def _parse_d(s: str) -> int:
+    from datetime import date as _date
+    try:
+        return _date.fromisoformat(s[:10]).toordinal()
+    except Exception:
+        return 0
+
+
 @router.post("/{incident_id}/verify", response_model=dict)
 async def admin_verify(incident_id: str, x_admin_secret: str = Header(...)):
-    """Admin manually verifies a pending_verification incident."""
+    """Admin manually verifies a pending_review/pending_verification incident
+    and moves it to the dashboard — UNLESS a duplicate is already approved,
+    in which case it returns 409 'already captured' with the existing link."""
     if x_admin_secret != settings.admin_secret:
         raise HTTPException(status_code=403, detail="Forbidden")
     db = get_db()
-    # Source-integrity check: don't promote a sourceless row to approved.
-    existing = db.table("incidents").select("source_urls").eq("id", incident_id).single().execute()
+    existing = db.table("incidents").select(
+        "id, title, category, incident_date, source_urls"
+    ).eq("id", incident_id).single().execute()
     if not existing.data:
         raise HTTPException(status_code=404, detail="Incident not found")
     src = existing.data.get("source_urls") or []
@@ -566,6 +609,25 @@ async def admin_verify(incident_id: str, x_admin_secret: str = Header(...)):
                 "Cannot verify an incident without source_urls. PATCH the row first "
                 "to add at least one source URL, then re-run /verify."
             ),
+        )
+    # DUPLICATE GUARD: if the same event is already approved, refuse + point
+    # at it. Reject this pending copy as a duplicate so it leaves the queue.
+    dup = _find_approved_duplicate(db, existing.data)
+    if dup:
+        db.table("incidents").update({
+            "status": "rejected",
+            "retracted_at": datetime.now(timezone.utc).isoformat(),
+            "retraction_reason": f"Duplicate of approved incident {dup['id'][:8]} "
+                                 f"(\"{(dup.get('title') or '')[:60]}\") — already captured.",
+        }).eq("id", incident_id).execute()
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "already_captured",
+                "message": f"Incident already captured ({int(dup['_match_ratio']*100)}% match): "
+                           f"\"{dup.get('title')}\"",
+                "existing_id": dup["id"],
+            },
         )
     res = db.table("incidents").update({
         "status": "approved",

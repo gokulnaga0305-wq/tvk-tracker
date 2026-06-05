@@ -264,6 +264,87 @@ async def cron_scrape_factcheckers(
 
 
 # ---------------------------------------------------------------------------
+# Pending escalation — the 24h / 48h auto-recheck ladder
+# ---------------------------------------------------------------------------
+def _run_pending_escalation() -> dict:
+    """Two-stage auto-handling of pending_review incidents left unchecked:
+
+      Stage 1 (aged >= 24h): run press corroboration. If 2+ outlets found,
+        promote to multi_source_verified + status=approved (handled inside
+        attempt_corroborate).
+      Stage 2 (aged >= 48h, still single-source): auto-publish anyway with
+        verification_status='single_source' (counts in the headline but
+        the card shows a 'single source' tag). This clears the queue of
+        items that will never get press echo, while staying honest.
+    """
+    from datetime import datetime, timezone, timedelta
+    from app.database import get_db
+    from app.ingestion.corroboration import attempt_corroborate
+    db = get_db()
+    now = datetime.now(timezone.utc)
+    cutoff_24 = (now - timedelta(hours=24)).isoformat()
+    cutoff_48 = (now - timedelta(hours=48)).isoformat()
+    summary = {"checked_at": now.isoformat(), "corroborated": 0,
+               "single_source_published": 0, "scanned": 0}
+
+    try:
+        rows = (db.table("incidents")
+                .select("id, title, summary, location, incident_date, "
+                        "source_urls, verification_status, source_count, created_at")
+                .eq("status", "pending_review")
+                .eq("verification_status", "pending_verification")
+                .lte("created_at", cutoff_24)
+                .execute().data or [])
+    except Exception as e:
+        return {"error": str(e)[:120], **summary}
+
+    summary["scanned"] = len(rows)
+    for inc in rows:
+        try:
+            # Stage 1: try corroboration (promotes if 2+ press outlets)
+            outcome = attempt_corroborate(inc)
+            if outcome.get("promoted"):
+                summary["corroborated"] += 1
+                continue
+            # Stage 2: 48h+ and still uncorroborated -> single-source publish
+            if (inc.get("created_at") or "") <= cutoff_48:
+                db.table("incidents").update({
+                    "status": "approved",
+                    "verification_status": "single_source",
+                }).eq("id", inc["id"]).execute()
+                try:
+                    db.table("incident_audit").insert({
+                        "incident_id": inc["id"], "action": "single_source_published",
+                        "to_value": "single_source", "actor": "pending_escalation",
+                        "reason": "Unverified after 48h recheck window; auto-published "
+                                  "with single-source tag.",
+                    }).execute()
+                except Exception:
+                    pass
+                summary["single_source_published"] += 1
+        except Exception:
+            logger.exception("pending escalation failed for %s", inc.get("id"))
+    logger.info("pending-escalation: %s", summary)
+    return summary
+
+
+@router.post("/pending-escalation")
+async def cron_pending_escalation(
+    background_tasks: BackgroundTasks,
+    x_admin_secret: Optional[str] = Header(None),
+):
+    """The 24h/48h auto-recheck ladder for pending incidents. Schedule on
+    cron-job.org every 6-12 hours. Returns 202; work runs in background.
+
+      - pending >= 24h -> press corroboration (promote if 2+ outlets)
+      - pending >= 48h still single-source -> auto-publish, tag single_source
+    """
+    _require_admin(x_admin_secret)
+    background_tasks.add_task(_run_pending_escalation)
+    return {"status": "queued"}
+
+
+# ---------------------------------------------------------------------------
 # Keep-warm — no work, just touches the Space
 # ---------------------------------------------------------------------------
 @router.get("/keep-warm")

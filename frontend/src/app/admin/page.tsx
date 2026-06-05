@@ -67,10 +67,28 @@ export default function AdminPage() {
   }, [tab]);
 
   async function verifyIncident(id: string) {
-    await fetch(`${API}/api/incidents/${id}/verify`, {
+    const res = await fetch(`${API}/api/incidents/${id}/verify`, {
       method: 'POST',
       headers: { 'x-admin-secret': secret },
     });
+    if (res.status === 409) {
+      // Duplicate guard tripped — same event already approved.
+      const body = await res.json().catch(() => ({}));
+      const d = body?.detail || {};
+      setMessage(
+        `⚠ Already captured: ${d.message || 'an approved incident matches this one'}. ` +
+        `This pending copy was rejected as a duplicate.`
+      );
+      setIncidents(arr => arr.filter(i => i.id !== id));
+      return;
+    }
+    if (res.status === 400) {
+      const body = await res.json().catch(() => ({}));
+      setMessage(`Cannot move: ${body?.detail || 'needs a source URL first'}`);
+      return;
+    }
+    if (!res.ok) { setMessage('Move failed — check backend.'); return; }
+    setMessage('✓ Moved to dashboard.');
     setIncidents(arr => arr.filter(i => i.id !== id));
   }
 

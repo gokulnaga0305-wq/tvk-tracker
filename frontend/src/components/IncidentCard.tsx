@@ -53,6 +53,19 @@ function VerificationBadge({ incident }: { incident: Incident }) {
       </span>
     );
   }
+  if (status === 'single_source') {
+    // Auto-published after the 24h/48h recheck window with no press echo.
+    // Counts in the dashboard total, but flagged so readers know it's
+    // reported-but-not-cross-verified.
+    return (
+      <span
+        className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded border border-amber-600 text-amber-400 uppercase"
+        title="Auto-published after 48h with no press corroboration found. Reported, not cross-verified."
+      >
+        <ShieldAlert size={10} /> Single-source verification
+      </span>
+    );
+  }
   if (status === 'pending_verification') {
     return (
       <span className="flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded border border-yellow-700 text-yellow-400 uppercase">
