@@ -156,6 +156,42 @@ SOURCES_RSS: list[dict[str, str]] = [
         "rss_url":      "https://news.google.com/rss/search?q=%22CM+Vijay%22+%22Tamil+Nadu%22&hl=en-IN&gl=IN&ceid=IN:en",
         "name":         "Google News (CM Vijay)",
     },
+    # ---- Civic / infrastructure queries (issue-based, NOT party-based) ----
+    # CRITICAL: every query above is keyed on "TVK"/"CM Vijay", so a power
+    # cut, water shortage, or TNEB failure that doesn't *name the party*
+    # never gets fetched — even though it's happening on the govt's watch.
+    # These queries are keyed on the ISSUE instead, so infra failures flow
+    # in regardless of whether the article mentions TVK. The relevance gate
+    # + AI still filter routine/scheduled items, so this costs nothing in
+    # quality. (Added after the Power & EB feed went stale 31 May → 7 Jun
+    # while Chennai had multi-day outages incl. the CM's own constituency.)
+    {
+        "source_label": "rss_gnews_power_en",
+        "tier":         "established_press",
+        "rss_url":      "https://news.google.com/rss/search?q=Tamil+Nadu+%28%22power+cut%22+OR+TANGEDCO+OR+TNEB+OR+%22power+shutdown%22%29+-scheduled&hl=en-IN&gl=IN&ceid=IN:en",
+        "name":         "Google News (TN Power/EB)",
+    },
+    {
+        # Highest-value source: Tamil-script power-cut coverage. The English
+        # queries miss hyperlocal Tamil outlets (Daily Thanthi, Polimer, etc.)
+        # that break these stories first.
+        "source_label": "rss_gnews_power_ta",
+        "tier":         "regional_press",
+        "rss_url":      "https://news.google.com/rss/search?q=%E0%AE%A4%E0%AE%AE%E0%AE%BF%E0%AE%B4%E0%AF%8D%E0%AE%A8%E0%AE%BE%E0%AE%9F%E0%AF%81+%E0%AE%AE%E0%AE%BF%E0%AE%A9%E0%AF%8D%E0%AE%B5%E0%AF%86%E0%AE%9F%E0%AF%8D%E0%AE%9F%E0%AF%81&hl=ta-IN&gl=IN&ceid=IN:ta",
+        "name":         "Google News (TN Power Tamil)",
+    },
+    {
+        "source_label": "rss_gnews_chennai_power",
+        "tier":         "established_press",
+        "rss_url":      "https://news.google.com/rss/search?q=Chennai+%28%22power+cut%22+OR+%22transformer%22+OR+%22electrocution%22+OR+%E0%AE%AE%E0%AE%BF%E0%AE%A9%E0%AF%8D%E0%AE%B5%E0%AF%86%E0%AE%9F%E0%AF%8D%E0%AE%9F%E0%AF%81%29&hl=en-IN&gl=IN&ceid=IN:en",
+        "name":         "Google News (Chennai Power)",
+    },
+    {
+        "source_label": "rss_gnews_civic_en",
+        "tier":         "established_press",
+        "rss_url":      "https://news.google.com/rss/search?q=Tamil+Nadu+%28%22water+shortage%22+OR+%22drinking+water%22+OR+sewage+OR+%22garbage%22%29+Chennai&hl=en-IN&gl=IN&ceid=IN:en",
+        "name":         "Google News (TN Civic)",
+    },
 ]
 
 

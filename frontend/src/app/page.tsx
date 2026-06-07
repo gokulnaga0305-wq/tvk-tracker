@@ -8,6 +8,7 @@ import IncumbencyMeter from '@/components/IncumbencyMeter';
 import PropagandaReach from '@/components/PropagandaReach';
 import SectoralCAGR from '@/components/SectoralCAGR';
 import GovScorecard from '@/components/GovScorecard';
+import CagFindings from '@/components/CagFindings';
 import { DashboardStats, Incident, BaselineRow } from '@/lib/api';
 import { CATEGORY_LABELS } from '@/lib/constants';
 import Link from 'next/link';
@@ -272,6 +273,11 @@ export default function DashboardPage() {
             Self-fetches /api/economic/dashboard. Renders even when there's
             no TVK data yet (cards just show DMK baseline as the anchor). */}
         <SectoralCAGR />
+
+        {/* CAG audit findings — official constitutional-auditor figures for
+            the DMK tenure. Self-fetches /api/baselines/cag. Most defensible
+            accountability data: quotable totals, no press-sample caveat. */}
+        <CagFindings />
 
         {/* Credit steal highlight */}
         {stats.credit_steal_count > 0 && (

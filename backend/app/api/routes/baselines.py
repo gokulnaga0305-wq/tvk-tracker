@@ -19,84 +19,184 @@ router = APIRouter(prefix="/baselines", tags=["baselines"])
 
 
 # All monthly averages refer to Tamil Nadu state-wide totals during the
-# DMK final year (2023 calendar) unless noted otherwise. Sources are
-# public and citable.
+# DMK tenure. Sources are public and citable.
+#
+# `confidence` is explicit so the UI never implies false precision:
+#   "verified"  -> cross-checked against a published NCRB figure this session
+#   "estimate"  -> NGO/news compilation or sectoral guess, NOT an official count
+#
+# IMPORTANT HONESTY NOTE: these are CENSUS totals (every case the state
+# recorded). The dashboard's own incident counts are a PRESS SAMPLE (only
+# what made the news). They are NOT directly comparable case-for-case — the
+# baseline is context for scale, not a like-for-like scoreboard.
 BASELINES: list[dict] = [
     {
         "category": "murders",
         "label": "Murders",
-        "dmk_monthly_avg": 227.0,
-        "source": "NCRB Crime in India 2023, TN state data (2,725 murders / 12)",
-        "period": "2023 annual average",
-        "notes": "Tamil Nadu had 2,725 murders in 2023; ~227/month",
+        "dmk_monthly_avg": 140.8,  # 1,690 / 12
+        "confidence": "verified",
+        "source": "NCRB Crime in India 2022, Tamil Nadu state total (1,690 murders)",
+        "period": "2022 annual average",
+        "notes": "TN recorded 1,690 murders in 2022 (NCRB) — ~141/month. "
+                 "Corrected from an earlier unsourced 2,725 figure.",
     },
     {
         "category": "sexual_assault",
         "label": "Sexual Assaults",
         "dmk_monthly_avg": 105.0,
-        "source": "NCRB Crime in India 2023, IPC 376 (rapes) — 1,261 / 12",
-        "period": "2023 annual average",
-        "notes": "TN reported 1,261 rapes in 2023",
+        "confidence": "estimate",
+        "source": "NCRB Crime in India 2022 (IPC rape) — exact TN count not "
+                  "re-verified this session",
+        "period": "2022 estimate",
+        "notes": "Placeholder pending source-verification of the exact TN "
+                 "rape/IPC-376 count. Do not cite as precise.",
     },
     {
         "category": "crimes_women_kids",
-        "label": "Crimes vs Women & Children",
-        "dmk_monthly_avg": 1850.0,
-        "source": "NCRB 2023: TN crimes-against-women + POCSO combined",
-        "period": "2023 annual average",
-        "notes": "~22,200 cases/yr",
+        "label": "Crimes vs Women",
+        "dmk_monthly_avg": 767.0,  # 9,207 / 12
+        "confidence": "verified",
+        "source": "NCRB Crime in India 2022, Tamil Nadu (9,207 crimes against "
+                  "women; 8,501 in 2021)",
+        "period": "2022 annual average",
+        "notes": "TN: 9,207 crimes-against-women cases in 2022 (up from 8,501 in "
+                 "2021) — ~767/month. Women only; POCSO/child cases excluded "
+                 "(not separately verified), so this UNDERstates the combined total.",
     },
     {
         "category": "corruption",
         "label": "Corruption cases",
         "dmk_monthly_avg": 37.0,
-        "source": "TN Directorate of Vigilance and Anti-Corruption annual report 2023",
-        "period": "2023 annual average",
-        "notes": "~445 cases registered in 2023",
+        "confidence": "estimate",
+        "source": "TN Directorate of Vigilance and Anti-Corruption (DVAC) — not "
+                  "re-verified this session",
+        "period": "estimate",
+        "notes": "Approx; pending DVAC annual-report verification.",
     },
     {
         "category": "custodial_death",
         "label": "Custodial deaths",
         "dmk_monthly_avg": 1.0,
-        "source": "NHRC TN data 2023",
-        "period": "2023 annual average",
-        "notes": "~12 custodial deaths in TN 2023",
+        "confidence": "estimate",
+        "source": "NHRC TN data — not re-verified this session",
+        "period": "estimate",
+        "notes": "Approx ~12/yr; pending NHRC verification.",
     },
     {
         "category": "honour_killing",
         "label": "Honour killings",
         "dmk_monthly_avg": 1.2,
-        "source": "Madras HC + Evidence NGO compilation 2023",
-        "period": "2023 estimate",
-        "notes": "~14 reported honour killings in TN 2023",
+        "confidence": "estimate",
+        "source": "Madras HC + Evidence NGO compilation",
+        "period": "estimate",
+        "notes": "NGO/press compilation, not an official register.",
     },
     {
         "category": "police_excess",
         "label": "Police excess incidents",
         "dmk_monthly_avg": 5.0,
-        "source": "PUCL TN annual review + news compilation 2023",
-        "period": "2023 estimate",
-        "notes": "~60 reported incidents in 2023",
+        "confidence": "estimate",
+        "source": "PUCL TN annual review + news compilation",
+        "period": "estimate",
+        "notes": "News compilation, not an official count.",
     },
     {
         "category": "communal_violence",
         "label": "Communal incidents",
         "dmk_monthly_avg": 2.5,
-        "source": "TN police communal incidents register 2023",
-        "period": "2023 estimate",
-        "notes": "~30 incidents in 2023",
+        "confidence": "estimate",
+        "source": "News compilation",
+        "period": "estimate",
+        "notes": "News compilation, not an official register.",
     },
     {
         "category": "industrial_flight",
         "label": "Companies leaving TN",
         "dmk_monthly_avg": 0.2,
-        "source": "TIDCO + industry chamber records 2023",
-        "period": "2023 annual /12",
-        "notes": "Only 2 announced exits in 2023 under DMK",
+        "confidence": "estimate",
+        "source": "Industry-chamber + press records",
+        "period": "estimate",
+        "notes": "Approx; very few announced exits under DMK.",
     },
 ]
 
 BASELINE_LOOKUP = {b["category"]: b for b in BASELINES}
+
+
+# ---------------------------------------------------------------------------
+# CAG (Comptroller & Auditor General) — DMK-tenure audit findings.
+#
+# These are OFFICIAL, citable figures from the CAG State Finances Audit
+# Report. Unlike the crime baselines, CAG numbers are official totals you can
+# quote directly — there is no sample-vs-census caveat. Each entry carries its
+# report number + a one-line "why it matters" for accountability framing.
+#
+# Source: CAG State Finances Audit Report of Tamil Nadu, Report No. 2 of 2024
+# (covers FY 2022-23), tabled in the TN Assembly. PDF:
+# https://cag.gov.in/webroot/uploads/download_audit_report/2023/Report-No-2-of-2024-SFAR-English-0675955f21ba460.87039330.pdf
+# ---------------------------------------------------------------------------
+CAG_FINDINGS: list[dict] = [
+    {
+        "key": "revenue_deficit",
+        "label": "Revenue deficit (FY 2022-23)",
+        "value": "₹36,215 cr",
+        "trend": "down",  # improved
+        "detail": "Down 22% from ₹46,538 cr in 2021-22. The state still spent "
+                  "more on day-to-day running than it earned, but the gap "
+                  "narrowed.",
+        "report": "CAG SFAR, Report No. 2 of 2024 (FY 2022-23)",
+    },
+    {
+        "key": "fiscal_deficit",
+        "label": "Fiscal deficit (FY 2022-23)",
+        "value": "₹81,886 cr",
+        "trend": "flat",
+        "detail": "Essentially unchanged from ₹81,835 cr in 2021-22 (+0.06%). "
+                  "Within the borrowing limit, but not falling.",
+        "report": "CAG SFAR, Report No. 2 of 2024 (FY 2022-23)",
+    },
+    {
+        "key": "borrowing_misuse",
+        "label": "Borrowings used for consumption, not assets",
+        "value": "only 39% to capital",
+        "trend": "bad",
+        "detail": "CAG flagged that just 39% of borrowed funds went to "
+                  "capital creation/development; the rest covered current "
+                  "consumption and debt repayment. Capital spend was only "
+                  "12.1% of total expenditure (₹39,530 cr).",
+        "report": "CAG SFAR, Report No. 2 of 2024 (FY 2022-23)",
+    },
+    {
+        "key": "debt_growth",
+        "label": "Public debt growth rate",
+        "value": "15.86%/yr avg",
+        "trend": "bad",
+        "detail": "Public debt grew at an average 15.86% per year between "
+                  "2018-19 and 2022-23. Outstanding liabilities were 28.64% of "
+                  "GSDP (just under the 29.30% ceiling).",
+        "report": "CAG SFAR, Report No. 2 of 2024 (FY 2022-23)",
+    },
+    {
+        "key": "pending_ucs",
+        "label": "Unaccounted grant money (pending UCs)",
+        "value": "₹1,435.43 cr",
+        "trend": "bad",
+        "detail": "48 Utilisation Certificates worth ₹1,435.43 cr were still "
+                  "outstanding as on 31 Mar 2023 — grant money given out but "
+                  "not yet accounted for.",
+        "report": "CAG SFAR, Report No. 2 of 2024 (FY 2022-23)",
+    },
+    {
+        "key": "psu_arrears",
+        "label": "PSUs with accounts in arrears",
+        "value": "16 PSUs / 22 accounts",
+        "trend": "bad",
+        "detail": "16 state PSUs had 22 accounts in arrears, missing "
+                  "prescribed deadlines for submitting financial statements — "
+                  "an audit/transparency gap.",
+        "report": "CAG SFAR, Report No. 2 of 2024 (FY 2022-23)",
+    },
+]
 
 
 @router.get("/")
@@ -105,6 +205,18 @@ async def list_baselines(category: Optional[str] = None):
         b = BASELINE_LOOKUP.get(category)
         return [b] if b else []
     return BASELINES
+
+
+@router.get("/cag")
+async def list_cag_findings():
+    """Official CAG (Comptroller & Auditor General) audit findings for the
+    DMK tenure. These are quotable official figures — no sample caveat."""
+    return {
+        "source_report": "CAG State Finances Audit Report of Tamil Nadu, "
+                         "Report No. 2 of 2024 (FY 2022-23)",
+        "source_url": "https://cag.gov.in/webroot/uploads/download_audit_report/2023/Report-No-2-of-2024-SFAR-English-0675955f21ba460.87039330.pdf",
+        "findings": CAG_FINDINGS,
+    }
 
 
 def _domain_of(url: str) -> str:
@@ -199,6 +311,7 @@ async def dashboard_baselines_with_deltas():
             "dmk_monthly_avg": baseline_month_avg,
             "dmk_source": b["source"],
             "dmk_period": b["period"],
+            "confidence": b.get("confidence", "estimate"),
             "tvk_count": current,
             "tvk_period_days": days_under_tvk,
             "expected_at_dmk_rate": expected,
