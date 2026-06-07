@@ -260,7 +260,14 @@ Return JSON with these fields exactly:
             staff specific:
               - Repeated outages indicating infrastructure decay
                 ("5 outages in one night in Tiruttani")
-              - Transformer blast / sub-station fire
+              - Transformer blast / sub-station fire.  IMPORTANT: a
+                transformer blast, substation fire, or electrocution
+                caused by TNEB/TANGEDCO infrastructure (live wire, faulty
+                transformer, exposed cable) MUST be category="eb_failure"
+                EVEN IF there are deaths/injuries.  Do NOT file these under
+                "civic_failure" or "governance" — the EB-infrastructure
+                failure IS the accountability event.  Put the casualty
+                aspect in tags_extra, keep eb_failure as the category.
               - EB employee misconduct (bribery, sexual harassment by
                 EB staff) — primary category should reflect the crime
                 (e.g. sexual_assault), but ALSO add "eb_failure" to
