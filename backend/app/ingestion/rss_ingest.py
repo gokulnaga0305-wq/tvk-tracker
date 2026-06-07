@@ -192,6 +192,31 @@ SOURCES_RSS: list[dict[str, str]] = [
         "rss_url":      "https://news.google.com/rss/search?q=Tamil+Nadu+%28%22water+shortage%22+OR+%22drinking+water%22+OR+sewage+OR+%22garbage%22%29+Chennai&hl=en-IN&gl=IN&ceid=IN:en",
         "name":         "Google News (TN Civic)",
     },
+    # ---- Law & order / serious crime (issue-based, English + Tamil) -------
+    # Same blind-spot fix as power: murders, sexual assault, POCSO, and
+    # opposition law-and-order criticism rarely name "TVK", so the party
+    # queries miss them — leaving the crime tabs undercounted (56 murders in
+    # 27 days vs an NCRB ~4.6/day real rate ≈ only ~40% captured). The
+    # relevance gate + extraction prompt still gate these (a crime under the
+    # current govt's watch is in-scope; non-TN / pre-govt items get dropped).
+    {
+        "source_label": "rss_gnews_lawandorder_en",
+        "tier":         "established_press",
+        "rss_url":      "https://news.google.com/rss/search?q=Tamil+Nadu+%28%22law+and+order%22+OR+murder+OR+%22sexual+assault%22+OR+POCSO+OR+kidnap%29+-cricket+-film&hl=en-IN&gl=IN&ceid=IN:en",
+        "name":         "Google News (TN Law & Order)",
+    },
+    {
+        "source_label": "rss_gnews_crime_ta",
+        "tier":         "regional_press",
+        "rss_url":      "https://news.google.com/rss/search?q=%E0%AE%A4%E0%AE%AE%E0%AE%BF%E0%AE%B4%E0%AF%8D%E0%AE%A8%E0%AE%BE%E0%AE%9F%E0%AF%81+%28%E0%AE%95%E0%AF%8A%E0%AE%B2%E0%AF%88+OR+%E0%AE%AA%E0%AE%BE%E0%AE%B2%E0%AE%BF%E0%AE%AF%E0%AE%B2%E0%AF%8D+OR+%E0%AE%95%E0%AE%B1%E0%AF%8D%E0%AE%AA%E0%AE%B4%E0%AE%BF%E0%AE%AA%E0%AF%8D%E0%AE%AA%E0%AF%81+OR+%E0%AE%A4%E0%AE%BE%E0%AE%95%E0%AF%8D%E0%AE%95%E0%AF%81%E0%AE%A4%E0%AE%B2%E0%AF%8D%29&hl=ta-IN&gl=IN&ceid=IN:ta",
+        "name":         "Google News (TN Crime Tamil)",
+    },
+    {
+        "source_label": "rss_gnews_drugs_en",
+        "tier":         "established_press",
+        "rss_url":      "https://news.google.com/rss/search?q=Tamil+Nadu+%28ganja+OR+drugs+OR+narcotics+OR+NDPS%29+%28seizure+OR+arrest+OR+smuggling%29&hl=en-IN&gl=IN&ceid=IN:en",
+        "name":         "Google News (TN Drugs)",
+    },
 ]
 
 
