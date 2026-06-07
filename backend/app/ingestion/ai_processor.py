@@ -271,6 +271,16 @@ Return JSON with these fields exactly:
           When in doubt: a single outage in a single location -> power_cut.
           A pattern of failures / something EB-the-organisation did wrong
           -> eb_failure.
+          * SCHEDULED / PLANNED MAINTENANCE IS NOT AN INCIDENT.  A pre-
+            announced maintenance shutdown ("Scheduled power cut in Chennai
+            on 05.06", "Planned 8-hour shutdown in Coimbatore for
+            maintenance", "TANGEDCO announces power shutdown for repair
+            work") is ROUTINE utility operation, NOT an accountability
+            failure -> set is_relevant=FALSE.  Only UNPLANNED outages,
+            prolonged/repeated failures, residents protesting, supply lost
+            to hospitals, transformer blasts, or outages used as a
+            political flashpoint count as power_cut / eb_failure.  The test:
+            did something go WRONG (unplanned), or was it announced upkeep?
       - "governance" is reserved for actual administrative/policy decisions
         and their consequences (tender irregularities, quarry closures,
         TASMAC strikes from policy, civil servants protesting orders,
