@@ -1,0 +1,47 @@
+name: Fakenews import (tvkfiles)
+
+# Twice-weekly top-up of the propaganda/fake-news tracker from the
+# well-curated tvkfiles.pages.dev/fakenews list. Discovery, not trust-clone:
+# skips topics we already cover, attributes every item back to them.
+# Idempotent — re-running only pulls their new items. No AI needed
+# (Jina render + parse + insert), so it costs nothing on the free tier.
+
+on:
+  schedule:
+    - cron: '0 6 * * 1,4'   # Mondays & Thursdays, 06:00 UTC (11:30 IST)
+  workflow_dispatch:
+
+concurrency:
+  group: fakenews-import
+  cancel-in-progress: false
+
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend deps
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run fakenews import
+        working-directory: backend
+        env:
+          PYTHONUNBUFFERED: '1'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -e
+          python ../scripts/import_tvkfiles_fakenews.py
