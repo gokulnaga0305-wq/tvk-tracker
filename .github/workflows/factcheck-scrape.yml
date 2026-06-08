@@ -1,0 +1,58 @@
+name: Fact-check scrape
+
+# Keeps the "Pro-TVK content tracked" (propaganda) page fresh by pulling
+# NewsMeter Tamil/English fact-check feeds, classifying each debunk via the
+# free AI chain, and inserting into propaganda_events. The scrape existed
+# behind /api/cron/scrape-factcheckers but was never scheduled, so the page
+# froze at its May-29 seed.
+
+on:
+  schedule:
+    - cron: '30 5 * * *'   # daily 05:30 UTC (11:00 IST) — after Groq reset
+  workflow_dispatch:
+    inputs:
+      per_source:
+        description: 'Max items per source'
+        required: false
+        default: '15'
+
+concurrency:
+  group: factcheck-scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend deps
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run fact-check scrape
+        working-directory: backend
+        env:
+          PYTHONUNBUFFERED: '1'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GOOGLE_FACT_CHECK_API_KEY: ${{ secrets.GOOGLE_FACT_CHECK_API_KEY }}
+        run: |
+          set -e
+          PER="${{ github.event.inputs.per_source || '15' }}"
+          python ../scripts/scrape_factchecks.py --per-source "${PER}"
