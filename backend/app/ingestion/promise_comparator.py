@@ -72,6 +72,21 @@ Be ANALYTICAL not partisan.  When in doubt between "fulfilled" and
 voting — if a voter who voted on the manifesto would feel cheated, it's
 "broken"; if they'd feel under-served but not betrayed, it's "partial".
 
+CRITICAL — DELIVERY-ONLY RULE (do not violate):
+Only classify fulfilled / partial / broken when the input shows the
+GOVERNMENT actually DELIVERING or formally ANNOUNCING concrete action
+toward the promise.  If the input is a PROTEST, grievance, complaint,
+crime, accountability failure, allegation, opposition criticism, or any
+non-delivery event, it is NOT evidence of delivery -> return
+verdict="irrelevant" with best_match_promise_id=null.  NEVER put a
+protest or grievance in delivered_terms.
+
+Do NOT match by topic keyword alone.  A teacher PROTEST is not evidence
+about a teacher-PENSION promise.  A water-shortage complaint is not
+delivery of a water promise.  An honour killing is not the breaking of an
+anti-discrimination promise.  If the announcement does not concretely
+advance or contradict the SPECIFIC promised action, return "irrelevant".
+
 Respond ONLY with valid JSON. No markdown fences, no explanation."""
 
 
