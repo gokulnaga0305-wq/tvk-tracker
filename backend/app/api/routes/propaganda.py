@@ -72,6 +72,35 @@ def _verify_admin(secret: Optional[str]) -> None:
         raise HTTPException(status_code=403, detail="Forbidden")
 
 
+def _incident_to_propaganda(inc: dict) -> dict:
+    """Normalise a fake_news/propaganda INCIDENT (e.g. a Telegram-submitted
+    fake claim) into the propaganda-card shape so it shows on the same page
+    as scraper-sourced propaganda_events. Without this, manually-submitted
+    fake claims land in `incidents` and never appear on the propaganda page."""
+    urls = inc.get("source_urls") or []
+    return {
+        "id": inc["id"],
+        "title": inc.get("title"),
+        "description": inc.get("summary"),
+        "propaganda_type": "other",
+        # fake_news incidents are overwhelmingly pro-TVK manufactured content;
+        # default accordingly (admin can refine on the propaganda_events side).
+        "favoring": "TVK",
+        "platform": None,
+        "first_seen": inc.get("incident_date"),
+        "incident_date": inc.get("incident_date"),
+        "reach_estimate": None,
+        "debunk_reach_estimate": None,
+        "propaganda_url": urls[0] if urls else None,
+        "debunk_url": urls[0] if urls else None,
+        "debunk_source": None,
+        "status": "debunked" if inc.get("status") == "approved" else "active",
+        "tags": [inc.get("category")] if inc.get("category") else [],
+        "source_urls": urls,
+        "origin": "incident",   # lets the frontend distinguish if it wants to
+    }
+
+
 @router.get("/", response_model=list[dict])
 async def list_propaganda(
     status: Optional[str] = Query(None, description="active | debunked | retracted | organic"),
@@ -79,18 +108,43 @@ async def list_propaganda(
     limit: int = Query(50, ge=1, le=200),
 ):
     db = get_db()
-    q = db.table("propaganda_events").select("*").order("first_seen", desc=True).limit(limit)
-    if status:
-        q = q.eq("status", status)
-    if propaganda_type:
-        q = q.eq("propaganda_type", propaganda_type)
+    rows: list[dict] = []
+
+    # Pool 1: curated/scraped propaganda_events
     try:
-        res = q.execute()
-        return res.data or []
+        q = db.table("propaganda_events").select("*").order("first_seen", desc=True).limit(limit)
+        if status:
+            q = q.eq("status", status)
+        if propaganda_type:
+            q = q.eq("propaganda_type", propaganda_type)
+        rows.extend(q.execute().data or [])
     except Exception:
-        # Table may not exist yet (pre-migration); return empty so the
-        # frontend widget still renders with zero-state messaging.
-        return []
+        pass
+
+    # Pool 2: fake_news / propaganda INCIDENTS (manual + Telegram submissions).
+    # These otherwise never reach this page. Only when no propaganda_type
+    # filter is set (incidents don't carry that field) and not filtering to
+    # organic-only.
+    if propaganda_type is None and status != "organic":
+        try:
+            inc = (
+                db.table("incidents")
+                .select("id, title, summary, category, status, incident_date, source_urls")
+                .in_("category", ["fake_news", "propaganda", "propaganda_event"])
+                .in_("status", ["approved", "press_verified", "single_source", "pending_review"])
+                .order("incident_date", desc=True)
+                .limit(limit)
+                .execute()
+                .data
+                or []
+            )
+            rows.extend(_incident_to_propaganda(x) for x in inc)
+        except Exception:
+            pass
+
+    # Merge + sort by first_seen desc; cap at limit.
+    rows.sort(key=lambda r: (r.get("first_seen") or r.get("incident_date") or ""), reverse=True)
+    return rows[:limit]
 
 
 @router.get("/summary")
