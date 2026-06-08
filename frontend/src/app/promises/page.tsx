@@ -50,12 +50,20 @@ function PromiseRow({ promise }: { promise: Promise_ }) {
           <span className={clsx('text-xs font-semibold px-2 py-1 rounded uppercase', colorClass)}>
             {promise.status}
           </span>
-          {promise.evidence_url && (
-            <a href={promise.evidence_url} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300">
-              Evidence <ExternalLink size={10} />
-            </a>
-          )}
+          {promise.evidence_url && (() => {
+            // evidence_url is a semicolon-joined list of URLs — link the
+            // first real http(s) one (the whole blob isn't a valid href).
+            const urls = promise.evidence_url
+              .split(';').map(u => u.trim())
+              .filter(u => /^https?:\/\//.test(u));
+            if (!urls.length) return null;
+            return (
+              <a href={urls[0]} target="_blank" rel="noopener noreferrer"
+                className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300">
+                Evidence{urls.length > 1 ? ` (${urls.length})` : ''} <ExternalLink size={10} />
+              </a>
+            );
+          })()}
         </div>
       </div>
     </div>
@@ -88,6 +96,11 @@ export default function PromisesPage() {
           Promise Tracker
         </h1>
         <p className="text-gray-500 text-sm mt-1">TVK government election manifesto commitments</p>
+        <p className="text-gray-600 text-xs mt-1 italic">
+          Most manifesto promises are multi-year — this early in the term, &quot;pending&quot; is
+          expected, not a failure. A promise is only marked <span className="text-red-400">broken</span> once
+          its deadline passes without delivery.
+        </p>
       </div>
 
       {/* Progress bar */}

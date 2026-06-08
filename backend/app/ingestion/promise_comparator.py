@@ -296,9 +296,21 @@ def compare_to_manifesto(*, title: str, summary: str, category: str,
     if pid and v in ("fulfilled", "partial", "broken") and conf >= 0.7:
         new_status = {"fulfilled": "kept", "partial": "partial", "broken": "broken"}[v]
         try:
-            cur = db.table("promises").select("evidence_url, notes, status").eq("id", pid).single().execute()
+            cur = db.table("promises").select("evidence_url, notes, status, deadline").eq("id", pid).single().execute()
             cur_row = cur.data or {}
             old_status = cur_row.get("status")
+            # DEADLINE GUARD (credibility): a promise cannot be "broken" before
+            # its deadline arrives. If the comparator says broken but the
+            # deadline is missing or still in the future, the govt is
+            # under-delivering, not in breach yet -> cap at "partial". Only the
+            # deadline-pass cron flips a promise to true "broken" after its
+            # deadline lapses. This stops "12 broken on day 29" nonsense.
+            if new_status == "broken":
+                from datetime import date as _date
+                _dl = cur_row.get("deadline")
+                if not _dl or _dl > _date.today().isoformat():
+                    new_status = "partial"
+                    v = "partial"
             # Don't downgrade: if already "kept", don't switch to "partial".
             # Do upgrade: pending -> kept|partial|broken is always allowed.
             allowed_transitions = {
