@@ -66,10 +66,13 @@ const TYPE_COLORS: Record<string, string> = {
 };
 
 function formatReach(n: number | undefined | null): string {
+  // Reach figures are rough order-of-magnitude ESTIMATES, not measured
+  // analytics — the leading ~ makes that explicit so we never imply
+  // precision we don't have.
   if (!n) return '—';
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}K`;
-  return String(n);
+  if (n >= 1_000_000) return `~${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000)     return `~${(n / 1_000).toFixed(1)}K`;
+  return `~${n}`;
 }
 
 type FavoringFilter = 'all' | 'TVK' | 'ANTI-TVK';
@@ -144,6 +147,11 @@ export default function PropagandaPage() {
           misleading edit that our pipeline has catalogued — alongside the fact-checker
           debunk that contradicted it. This is the OTHER side of the information ecosystem
           that the Accountability Pressure Index alone doesn't capture.
+        </p>
+        <p className="text-gray-600 text-xs mt-2 italic">
+          Note: reach figures (marked ~) are rough order-of-magnitude estimates, not measured
+          platform analytics — they illustrate the typical gap between a viral claim and its
+          quieter correction, not exact view counts.
         </p>
 
         {events.length > 0 && (
