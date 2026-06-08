@@ -1,0 +1,52 @@
+name: Investment watch
+
+# Weekly sweep of the DMK-era investment registry: for each active
+# commitment, search news for shift/stall/cancel signals and raise a
+# PENDING incident for review. Free (RSS + keyword, no AI).
+
+on:
+  schedule:
+    - cron: '0 4 * * 1'   # Mondays 04:00 UTC (09:30 IST)
+  workflow_dispatch:
+    inputs:
+      max:
+        description: 'Max commitments to check'
+        required: false
+        default: '40'
+
+concurrency:
+  group: investment-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend deps
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run investment watch
+        working-directory: backend
+        env:
+          PYTHONUNBUFFERED: '1'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+        run: |
+          set -e
+          MAX="${{ github.event.inputs.max || '40' }}"
+          python ../scripts/investment_watch.py --max "${MAX}"

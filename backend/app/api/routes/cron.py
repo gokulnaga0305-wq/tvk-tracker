@@ -345,6 +345,35 @@ async def cron_pending_escalation(
 
 
 # ---------------------------------------------------------------------------
+# Investment watcher — flag DMK-era commitments showing signs of shifting
+# ---------------------------------------------------------------------------
+def _run_investment_watch(max_companies: int) -> dict:
+    from app.ingestion.investment_watcher import run_investment_watch
+    try:
+        res = run_investment_watch(max_companies=max_companies)
+        logger.info("investment-watch: %s", res)
+        return res
+    except Exception as e:
+        logger.exception("investment-watch failed")
+        return {"error": str(e)[:160]}
+
+
+@router.post("/investment-watch")
+async def cron_investment_watch(
+    background_tasks: BackgroundTasks,
+    x_admin_secret: Optional[str] = Header(None),
+    max_companies: int = Query(40),
+):
+    """Weekly sweep of the investment registry. For each active DMK-era
+    commitment, search news for shift/stall/cancel signals and raise a
+    PENDING incident for review (never auto-declares a loss). Schedule
+    weekly on cron-job.org / GitHub Actions."""
+    _require_admin(x_admin_secret)
+    background_tasks.add_task(_run_investment_watch, max_companies)
+    return {"status": "queued"}
+
+
+# ---------------------------------------------------------------------------
 # Keep-warm — no work, just touches the Space
 # ---------------------------------------------------------------------------
 @router.get("/keep-warm")
