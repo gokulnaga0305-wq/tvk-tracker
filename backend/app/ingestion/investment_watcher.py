@@ -18,18 +18,40 @@ from app.ingestion.rss_ingest import _fetch
 
 logger = logging.getLogger(__name__)
 
-# Risk signals that suggest a commitment may be moving / dying.
-RISK_TERMS = [
-    "shifted", "shift to", "shifts to", "stalled", "stall", "scrapp", "cancel",
-    "shelv", "withdraw", "pulls out", "pull out", "pull-out", "moves to",
-    "moving to", "relocat", "another state", "abandon", "on hold", "put on hold",
-    "delayed", "scrapped", "exits", "pull back", "drops plan", "drop plan",
-    # rival states that would signal a flight
-    "andhra", "telangana", "karnataka", "gujarat", "maharashtra", "to ap",
+# STRONG signals — a clear shift/stall/death; fire on their own.
+STRONG_RISK = [
+    "shifts to", "shifted to", "shifts away", "moves to", "moving to",
+    "relocat", "scrapp", "cancel", "shelv", "withdraw", "pulls out", "pull out",
+    "pull-out", "abandon", "drops plan", "drop plan", "exits tamil nadu",
+    "puts on hold", "put on hold", "stalled", "stalls", "lost to",
 ]
-# Don't fire on these — they're positive/neutral and create false alarms.
-POSITIVE_GUARD = ["inaugurat", "commission", "operational", "begins production",
-                  "starts production", "opens", "expands in tamil nadu"]
+# RIVAL-STATE names — only fire when paired with an INVEST_VERB (an actual
+# competing investment), so a bare mention of "Andhra" doesn't trigger.
+RIVAL_STATES = ["andhra", "telangana", "karnataka", "gujarat", "maharashtra", "odisha"]
+INVEST_VERB = ["invest", "new plant", "plant in", "to set up", "sets up", "factory in",
+               "unit in", "facility in", "crore in", "gigafactory", "mega plant",
+               "to build in", "shifts to", "moves to"]
+# Never fire on these — positive/irrelevant (kills the recruitment / rooftop /
+# stock / TN-positive false alarms).
+POSITIVE_GUARD = [
+    "inaugurat", "commission", "operational", "begins production", "starts production",
+    "opens", "in tamil nadu", "thoothukudi", "rooftop", "installs", "recruitment",
+    "apprentice", "result", "battery swapping", "share price", " stock", "q1 fy",
+    "q2 fy", "q3 fy", "q4 fy", "dividend", "bags order", "wins order", "tamil nadu pitch",
+]
+
+
+def _is_risk(title: str, first_word: str) -> bool:
+    t = title.lower()
+    if not first_word or first_word not in t:
+        return False
+    if any(g in t for g in POSITIVE_GUARD):
+        return False
+    if any(s in t for s in STRONG_RISK):
+        return True
+    if any(rs in t for rs in RIVAL_STATES) and any(v in t for v in INVEST_VERB):
+        return True
+    return False
 
 
 def _news_rss(company: str) -> str:
@@ -73,13 +95,8 @@ def run_investment_watch(max_companies: int = 40) -> dict:
         if not xml:
             continue
 
-        hits = []
-        for it in _parse_items(xml):
-            t = (it.get("title") or "").lower()
-            if first_word and first_word in t \
-               and any(k in t for k in RISK_TERMS) \
-               and not any(g in t for g in POSITIVE_GUARD):
-                hits.append(it)
+        hits = [it for it in _parse_items(xml)
+                if _is_risk(it.get("title") or "", first_word)]
         if not hits:
             continue
 
