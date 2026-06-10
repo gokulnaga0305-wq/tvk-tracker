@@ -299,6 +299,7 @@ Return JSON with these fields exactly:
   "is_credit_steal": true/false,
   "related_dmk_scheme": "EXACT name from list above if matched, else null",
   "original_credit": "what DMK actually did (only if is_credit_steal=true)",
+  "first_ever_claim": true/false,  // see FIRST-EVER / RE-CREDIT rule below
   "people_mentioned": ["names of officials, ministers, accused, etc."],
   "severity": 1-5 (1=minor procedural, 5=loss-of-life/major scandal),
   "confidence": 0.0-1.0,
@@ -494,6 +495,23 @@ CREDIT-STEAL DETECTION:
     any scheme in the DMK list above, set is_credit_steal=true and
     related_dmk_scheme to the EXACT name from the list.
   - Note in original_credit: when DMK launched it, beneficiary count, etc.
+
+FIRST-EVER / RE-CREDIT FLAG (set first_ever_claim):
+  Set first_ever_claim=TRUE when a TVK/govt announcement is presented as a
+  fresh achievement that COULD actually be a DMK-era project re-credited —
+  even if you can't immediately match a scheme above. Trigger it when the
+  item is a govt-positive announcement (category governance / new_initiative
+  / investment_announcement / tenders) AND any of these apply:
+    * claims a "first ever" / "first time" / "first in India/TN" / முதன்முறை
+      / முதல் முறை / first-of-its-kind
+    * announces an INVESTMENT / MoU / ₹crore project / shipyard / plant / factory
+    * launches/inaugurates a scheme, force, unit, patrol, or welfare programme
+    * a minister "visits"/"takes forward"/"commits to" a big investment
+  These are exactly the claims that must be checked against the 2021-26 DMK
+  record before being treated as a TVK win (e.g. Singappen = Pink Patrol;
+  HD Hyundai/Mazagon shipyards = DMK MoUs; police drones = DMK 2023). Setting
+  the flag does NOT assert it's stolen — it routes the item to human review.
+  For clearly-negative items (crime, failure, protest) set first_ever_claim=false.
 
 CONFIDENCE SCORING:
   - 0.9+ : Clearly sourced, named officials, specific date/place, official quotes
@@ -1044,6 +1062,21 @@ async def process_article(item: ApifyWebhookItem) -> None:
         # Social_media / citizen / low-confidence -> waits for press
         verification_status = "pending_verification"
         publish_status = "pending_review"  # held back from public view
+
+    # DMK-LINEAGE GUARD: a TVK "first-ever" / investment / scheme-launch claim
+    # must be checked against the 2021-26 DMK record before it's published as a
+    # clean win — these are exactly the Singappen / HD Hyundai / police-drone
+    # re-credits. Hold them for human review (queued under pending_review) and
+    # mark WHY. Items the AI already flagged as credit_steal keep normal
+    # handling (they're correctly captured).
+    if extracted.get("first_ever_claim") and not extracted.get("is_credit_steal") \
+       and (extracted.get("category") or "") in {
+           "governance", "new_initiative", "investment_announcement", "tenders"}:
+        publish_status = "pending_review"
+        _s = extracted.get("summary") or ""
+        if not _s.startswith("⚑"):
+            extracted["summary"] = ("⚑ DMK-LINEAGE CHECK — verify against the "
+                                    "2021-26 DMK record before treating as a TVK win. " + _s)
 
     # Only persist press_sentiment for INDEPENDENT press tiers — exclude
     # govt_announcement (CMO/DIPR are partisan by definition), citizen
