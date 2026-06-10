@@ -374,6 +374,59 @@ async def cron_investment_watch(
 
 
 # ---------------------------------------------------------------------------
+# Daily review digest — the 5-minute triage, delivered to Telegram
+# ---------------------------------------------------------------------------
+def _run_review_digest(limit: int) -> dict:
+    from app.database import get_db
+    from app.ingestion.telegram_bot import _send_message
+    db = get_db()
+    rows = (db.table("incidents")
+            .select("id, title, category, summary, incident_date, created_at")
+            .eq("status", "pending_review").order("created_at", desc=True)
+            .limit(200).execute().data or [])
+    flagged = [r for r in rows if str(r.get("summary") or "").startswith("⚑")]
+    others = [r for r in rows if not str(r.get("summary") or "").startswith("⚑")]
+    SITE = "https://tvk-tracker.vercel.app/incidents"
+
+    if not rows:
+        msg = "✅ TVK Tracker — review queue is clear. Nothing pending."
+    else:
+        parts = ["🗞️ TVK Tracker — daily review queue\n"]
+        if flagged:
+            parts.append(f"⚑ {len(flagged)} need a DMK-lineage check (possible re-credits):")
+            for r in flagged[:limit]:
+                parts.append(f"• {(r.get('title') or '')[:70]}\n  {SITE}/{r['id']}")
+            parts.append("")
+        parts.append(f"📋 {len(others)} other items awaiting verification.")
+        parts.append(f"\nTriage: {SITE}?status=pending_review")
+        msg = "\n".join(parts)
+
+    chat_ids = [c.strip() for c in (settings.telegram_allowed_chat_ids or "").split(",") if c.strip()]
+    sent = 0
+    for cid in chat_ids:
+        try:
+            _send_message(int(cid), msg); sent += 1
+        except Exception:
+            pass
+    res = {"flagged": len(flagged), "other_pending": len(others), "sent_to": sent}
+    logger.info("review-digest: %s", res)
+    return res
+
+
+@router.post("/review-digest")
+async def cron_review_digest(
+    x_admin_secret: Optional[str] = Header(None),
+    limit: int = Query(12, ge=1, le=40),
+):
+    """Send the admin a Telegram digest of the pending-review queue —
+    lineage-flagged (⚑) items first, with direct links. Turns 'hunt the
+    dashboard daily' into a 5-minute glance. Outbound only, so it works even
+    if the inbound webhook is down. Schedule daily."""
+    _require_admin(x_admin_secret)
+    return _run_review_digest(limit)
+
+
+# ---------------------------------------------------------------------------
 # Keep-warm — no work, just touches the Space
 # ---------------------------------------------------------------------------
 @router.get("/keep-warm")

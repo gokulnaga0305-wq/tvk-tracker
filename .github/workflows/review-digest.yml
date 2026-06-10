@@ -1,0 +1,33 @@
+name: Review digest (Telegram)
+
+# Daily Telegram digest of the pending-review queue — lineage-flagged (⚑)
+# items first. GitHub holds the ADMIN_SECRET; the HF backend holds the
+# Telegram creds and does the actual sending. Just a POST to the endpoint.
+
+on:
+  schedule:
+    - cron: '30 3 * * *'   # daily 03:30 UTC = 09:00 IST (morning triage)
+  workflow_dispatch:
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Send review digest (wake space + retry)
+        env:
+          BASE: https://goknaga-tvk-tracker-backend.hf.space
+          SECRET: ${{ secrets.ADMIN_SECRET }}
+        run: |
+          set +e
+          # HF Spaces sleep; first hit may wake it. Retry a few times.
+          for i in 1 2 3 4 5 6; do
+            code=$(curl -s -o /tmp/out.json -w "%{http_code}" -X POST \
+              -H "x-admin-secret: ${SECRET}" \
+              "${BASE}/api/cron/review-digest?limit=12")
+            echo "attempt $i -> HTTP $code"
+            if [ "$code" = "200" ]; then cat /tmp/out.json; echo; exit 0; fi
+            sleep 20
+          done
+          echo "digest endpoint did not return 200 after retries"
+          exit 1
