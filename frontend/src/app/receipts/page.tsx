@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useLocale } from '@/components/LocaleProvider';
+import DravidianModelExplainer from '@/components/DravidianModelExplainer';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -109,6 +110,9 @@ export default function ReceiptsPage() {
           Indexed by category. Search by scheme name OR by what TVK is renaming it as (aliases included).
         </span>
       </div>
+
+      {/* Analytical backbone — why the DMK record isn't "freebies" */}
+      <DravidianModelExplainer />
 
       {/* Search + category chips */}
       <div className="mb-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
