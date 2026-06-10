@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, AlertTriangle, CheckSquare, Users,
   Info, Copy, MessageSquarePlus, ShieldCheck, Menu, X, Database, ScrollText,
-  MapPin, RotateCcw, Factory,
+  MapPin, RotateCcw, Factory, Zap,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useLocale } from './LocaleProvider';
@@ -19,6 +19,7 @@ const NAV: { href: string; key: StringKey; icon: any }[] = [
   { href: '/receipts',      key: 'nav.receipts',      icon: ScrollText },
   { href: '/dmk-timeline',  key: 'nav.dmk_timeline',  icon: Database },
   { href: '/investments',   key: 'nav.investments',   icon: Factory },
+  { href: '/power',         key: 'nav.power',         icon: Zap },
   { href: '/promises',      key: 'nav.promises',      icon: CheckSquare },
   { href: '/members',       key: 'nav.members',       icon: Users },
   { href: '/report',        key: 'nav.report',        icon: MessageSquarePlus },
