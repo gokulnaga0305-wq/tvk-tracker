@@ -57,6 +57,20 @@ async def get_dashboard_stats():
     )
     incidents = incidents_res.data or []
 
+    # TVK-ERA FLOOR (2026-06-11): this is a TVK-government accountability
+    # tracker, so every headline counter must count only events on TVK's
+    # watch (incident_date >= 2026-05-11). Without this floor the dashboard
+    # total was 900 — silently including ~83 DMK-era incidents (Jan-Apr 2026
+    # power cuts, crimes, etc.) — while the accountability card correctly
+    # showed 817. Counting DMK-era events as TVK's record is exactly the
+    # overreach this project refuses to make. Floor matches the accountability
+    # card's filter so every number on the dashboard now reconciles.
+    govt_start_iso = settings.govt_start_date.isoformat()
+    incidents = [
+        inc for inc in incidents
+        if (inc.get("incident_date") or "") >= govt_start_iso
+    ]
+
     counts_total = {c: 0 for c in TRACKED_CATEGORIES}
     counts_verified = {c: 0 for c in TRACKED_CATEGORIES}
     # Collect every incident per claimed category for top-source ranking.

@@ -372,11 +372,22 @@ async def list_incidents(
     verification_status: Optional[str] = None,
     status: str = "approved",
     district: Optional[str] = None,
+    era: str = Query("tvk", description="'tvk' = only incidents on TVK's watch "
+                     "(incident_date >= 2026-05-11, the default and the honest "
+                     "view); 'all' = include pre-era (mostly DMK-era) incidents too."),
     limit: int = Query(50, le=200),
     offset: int = 0,
 ):
     db = get_db()
     query = db.table("incidents").select("*").eq("status", status)
+
+    # TVK-ERA FLOOR (2026-06-11): default to incidents on TVK's watch so the
+    # list reconciles with the dashboard's accountability headline (817, not
+    # 900). The ~83 pre-May-11 incidents are mostly DMK-era events that this
+    # TVK tracker must not count as TVK's record. Pass era='all' to see them
+    # (data is never deleted — just filtered out of the honest default view).
+    if era != "all":
+        query = query.gte("incident_date", settings.govt_start_date.isoformat())
 
     if category:
         query = query.eq("category", category)
