@@ -184,8 +184,9 @@ def _match_debunk_corpus(db, claim: str) -> list[dict]:
 # --------------------------------------------------------------------------
 
 _FIRST_EVER_RE = re.compile(
-    r"first[- ]ever|first time|first in (the )?country|first in india|"
-    r"launch|introduc|inaugurat|new scheme|never before", re.I)
+    r"first[- ]ever|first time|never before|"
+    r"first\b[\w\s]{0,25}\b(country|india|state|nation|world)|"  # 'first state in the country'
+    r"launch|introduc|inaugurat|new scheme|unveil", re.I)
 
 
 def _match_dmk_archive(db, claim: str) -> list[dict]:
