@@ -388,9 +388,22 @@ incident-eligible.
     honour killing, communal/caste attack, child abuse, petrol-bomb
     attack, dowry death, kidnapping. The perpetrator does NOT need to
     be a TVK actor. These all feed our crime-vs-DMK-baseline panel.
-  - Named corruption case: bribe demand, scam, FIR filed, vigilance
-    arrest, tender irregularity with named amount (whether the accused
-    is TVK or not — corruption in TN is govt's responsibility)
+  - Named corruption case — category=corruption ONLY when the ACCUSED is a
+    current TVK office-holder (minister, MLA, candidate, functionary, cadre)
+    OR a government official/employee serving UNDER the TVK administration
+    (bribe demand, scam, FIR, vigilance arrest, extortion / tender
+    irregularity with a named subject). This is the government's OWN
+    corruption — what we track.
+    ⛔ This is NOT category=corruption and NOT an accountability failure —
+    use category="political_event" instead — when EITHER:
+      • the TVK government is the one ACTING AGAINST corruption: ordering a
+        probe / overhaul / audit, seeking sanction to prosecute, transferring
+        or suspending an official as a remedy, filing a case. Govt
+        anti-corruption ACTION is not govt corruption.
+      • the accused is a PRIOR-REGIME figure (DMK / AIADMK / a "former"
+        or "ex-" minister) for conduct BEFORE 2026-05-11, or it is an
+        ED / CBI / IT central-agency case against such a figure. TVK
+        prosecuting old cases is not TVK's corruption.
   - Specific civic failure with named place + measurable impact: power
     cut > 3 hours in named area, water shortage, flooding, sewage
     backup, hospital oxygen shortage
@@ -431,6 +444,18 @@ EXAMPLES (study these carefully):
 
   EX 4: "Power cut for 6 hours in T. Nagar, residents protest"
     → is_relevant=TRUE, category=power_cut, location=T. Nagar, severity=3.
+
+  EX 5: "CM Vijay orders TASMAC overhaul over alleged Rs 1,600 cr diversion"
+    → is_relevant=TRUE, category=political_event (the govt is ACTING AGAINST
+    alleged corruption — NOT a TVK corruption failure). is_credit_steal=FALSE.
+
+  EX 6: "TN govt seeks nod to prosecute ex-DMK minister Senthil Balaji"
+    → is_relevant=TRUE, category=political_event (TVK prosecuting a PRIOR-
+    regime DMK figure — NOT TVK's corruption). NOT category=corruption.
+
+  EX 7: "TVK functionary arrested for demanding Rs 5 lakh bribe in Vellore"
+    → is_relevant=TRUE, category=corruption (a CURRENT TVK figure is the
+    accused — this IS the government's own corruption).
 
   EX 5: "Stalin urges DMK cadre to avoid harsh criticism of new govt"
     → is_relevant=FALSE. Politics. Not a TVK incident.

@@ -561,6 +561,38 @@ async def cron_district_backfill(
 
 
 # ---------------------------------------------------------------------------
+# Reclassify mis-tagged 'corruption' incidents (anti-corruption actions +
+# prior-regime prosecutions are NOT TVK corruption)
+# ---------------------------------------------------------------------------
+def _run_reclassify_corruption(limit: int, dry_run: bool) -> dict:
+    from app.ingestion.reclassify_corruption import reclassify_corruption
+    try:
+        return reclassify_corruption(limit=limit, dry_run=dry_run)
+    except Exception as e:
+        logger.exception("reclassify-corruption failed")
+        return {"error": str(e)[:160]}
+
+
+@router.post("/reclassify-corruption")
+async def cron_reclassify_corruption(
+    background_tasks: BackgroundTasks,
+    limit: int = Query(200, ge=1, le=500),
+    dry_run: bool = Query(False, description="Judge but don't write (preview)"),
+    x_admin_secret: Optional[str] = Header(None),
+):
+    """Re-judge every category=corruption incident and move the ones that
+    aren't TVK-side corruption (govt anti-corruption ACTIONS, or prosecutions
+    of prior-regime/DMK figures) to category=political_event. Genuine TVK
+    corruption is left untouched. Non-destructive (audit-logged). Run once
+    after the prompt fix deploys; safe to re-run."""
+    _require_admin(x_admin_secret)
+    if dry_run:
+        return _run_reclassify_corruption(limit, True)  # sync so caller sees the preview
+    background_tasks.add_task(_run_reclassify_corruption, limit, False)
+    return {"status": "queued", "limit": limit}
+
+
+# ---------------------------------------------------------------------------
 # Keep-warm — no work, just touches the Space
 # ---------------------------------------------------------------------------
 @router.get("/keep-warm")
