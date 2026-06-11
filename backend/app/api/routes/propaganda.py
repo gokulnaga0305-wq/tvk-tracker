@@ -161,18 +161,67 @@ async def propaganda_summary():
     db = get_db()
     govt_start = "2026-05-11"
 
-    # Accountability side — verified incidents under TVK
+    # Accountability side — TVK-era incidents.
+    #
+    # We expose TWO numbers, both honest:
+    #   accountability_events_documented  — every approved TVK-era incident
+    #       (the broad "what the pipeline has surfaced" total).
+    #   accountability_verified           — the STRICT headline: only
+    #       press/multi-source/admin-VERIFIED incidents in genuine FAILURE
+    #       categories, plus manifesto promises actually marked broken.
+    #       This is the un-debunkable number — every item is both a real
+    #       failure (not a neutral political event) and independently
+    #       verified (not single-source / pending).
+    #
+    # Categories that count as governance FAILURES (neutral ones like
+    # political_event / new_initiative / kept_promise, and the propaganda
+    # pool fake_news/propaganda which is counted on the other side, are
+    # deliberately excluded).
+    FAILURE_CATEGORIES = {
+        "corruption", "murders", "sexual_assault", "crimes_women_kids",
+        "power_cut", "eb_failure", "alcohol_menace", "honour_killing",
+        "police_excess", "broken_promise", "attack_on_press",
+        "custodial_death", "civic_failure", "crowd_management_failure",
+        "youth_targeting", "censorship", "governance",
+    }
+    # STRICT verified — excludes single_source (auto-published-but-unconfirmed)
+    # so the word "verified" in the label is literally true.
+    STRICT_VERIFIED = {"multi_source_verified", "press_verified", "admin_verified"}
     try:
-        acc = (
+        acc_rows = (
             db.table("incidents")
-            .select("id", count="exact")
+            .select("id, category, verification_status, ai_raw")
             .eq("status", "approved")
             .gte("incident_date", govt_start)
             .execute()
+        ).data or []
+        accountability_events = len(acc_rows)
+
+        def _is_failure(inc: dict) -> bool:
+            cats = {inc.get("category")}
+            raw = inc.get("ai_raw") or {}
+            if isinstance(raw, dict):
+                cats |= {str(t) for t in (raw.get("tags_extra") or []) if isinstance(t, str)}
+            return bool(cats & FAILURE_CATEGORIES)
+
+        verified_failures = sum(
+            1 for inc in acc_rows
+            if inc.get("verification_status") in STRICT_VERIFIED and _is_failure(inc)
         )
-        accountability_events = acc.count or 0
     except Exception:
         accountability_events = 0
+        verified_failures = 0
+
+    # Manifesto promises actually marked broken (NOT pending/partial).
+    try:
+        broken_promises = (
+            db.table("promises").select("id", count="exact")
+            .eq("status", "broken").execute()
+        ).count or 0
+    except Exception:
+        broken_promises = 0
+
+    accountability_verified = verified_failures + broken_promises
 
     # Propaganda side
     try:
@@ -270,6 +319,9 @@ async def propaganda_summary():
 
     return {
         "accountability_events_documented":  accountability_events,
+        "accountability_verified":           accountability_verified,
+        "verified_failures":                 verified_failures,
+        "broken_promises":                   broken_promises,
         "propaganda_events_tracked":         total_propaganda,
         "confirmed_fake_or_active":          confirmed_fake,
         "organic_high_volume":               organic,

@@ -123,13 +123,15 @@ export default function PropagandaReach() {
             <TrendingUp size={12} className="text-emerald-400 opacity-50" />
           </div>
           <div className="text-3xl font-bold text-emerald-300">
-            {data.accountability_events_documented}
+            {data.accountability_verified ?? data.accountability_events_documented}
           </div>
           <div className="text-xs text-gray-500 mt-1">
             verified failures + broken promises since May 11
           </div>
           <div className="text-[11px] text-emerald-500/70 mt-3">
-            What our pipeline has surfaced and cross-verified.
+            Independently verified (2+ outlets / admin-reviewed) in failure
+            categories — of {data.accountability_events_documented} total documented
+            TVK-era incidents.
           </div>
         </Link>
 

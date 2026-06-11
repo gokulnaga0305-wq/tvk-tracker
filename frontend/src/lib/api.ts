@@ -164,6 +164,9 @@ export interface Promise_ {
 
 export interface PropagandaSummary {
   accountability_events_documented: number;
+  accountability_verified: number;
+  verified_failures: number;
+  broken_promises: number;
   propaganda_events_tracked: number;
   confirmed_fake_or_active: number;
   organic_high_volume: number;
