@@ -80,6 +80,8 @@ LOCALITY_TO_DISTRICT: dict[str, str] = {
     "tuticorin":          "Thoothukudi",
     "thoothukudi":        "Thoothukudi",
     "thoothukkudi":       "Thoothukudi",
+    "vilathikulam":       "Thoothukudi",
+    "sathankulam":        "Thoothukudi",
     "kanyakumari":        "Kanyakumari",
     "kanniyakumari":      "Kanyakumari",
     "cape comorin":       "Kanyakumari",
@@ -90,6 +92,7 @@ LOCALITY_TO_DISTRICT: dict[str, str] = {
     "namakkal":           "Namakkal",
     "tiruvallur":         "Tiruvallur",
     "thiruvallur":        "Tiruvallur",
+    "tiruvalur":          "Tiruvallur",   # common single-l typo
     "tiruvarur":          "Tiruvarur",
     "thiruvarur":         "Tiruvarur",
     "nagapattinam":       "Nagapattinam",
