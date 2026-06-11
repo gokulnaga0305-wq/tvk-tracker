@@ -504,6 +504,14 @@ def _run_district_backfill(limit: int, use_ai: bool) -> dict:
             .select("id, title, summary, location")
             .is_("district", "null")
             .limit(limit).execute().data or [])
+    # Rows WITH a location field first — they're the most resolvable, and on
+    # HF's free tier this background task can die partway, so the highest-
+    # value rows must come before the long statewide tail.
+    rows.sort(key=lambda r: 0 if r.get("location") else 1)
+    # Statewide tokens: dictionary correctly returns None for these, and the
+    # AI would also return NONE — every run, for ~100+ rows. Skip the AI call.
+    STATEWIDE = {"tamil nadu", "tamilnadu", "tn", "tn state", "statewide",
+                 "tamil nadu state", "across tamil nadu", "all districts"}
     out = {"scanned": len(rows), "dict_location": 0, "dict_text": 0,
            "ai_location": 0, "unresolved": 0}
     for inc in rows:
@@ -518,7 +526,8 @@ def _run_district_backfill(limit: int, use_ai: bool) -> dict:
             district = map_location_to_district(blob)
             if district:
                 out["dict_text"] += 1
-        if not district and use_ai and loc:
+        if (not district and use_ai and loc
+                and loc.strip().lower() not in STATEWIDE):
             try:
                 district = map_location_via_ai(loc)
                 if district:
