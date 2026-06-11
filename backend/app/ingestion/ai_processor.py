@@ -550,15 +550,19 @@ def _get_client_chain() -> list[tuple[OpenAI, str]]:
     (credits) / 429 (rate-limit) / 401 (auth) errors.
 
     Priority for cost reasons (this is a self-funded project):
-      0. Groq Llama-3.3-70B-versatile — FREE tier, 14,400 req/day,
-         very capable on structured-JSON extraction. Becomes primary
-         so OpenRouter credits don't get burned on routine ingestion.
-      1. OpenRouter -> Claude Haiku 4.5 — paid fallback when Groq is
-         rate-limited or down.
-      2. Anthropic direct -> Claude Haiku 4.5 — last-resort fallback.
+      0. Groq Llama-3.3-70B-versatile — FREE tier, very capable on
+         structured-JSON extraction.
+      1-2. Google Gemini flash + flash-lite — FREE, separate daily
+         buckets per model, no credit card. Promoted ABOVE OpenRouter
+         (2026-06-11): the OpenRouter balance went NEGATIVE (-$0.22),
+         which 402s every request including :free models, so each call
+         was burning a 40s timeout before reaching Gemini.
+      3-4. OpenRouter free models — kept as a backstop in case the
+         balance is restored; harmless at the back of the chain.
+      5. Anthropic direct — last resort (key usually unset).
 
     Each provider is OpenAI-API-compatible at its base_url, so a single
-    OpenAI client class handles all three.
+    OpenAI client class handles all of them.
     """
     chain: list[tuple[OpenAI, str]] = []
     if settings.groq_api_key:
@@ -568,20 +572,33 @@ def _get_client_chain() -> list[tuple[OpenAI, str]]:
         # no TPM wall (only a 100K tokens/DAY cap), so it's the Groq model
         # for full extraction. The cheap relevance GATE (see _get_gate_chain
         # + _passes_relevance_gate) runs on 8b first and filters out ~70%
-        # of junk so this expensive 70b/OpenRouter path runs far less often.
+        # of junk so this expensive 70b path runs far less often.
         groq_client = OpenAI(
             timeout=40, max_retries=1,
             api_key=settings.groq_api_key,
             base_url="https://api.groq.com/openai/v1",
         )
         chain.append((groq_client, "llama-3.3-70b-versatile"))
+    # Google Gemini (GEMINI_API_KEY): free at aistudio.google.com.
+    # flash and flash-lite have SEPARATE free daily buckets, so listing
+    # both roughly doubles free fallback capacity on one key.
+    gem = getattr(settings, "gemini_api_key", None)
+    if gem:
+        _gem = OpenAI(
+            timeout=40, max_retries=1,
+            api_key=gem,
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        )
+        chain.append((_gem, "gemini-2.0-flash"))
+        chain.append((_gem, "gemini-2.0-flash-lite"))
     if settings.openrouter_api_key:
-        # FREE OpenRouter models — $0 cost. Accounts that have ever
-        # deposited >= $10 lifetime get 1,000 free-model requests/day,
-        # which is plenty as a Groq fallback. We list two free models so
-        # if one is busy/unavailable the other catches the call. The old
+        # FREE OpenRouter models — $0 cost when the account balance is
+        # non-negative. Deliberately BEHIND Gemini: balance is currently
+        # negative, which 402s everything. The 402 falls through fast
+        # via _is_quota_or_rate_error, and if the balance is ever topped
+        # up these slots start working again with no code change. The
         # paid 'anthropic/claude-haiku-4.5' is intentionally NOT used —
-        # it's what was silently draining the wallet.
+        # it's what silently drained the wallet.
         _or = OpenAI(
             timeout=40, max_retries=1,
             api_key=settings.openrouter_api_key,
@@ -593,16 +610,6 @@ def _get_client_chain() -> list[tuple[OpenAI, str]]:
         )
         chain.append((_or, "meta-llama/llama-3.3-70b-instruct:free"))
         chain.append((_or, "qwen/qwen3-next-80b-a3b-instruct:free"))
-    # Optional extra free tier: Google Gemini (set GEMINI_API_KEY). Free
-    # at aistudio.google.com — no credit card. 1,500 req/day, separate
-    # bucket from everything above. OpenAI-compatible endpoint.
-    gem = getattr(settings, "gemini_api_key", None)
-    if gem:
-        chain.append((OpenAI(
-            timeout=40, max_retries=1,
-            api_key=gem,
-            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-        ), "gemini-2.0-flash"))
     if settings.anthropic_api_key:
         chain.append((OpenAI(
             timeout=40, max_retries=1,
@@ -620,10 +627,13 @@ def _get_gate_chain() -> list[tuple[OpenAI, str]]:
          has a 500K tokens/DAY bucket (5x the 70b). Gate calls are cheap
          and plentiful here — exactly what a high-volume pre-filter needs.
       1. Groq llama-3.3-70b-versatile — backup if 8b errors.
-      2. OpenRouter Haiku — paid last resort (rarely reached for a gate).
+      2. Gemini flash-lite — free last resort, separate daily bucket.
 
     The gate's whole purpose is to AVOID burning the expensive chain on
     obvious junk, so it must run on the highest-capacity cheapest model.
+    (2026-06-11: the old slot-2 was PAID OpenRouter Haiku — removed. With
+    the OpenRouter balance negative it 402'd anyway, and if topped up it
+    would silently resume draining the wallet on every gate call.)
     """
     chain: list[tuple[OpenAI, str]] = []
     if settings.groq_api_key:
@@ -634,16 +644,13 @@ def _get_gate_chain() -> list[tuple[OpenAI, str]]:
         )
         chain.append((groq_client, "llama-3.1-8b-instant"))
         chain.append((groq_client, "llama-3.3-70b-versatile"))
-    if settings.openrouter_api_key:
+    gem = getattr(settings, "gemini_api_key", None)
+    if gem:
         chain.append((OpenAI(
             timeout=40, max_retries=1,
-            api_key=settings.openrouter_api_key,
-            base_url="https://openrouter.ai/api/v1",
-            default_headers={
-                "HTTP-Referer": "https://tvk-tracker.vercel.app",
-                "X-Title": "TVK Tracker",
-            },
-        ), "anthropic/claude-haiku-4.5"))
+            api_key=gem,
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        ), "gemini-2.0-flash-lite"))
     return chain
 
 

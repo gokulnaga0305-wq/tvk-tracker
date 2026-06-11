@@ -100,6 +100,9 @@ export const STRINGS = {
   "rep.submitting":   { en: "Submitting…",      ta: "சமர்ப்பிக்கிறது…" },
   "rep.required":     { en: "Required",         ta: "கட்டாயம்" },
 
+  // ---- Data health ----
+  "nav.data_health":  { en: "Data Health",      ta: "தரவு நிலை" },
+
   // ---- Methodology ----
   "meth.title":       { en: "Methodology",      ta: "முறையியல்" },
   "meth.subtitle":    { en: "How we collect, verify, and publish incidents. Public, auditable, and challengeable.",

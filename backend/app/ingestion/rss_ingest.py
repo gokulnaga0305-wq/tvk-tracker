@@ -220,17 +220,29 @@ SOURCES_RSS: list[dict[str, str]] = [
 ]
 
 
+# Some sites (Spark+ behind Cloudflare) 403 the bot UA but accept a
+# browser UA. Tried on 403 before giving up.
+BROWSER_UA = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+)
+
+
 def _fetch(url: str, timeout: int = 25) -> Optional[str]:
-    try:
-        req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-        with urllib.request.urlopen(req, timeout=timeout) as r:
-            return r.read().decode("utf-8", errors="replace")
-    except urllib.error.HTTPError as e:
-        logger.warning("HTTP %d fetching %s", e.code, url)
-        return None
-    except Exception as e:
-        logger.warning("Fetch failed for %s: %s", url, e)
-        return None
+    for ua in (USER_AGENT, BROWSER_UA):
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": ua})
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read().decode("utf-8", errors="replace")
+        except urllib.error.HTTPError as e:
+            if e.code == 403 and ua is USER_AGENT:
+                continue  # retry once with browser UA
+            logger.warning("HTTP %d fetching %s", e.code, url)
+            return None
+        except Exception as e:
+            logger.warning("Fetch failed for %s: %s", url, e)
+            return None
+    return None
 
 
 def _strip_html(text: str) -> str:
@@ -325,6 +337,43 @@ def _build_webhook_item(item: dict[str, Any], source: dict[str, str]) -> Optiona
     )
 
 
+def _record_feed_health(source: dict[str, str], *, ok: bool,
+                        item_count: int = 0, processed: int = 0,
+                        error: str | None = None) -> None:
+    """Upsert true fetch telemetry for this feed (table: feed_health).
+
+    This is what makes 'broken feed' detection honest — the sources-table
+    freshness metric only sees when an article last arrived, which can't
+    distinguish a dead feed from an outlet that simply had no TN coverage.
+    Never raises: telemetry must not break ingestion.
+    """
+    try:
+        from app.database import get_db
+        from datetime import datetime, timezone
+        db = get_db()
+        now = datetime.now(timezone.utc).isoformat()
+        row: dict[str, Any] = {
+            "feed_label":         source["source_label"],
+            "feed_name":          source.get("name") or source["source_label"],
+            "last_attempt_at":    now,
+            "last_http_ok":       ok,
+            "last_item_count":    item_count,
+            "last_new_processed": processed,
+            "last_error":         (error or "")[:300] or None,
+            "updated_at":         now,
+        }
+        if ok:
+            row["last_success_at"] = now
+            row["consecutive_failures"] = 0
+        else:
+            prev = (db.table("feed_health").select("consecutive_failures")
+                    .eq("feed_label", source["source_label"]).execute().data or [])
+            row["consecutive_failures"] = (prev[0].get("consecutive_failures", 0) + 1) if prev else 1
+        db.table("feed_health").upsert(row, on_conflict="feed_label").execute()
+    except Exception as e:
+        logger.debug("feed_health telemetry failed for %s: %s", source.get("source_label"), e)
+
+
 async def ingest_one_source(source: dict[str, str], *, max_items: int = 25) -> dict[str, Any]:
     """Pull one RSS source and AI-process every item via process_article.
 
@@ -335,6 +384,7 @@ async def ingest_one_source(source: dict[str, str], *, max_items: int = 25) -> d
     xml_text = _fetch(source["rss_url"])
     if not xml_text:
         out["errors"] = 1
+        _record_feed_health(source, ok=False, error="fetch failed (HTTP error or timeout)")
         return out
     items = _parse_rss(xml_text)
     out["discovered"] = len(items)
@@ -348,6 +398,7 @@ async def ingest_one_source(source: dict[str, str], *, max_items: int = 25) -> d
         except Exception as e:
             logger.warning("rss_ingest: process_article failed for %s: %s", webhook_item.url, e)
             out["errors"] += 1
+    _record_feed_health(source, ok=True, item_count=len(items), processed=out["processed"])
     return out
 
 

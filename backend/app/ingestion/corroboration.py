@@ -420,12 +420,20 @@ def sweep_pending(
     # status='pending_review', so the sweep never saw them — 200+ orphaned
     # for weeks. Now scan BOTH statuses; corroboration promotes them to
     # status='approved' (see attempt_corroborate).
+    #
+    # BUG FIX 2 (2026-06-11): also re-sweep verification_status='single_source'.
+    # The 48h pending-escalation ladder publishes uncorroborated items with the
+    # single_source tag — but nothing ever re-checked them afterward, so ~148
+    # items that LATER got press coverage stayed tagged single_source forever.
+    # pending_verification items keep priority (sorted first) so the trickle's
+    # small per-run limit isn't eaten by the single_source backlog.
     res = db.table("incidents").select(
         "id, title, summary, location, incident_date, source_urls, verification_status, status"
-    ).in_("status", ["approved", "pending_review"]).eq(
-        "verification_status", "pending_verification"
+    ).in_("status", ["approved", "pending_review"]).in_(
+        "verification_status", ["pending_verification", "single_source"]
     ).gte("incident_date", cutoff).execute()
     candidates = res.data or []
+    candidates.sort(key=lambda r: 0 if r.get("verification_status") == "pending_verification" else 1)
     if limit:
         candidates = candidates[:limit]
 

@@ -113,41 +113,41 @@ async def usage_summary() -> dict[str, Any]:
         "tier": "pay-as-you-go (no usage API exposed)",
     }
 
-    # ---- Twitter-to-RSS bridge reachability from HF runtime ----------
-    # Diagnoses why Nitter sources aren't producing output. If HF can
-    # reach the bridges that work locally, the issue is parsing.
-    # If HF cannot reach them, we need a different route.
-    bridge_probes: dict[str, Any] = {}
-    test_urls = [
-        ("nitter.net",                 "https://nitter.net/sunnewstamil/rss"),
-        ("nitter.privacydev.net",      "https://nitter.privacydev.net/sunnewstamil/rss"),
-        ("nitter.poast.org",           "https://nitter.poast.org/sunnewstamil/rss"),
-        ("rsshub.app",                 "https://rsshub.app/twitter/user/sunnewstamil"),
-        ("twiiit.com",                 "https://twiiit.com/sunnewstamil/rss"),
-        # Baseline — confirms outbound HTTP works at all
-        ("github.com (baseline)",      "https://github.com"),
-    ]
-    import urllib.request as _ur, urllib.error as _ue
-    for label, url in test_urls:
-        try:
-            req = _ur.Request(url, headers={"User-Agent": "TVKTracker/1.0"})
-            with _ur.urlopen(req, timeout=8) as r:
-                body = r.read(2000)
-                bridge_probes[label] = {
-                    "status": r.status,
-                    "bytes":  len(body),
-                    "is_feed": b"<rss" in body[:200].lower() or b"<feed" in body[:200].lower(),
-                }
-        except _ue.HTTPError as e:
-            bridge_probes[label] = {"http_error": e.code}
-        except Exception as e:
-            bridge_probes[label] = {"error": f"{type(e).__name__}: {str(e)[:90]}"}
-    out["twitter_rss_bridges"] = bridge_probes
+    # ---- Twitter-to-RSS bridges: permanently dead from HF ------------
+    # Live probes removed 2026-06-11. They were re-proven blocked on every
+    # call (403/404/RemoteDisconnected from HF's IP range, while outbound
+    # HTTP itself works) and were adding ~40s of probe timeouts to every
+    # diagnostics request. Twitter content flows via Google News + Apify
+    # govt handles instead. See rss_ingest.py architecture note.
+    out["twitter_rss_bridges"] = {
+        "status": "removed",
+        "note": "Nitter/RSSHub bridges are blocked from HF Spaces' IP range "
+                "(verified repeatedly through 2026-06). Twitter content arrives "
+                "via Google News queries and Apify govt handles.",
+    }
 
-    # ---- Per-source freshness ----------------------------------------
-    # Answers "when was each source last successfully scraped?". Anything
-    # > 6h for a press source is suspect; > 24h means an outright break.
-    # User can see at a glance which feeds are stale.
+    # ---- TRUE per-feed fetch health (feed_health table) --------------
+    # Written by rss_ingest after every fetch attempt. Unlike the outlet
+    # freshness below, this distinguishes a DEAD FEED (fetch/parse failed)
+    # from a quiet outlet (feed fine, no new coverage).
+    try:
+        from app.database import get_db as _gdb0
+        fh = (_gdb0().table("feed_health").select("*")
+              .order("feed_label").execute().data or [])
+        out["feed_health"] = fh
+        out["feeds_failing"] = [
+            f["feed_label"] for f in fh
+            if (f.get("consecutive_failures") or 0) >= 3
+        ]
+    except Exception as e:
+        out["feed_health"] = {"error": f"{type(e).__name__}: {str(e)[:100]}"}
+
+    # ---- Per-outlet COVERAGE recency -----------------------------------
+    # Answers "when did we last store an article from this outlet?".
+    # NOTE: this is NOT feed health — most outlets arrive via Google News
+    # aggregation, so an old timestamp usually means the outlet simply
+    # hasn't covered TN recently (quiet), not that anything is broken.
+    # For true broken-feed detection use feed_health above.
     try:
         from app.database import get_db as _gdb
         from datetime import datetime as _dt, timezone as _tz
@@ -168,7 +168,9 @@ async def usage_summary() -> dict[str, Any]:
             try:
                 dt = _dt.fromisoformat(ts.replace("Z", "+00:00"))
                 age_hours = (now - dt).total_seconds() / 3600
-                tier_health = "fresh" if age_hours < 6 else ("stale" if age_hours < 24 else "broken")
+                # 'quiet'/'silent' (not 'stale'/'broken') — an outlet with no
+                # recent rows usually just hasn't covered TN lately.
+                tier_health = "fresh" if age_hours < 6 else ("quiet" if age_hours < 24 else "silent")
                 freshness.append({
                     "outlet": outlet,
                     "last_scraped": ts,
@@ -178,8 +180,8 @@ async def usage_summary() -> dict[str, Any]:
             except Exception:
                 continue
         out["source_freshness"] = freshness
-        out["sources_broken"] = [f for f in freshness if f["health"] == "broken"][:20]
-        out["sources_stale"]  = [f for f in freshness if f["health"] == "stale"][:20]
+        out["sources_silent"] = [f for f in freshness if f["health"] == "silent"][:20]
+        out["sources_quiet"]  = [f for f in freshness if f["health"] == "quiet"][:20]
         out["sources_fresh_count"] = sum(1 for f in freshness if f["health"] == "fresh")
     except Exception as e:
         out["source_freshness"] = {"error": f"{type(e).__name__}: {str(e)[:100]}"}
@@ -192,6 +194,93 @@ async def usage_summary() -> dict[str, Any]:
         for i, (c, m) in enumerate(chain)
     ]
     out["ai_chain_count"] = len(chain)
+
+    return out
+
+
+@router.get("/data-health")
+async def data_health() -> dict[str, Any]:
+    """PUBLIC transparency endpoint for the /data-health frontend page.
+
+    Shows readers exactly how alive the pipeline is: per-feed fetch health,
+    per-outlet coverage recency, and the verification-status mix of the
+    incident corpus. Deliberately contains ZERO provider/key/quota info —
+    that stays in /usage (which is also keyless but admin-oriented).
+    """
+    from app.database import get_db
+    out: dict[str, Any] = {"checked_at": datetime.now(timezone.utc).isoformat()}
+    db = get_db()
+
+    # Configured feeds — true fetch telemetry
+    try:
+        fh = (db.table("feed_health").select(
+            "feed_label, feed_name, last_success_at, last_attempt_at, "
+            "last_item_count, last_new_processed, consecutive_failures"
+        ).order("feed_label").execute().data or [])
+        now = datetime.now(timezone.utc)
+        feeds = []
+        for f in fh:
+            ts = f.get("last_success_at")
+            age_h = None
+            if ts:
+                try:
+                    age_h = round((now - datetime.fromisoformat(
+                        ts.replace("Z", "+00:00"))).total_seconds() / 3600, 1)
+                except Exception:
+                    pass
+            failing = (f.get("consecutive_failures") or 0) >= 3 or (age_h is not None and age_h > 24)
+            feeds.append({
+                "label": f.get("feed_name") or f["feed_label"],
+                "last_success_hours_ago": age_h,
+                "items_last_fetch": f.get("last_item_count"),
+                "status": "failing" if failing else "ok",
+            })
+        out["feeds"] = feeds
+        out["feeds_ok"] = sum(1 for f in feeds if f["status"] == "ok")
+        out["feeds_failing"] = sum(1 for f in feeds if f["status"] == "failing")
+    except Exception as e:
+        out["feeds"] = []
+        out["feeds_error"] = f"{type(e).__name__}: {str(e)[:100]}"
+
+    # Outlet coverage recency (informational — quiet != broken)
+    try:
+        r = db.table("sources").select("outlet,scraped_at").order(
+            "scraped_at", desc=True).limit(500).execute()
+        latest: dict[str, str] = {}
+        for row in (r.data or []):
+            o = row.get("outlet") or "unknown"
+            if o not in latest and row.get("scraped_at"):
+                latest[o] = row["scraped_at"]
+        now = datetime.now(timezone.utc)
+        coverage = []
+        for outlet, ts in sorted(latest.items()):
+            try:
+                age_h = round((now - datetime.fromisoformat(
+                    ts.replace("Z", "+00:00"))).total_seconds() / 3600, 1)
+                coverage.append({"outlet": outlet, "last_article_hours_ago": age_h})
+            except Exception:
+                continue
+        out["outlet_coverage"] = coverage
+    except Exception as e:
+        out["outlet_coverage"] = []
+        out["coverage_error"] = f"{type(e).__name__}: {str(e)[:100]}"
+
+    # Verification mix of the corpus — the honesty metric
+    try:
+        counts: dict[str, int] = {}
+        for vs in ("multi_source_verified", "press_verified", "admin_verified",
+                   "single_source", "pending_verification"):
+            res = (db.table("incidents").select("id", count="exact")
+                   .eq("verification_status", vs).execute())
+            counts[vs] = res.count or 0
+        total = sum(counts.values())
+        verified = (counts["multi_source_verified"] + counts["press_verified"]
+                    + counts["admin_verified"])
+        out["verification_mix"] = counts
+        out["incidents_total"] = total
+        out["verified_pct"] = round(100 * verified / total, 1) if total else None
+    except Exception as e:
+        out["verification_error"] = f"{type(e).__name__}: {str(e)[:100]}"
 
     return out
 

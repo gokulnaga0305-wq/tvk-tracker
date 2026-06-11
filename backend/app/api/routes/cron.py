@@ -388,8 +388,34 @@ def _run_review_digest(limit: int) -> dict:
     others = [r for r in rows if not str(r.get("summary") or "").startswith("⚑")]
     SITE = "https://tvk-tracker.vercel.app/incidents"
 
-    if not rows:
-        msg = "✅ TVK Tracker — review queue is clear. Nothing pending."
+    # Feed-health alarm: surface dead feeds in the SAME daily glance, so a
+    # broken source gets noticed in <24h instead of when a tab looks stale.
+    feed_alerts: list[str] = []
+    try:
+        from datetime import datetime, timezone
+        fh = (db.table("feed_health")
+              .select("feed_name, feed_label, last_success_at, consecutive_failures")
+              .execute().data or [])
+        now = datetime.now(timezone.utc)
+        for f in fh:
+            fails = f.get("consecutive_failures") or 0
+            age_h = None
+            if f.get("last_success_at"):
+                try:
+                    age_h = (now - datetime.fromisoformat(
+                        str(f["last_success_at"]).replace("Z", "+00:00"))
+                    ).total_seconds() / 3600
+                except Exception:
+                    pass
+            if fails >= 3 or (age_h is not None and age_h > 24):
+                name = f.get("feed_name") or f.get("feed_label")
+                detail = f"{fails} consecutive failures" if fails >= 3 else f"no fetch success in {age_h:.0f}h"
+                feed_alerts.append(f"• {name} — {detail}")
+    except Exception:
+        pass
+
+    if not rows and not feed_alerts:
+        msg = "✅ TVK Tracker — review queue is clear, all feeds healthy."
     else:
         parts = ["🗞️ TVK Tracker — daily review queue\n"]
         if flagged:
@@ -398,6 +424,9 @@ def _run_review_digest(limit: int) -> dict:
                 parts.append(f"• {(r.get('title') or '')[:70]}\n  {SITE}/{r['id']}")
             parts.append("")
         parts.append(f"📋 {len(others)} other items awaiting verification.")
+        if feed_alerts:
+            parts.append(f"\n📡 {len(feed_alerts)} feed(s) need attention:")
+            parts.extend(feed_alerts[:8])
         parts.append(f"\nTriage: {SITE}?status=pending_review")
         msg = "\n".join(parts)
 
@@ -424,6 +453,102 @@ async def cron_review_digest(
     if the inbound webhook is down. Schedule daily."""
     _require_admin(x_admin_secret)
     return _run_review_digest(limit)
+
+
+# ---------------------------------------------------------------------------
+# Promise evidence sweep — proactive delivery-evidence hunt (weekly)
+# ---------------------------------------------------------------------------
+@router.post("/promise-evidence-sweep")
+async def cron_promise_evidence(
+    background_tasks: BackgroundTasks,
+    limit: int = Query(50, ge=1, le=200,
+        description="How many open promises to search this run"),
+    x_admin_secret: Optional[str] = Header(None),
+):
+    """Search Google News for delivery evidence per open promise (deadline-
+    bearing promises first). Attaches evidence_url on confident matches and
+    upgrades pending->partial only — never auto-kept, never auto-broken.
+    Schedule weekly (e.g. Sundays 05:00 IST) on cron-job.org."""
+    _require_admin(x_admin_secret)
+    from app.ingestion.promise_evidence import sweep_promise_evidence
+
+    def _go():
+        try:
+            r = sweep_promise_evidence(limit=limit)
+            logger.info("promise-evidence-sweep: %s", r)
+        except Exception as e:
+            logger.error("promise-evidence-sweep failed: %s", e)
+
+    background_tasks.add_task(_go)
+    return {"status": "queued", "limit": limit}
+
+
+# ---------------------------------------------------------------------------
+# District backfill — fix incidents with no district tag
+# ---------------------------------------------------------------------------
+def _run_district_backfill(limit: int, use_ai: bool) -> dict:
+    """Backfill `district` on incidents missing it.
+
+    Pass 1 (free): dictionary match — first on the `location` field, then on
+    title+summary text (the locality dictionary does substring matching, so
+    'power cut in Perambur disrupts...' resolves to Chennai).
+    Pass 2 (cheap, optional): AI resolution of the `location` field only.
+    Statewide/unresolvable incidents legitimately stay district-less.
+    """
+    from app.database import get_db
+    from app.ingestion.district_mapper import (
+        map_location_to_district, map_location_via_ai,
+    )
+    db = get_db()
+    rows = (db.table("incidents")
+            .select("id, title, summary, location")
+            .is_("district", "null")
+            .limit(limit).execute().data or [])
+    out = {"scanned": len(rows), "dict_location": 0, "dict_text": 0,
+           "ai_location": 0, "unresolved": 0}
+    for inc in rows:
+        district = None
+        loc = inc.get("location")
+        if loc:
+            district = map_location_to_district(loc)
+            if district:
+                out["dict_location"] += 1
+        if not district:
+            blob = f"{inc.get('title') or ''} {inc.get('summary') or ''}"[:400]
+            district = map_location_to_district(blob)
+            if district:
+                out["dict_text"] += 1
+        if not district and use_ai and loc:
+            try:
+                district = map_location_via_ai(loc)
+                if district:
+                    out["ai_location"] += 1
+            except Exception:
+                pass
+        if district:
+            try:
+                db.table("incidents").update({"district": district}).eq("id", inc["id"]).execute()
+            except Exception:
+                logger.exception("district backfill update failed for %s", inc["id"])
+        else:
+            out["unresolved"] += 1
+    logger.info("district-backfill: %s", out)
+    return out
+
+
+@router.post("/district-backfill")
+async def cron_district_backfill(
+    background_tasks: BackgroundTasks,
+    limit: int = Query(100, ge=1, le=500),
+    use_ai: bool = Query(True, description="AI-resolve unknown localities (location field only)"),
+    x_admin_secret: Optional[str] = Header(None),
+):
+    """Backfill missing district tags (dictionary first, AI fallback for the
+    location field only). Safe to run repeatedly — it only touches rows where
+    district IS NULL. Trigger a few times after deploy, then monthly."""
+    _require_admin(x_admin_secret)
+    background_tasks.add_task(_run_district_backfill, limit, use_ai)
+    return {"status": "queued", "limit": limit, "use_ai": use_ai}
 
 
 # ---------------------------------------------------------------------------

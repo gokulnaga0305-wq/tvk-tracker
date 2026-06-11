@@ -1,0 +1,41 @@
+name: Promise evidence sweep (weekly)
+
+# Proactively hunts Google News for delivery evidence per open promise
+# (deadline-bearing first). Attaches evidence_url on confident matches and
+# upgrades pending->partial only — never auto-kept, never auto-broken.
+#
+# Weekly cadence tolerates GH Actions' free-tier schedule drift fine, so
+# this stays on GH (unlike the high-frequency sweeps that moved to
+# cron-job.org). Mirror it on cron-job.org if drift ever matters:
+#   POST /api/cron/promise-evidence-sweep?limit=50  (x-admin-secret header)
+
+on:
+  schedule:
+    - cron: '30 23 * * 0'   # Sun 23:30 UTC = Mon 05:00 IST
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'How many open promises to search'
+        required: false
+        default: '50'
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger promise evidence sweep
+        env:
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+          BACKEND: https://goknaga-tvk-tracker-backend.hf.space
+          LIMIT: ${{ inputs.limit || '50' }}
+        run: |
+          set -e
+          if [ -z "$ADMIN_SECRET" ]; then
+            echo "::error::ADMIN_SECRET repo secret not set"
+            exit 1
+          fi
+          curl -fsS --max-time 60 -X POST \
+            -H "x-admin-secret: ${ADMIN_SECRET}" \
+            "${BACKEND}/api/cron/promise-evidence-sweep?limit=${LIMIT}"
+          echo "::notice::Sweep queued (runs in backend background task)"
