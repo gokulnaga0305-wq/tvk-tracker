@@ -169,6 +169,39 @@ manually check whether ingestion stalled.
 > TELEGRAM_ALLOWED_CHAT_IDS on the HF Space — already set). Alerts go
 > to every allowed chat id.
 
+### Job 9 — Weekly promise evidence sweep (NEW, 2026-06-11)
+
+Proactively searches Google News for delivery evidence per open promise
+(deadline-bearing first). Attaches evidence_url on confident matches and
+upgrades pending→partial only — never auto-kept, never auto-broken.
+Currently also scheduled on GH Actions (weekly tolerates drift); set it
+up here too only if you want to retire that workflow.
+
+| Field | Value |
+|---|---|
+| Title | `TVK · promise evidence` |
+| URL | `https://goknaga-tvk-tracker-backend.hf.space/api/cron/promise-evidence-sweep?limit=50` |
+| Schedule | Weekly, Monday 06:30 IST (after Groq reset) |
+| HTTP method | POST |
+| Headers | `x-admin-secret: <YOUR_ADMIN_SECRET>` |
+| Timeout | 60s |
+
+### Job 10 — Monthly district backfill (NEW, 2026-06-11)
+
+Backfills missing district tags (dictionary first, AI for unknown
+locations). Only touches rows where district IS NULL, so it's safe to
+run any time. New incidents get districts at ingestion — this just
+catches strays.
+
+| Field | Value |
+|---|---|
+| Title | `TVK · district backfill` |
+| URL | `https://goknaga-tvk-tracker-backend.hf.space/api/cron/district-backfill?limit=500&use_ai=true` |
+| Schedule | Monthly, 1st at 06:30 IST |
+| HTTP method | POST |
+| Headers | `x-admin-secret: <YOUR_ADMIN_SECRET>` |
+| Timeout | 60s |
+
 ---
 
 ## Step 3 — Get your ADMIN_SECRET
