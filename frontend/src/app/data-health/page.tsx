@@ -90,7 +90,11 @@ export default function DataHealthPage() {
           <div className="text-[11px] text-gray-500 mt-0.5">independently verified</div>
         </div>
         <div className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-4">
-          <div className="text-2xl font-bold text-white">{d.feeds_ok}<span className="text-sm text-gray-500">/{d.feeds_ok + d.feeds_failing}</span></div>
+          <div className="text-2xl font-bold text-white">
+            {(d.feeds_ok ?? 0) + (d.feeds_failing ?? 0) > 0
+              ? <>{d.feeds_ok}<span className="text-sm text-gray-500">/{(d.feeds_ok ?? 0) + (d.feeds_failing ?? 0)}</span></>
+              : '—'}
+          </div>
           <div className="text-[11px] text-gray-500 mt-0.5">feeds healthy</div>
         </div>
         <div className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-4">
