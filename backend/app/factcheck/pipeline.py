@@ -294,15 +294,22 @@ Output ONLY this JSON:
 
 
 def _json_from(raw: Optional[str]) -> Optional[dict]:
+    """Pull a JSON object out of an LLM response. Tolerates ```json fences,
+    preamble text, and a trailing example by trying the greedy span first
+    then the first balanced object."""
     if not raw:
         return None
-    m = re.search(r"\{.*\}", raw, flags=re.S)
-    if not m:
-        return None
-    try:
-        return json.loads(m.group(0))
-    except Exception:
-        return None
+    txt = re.sub(r"```(?:json)?", "", raw).strip()
+    # Try the greedy outermost {...} first, then a non-greedy first object.
+    for pat in (r"\{.*\}", r"\{.*?\}"):
+        m = re.search(pat, txt, flags=re.S)
+        if not m:
+            continue
+        try:
+            return json.loads(m.group(0))
+        except Exception:
+            continue
+    return None
 
 
 def run_factcheck(factcheck_id: str) -> dict[str, Any]:
@@ -335,17 +342,32 @@ def run_factcheck(factcheck_id: str) -> dict[str, Any]:
             content = fetched
 
         # 2. extract claims
-        ext = _json_from(llm_call_with_fallback(
+        raw_ext = llm_call_with_fallback(
             [{"role": "user", "content": _EXTRACT_PROMPT.format(content=content[:5000])}],
             max_tokens=400,
-        ))
+        )
+        ext = _json_from(raw_ext)
         if not ext or not ext.get("claims"):
-            _save({"status": "error",
-                   "error_detail": "Claim extraction failed (no checkable claims found)."})
-            return {"error": "no claims"}
-        claims = ext["claims"]
-        main_claim = next((c["text"] for c in claims if c.get("checkable")),
-                          claims[0]["text"])
+            # Resilience: a pasted TEXT claim IS the claim — no extraction
+            # needed. Fall back to checking it verbatim so a flaky/exhausted
+            # free-tier LLM on the (optional) extraction step doesn't sink the
+            # whole check. URLs genuinely need extraction, so they still error
+            # — but with the raw response captured for diagnosis.
+            if row["input_type"] == "text" and len(content.strip()) >= 12:
+                claims = [{"text": content.strip()[:500], "checkable": True}]
+                main_claim = content.strip()[:500]
+            else:
+                detail = ("Claim extraction failed. "
+                          + ("LLM returned no usable response (all providers "
+                             "exhausted/rate-limited — check /diagnostics/ai-probe)."
+                             if not raw_ext
+                             else f"Unparseable response: {raw_ext[:240]}"))
+                _save({"status": "error", "error_detail": detail})
+                return {"error": "no claims"}
+        else:
+            claims = ext["claims"]
+            main_claim = next((c["text"] for c in claims if c.get("checkable")),
+                              claims[0]["text"])
         if not ext.get("in_scope", True):
             _save({"status": "draft", "claims": claims, "claim_text": main_claim,
                    "verdict": "needs_context", "confidence": 0.0,
@@ -364,7 +386,7 @@ def run_factcheck(factcheck_id: str) -> dict[str, Any]:
         evidence = _gnews_evidence(main_claim)
 
         # 6. synthesize
-        synth = _json_from(llm_call_with_fallback(
+        raw_synth = llm_call_with_fallback(
             [{"role": "user", "content": _SYNTH_PROMPT.format(
                 today=datetime.now(timezone.utc).date().isoformat(),
                 claim=main_claim,
@@ -373,13 +395,21 @@ def run_factcheck(factcheck_id: str) -> dict[str, Any]:
                 evidence=json.dumps(evidence, ensure_ascii=False) if evidence else "none",
             )}],
             max_tokens=600,
-        ))
+        )
+        synth = _json_from(raw_synth)
         if not synth or synth.get("verdict") not in (
                 "true", "partly_true", "misleading", "false",
                 "unverifiable", "needs_context"):
-            _save({"status": "error",
-                   "error_detail": "Verdict synthesis failed or returned an "
-                                   "invalid verdict."})
+            detail = ("Verdict synthesis failed. "
+                      + ("LLM returned no usable response (all providers "
+                         "exhausted/rate-limited — check /diagnostics/ai-probe)."
+                         if not raw_synth
+                         else f"Invalid/unparseable verdict: {raw_synth[:240]}"))
+            # Keep the claim + evidence we already gathered so the reviewer
+            # can still judge manually even when synthesis couldn't run.
+            _save({"status": "error", "error_detail": detail,
+                   "evidence": evidence, "debunk_match": debunks or None,
+                   "dmk_match": dmk or None})
             return {"error": "synthesis failed"}
 
         # attach stances back onto evidence
