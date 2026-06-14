@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { Zap, TrendingUp, Award, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import TangedcoTurnaround from '@/components/TangedcoTurnaround';
+import UdayPrePostCard from '@/components/UdayPrePostCard';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -109,6 +110,9 @@ export default function PowerPage() {
 
       {/* TANGEDCO financial turnaround — plain-English, audited */}
       <TangedcoTurnaround />
+
+      {/* UDAY pre/post — CAG-documented, honest tariff framing */}
+      <UdayPrePostCard />
 
       {/* Honest context */}
       <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
