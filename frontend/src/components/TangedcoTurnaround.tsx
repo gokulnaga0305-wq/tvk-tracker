@@ -4,26 +4,35 @@
  * "power company turnaround" story, built to replace the misleading viral
  * graphic that labelled OPERATING profit as NET profit.
  *
- * Honesty rules baked into the copy:
- *  - the yearly loss shrank ~97% (audited net figures) — TRUE
- *  - the business turned profitable (operating +2,073 cr) — TRUE
- *  - it is NOT yet net-profitable (FY25 still −437 cr) — stated plainly
+ * Honest copy rules:
+ *  - yearly loss shrank ~97% (audited net figures) — TRUE
+ *  - the business turned profitable (operating +2,073 cr FY25) — TRUE
+ *  - NOT yet net-profitable (FY25 still −437 cr) — stated plainly
  *  - ~1.62 lakh cr legacy debt remains — stated plainly
- * Static, sourced data (TNPDCL Annual Report 2024-25, ICRA, CAG, DT Next).
+ * Chart is hand-rolled SVG (no charting dep, dark-mode native).
+ * Source: TNPDCL Annual Report 2024-25, ICRA, CAG, DT Next.
  */
 import { TrendingDown, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 
-interface YearLoss { year: string; loss: number; label: string }
-
-// Audited NET profit/(loss), ₹ crore. Negative = loss.
-const YEARS: YearLoss[] = [
-  { year: '2021-22', loss: 12995, label: '₹12,995 cr lost' },
-  { year: '2022-23', loss: 10868, label: '₹10,868 cr lost' },
-  { year: '2023-24', loss: 4436,  label: '₹4,436 cr lost' },
-  { year: '2024-25', loss: 437,   label: '₹437 cr lost' },
+// Audited net profit/(loss), ₹ crore (negative = loss).
+const NET = [
+  { y: 'FY22', v: -12995 },
+  { y: 'FY23', v: -10868 },
+  { y: 'FY24', v: -4436 },
+  { y: 'FY25', v: -437 },
 ];
+const OP_FY25 = 2073; // money made from running the business (before interest)
 
-const MAX = 12995;
+// ---- chart geometry ----
+const W = 680, H = 330, padL = 30, padR = 14, top = 14, bottom = 286;
+const vMax = 2600, vMin = -13600;
+const yOf = (v: number) => bottom - ((v - vMin) / (vMax - vMin)) * (bottom - top);
+const yZero = yOf(0);
+const plotW = W - padL - padR;
+const slot = plotW / 4;
+const cx = (i: number) => padL + slot * (i + 0.5);
+const inr = (n: number) => (n < 0 ? '−₹' : '+₹') + Math.abs(n).toLocaleString('en-IN');
+const GRID = [2000, 0, -4000, -8000, -12000];
 
 export default function TangedcoTurnaround() {
   return (
@@ -37,34 +46,71 @@ export default function TangedcoTurnaround() {
         every single year. Under the DMK government, that yearly loss almost disappeared.
       </p>
 
-      {/* Yearly loss bars — shrinking */}
-      <div className="space-y-2 mb-4">
-        {YEARS.map(y => {
-          const pct = Math.max(3, Math.round((y.loss / MAX) * 100));
-          const last = y.year === '2024-25';
+      {/* Simple summary cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 mb-4">
+        {[
+          { t: 'Loss in 2024-25', v: '₹437 cr', s: 'down from ₹12,995 cr', c: 'text-red-300' },
+          { t: 'Loss cut by', v: '~97%', s: 'in four years under DMK', c: 'text-white' },
+          { t: 'Made from running it', v: '+₹2,073 cr', s: 'before old-loan interest', c: 'text-emerald-300' },
+          { t: 'Old debt still left', v: '₹1.62 lakh cr', s: 'piled up over the years', c: 'text-amber-200/90' },
+        ].map(m => (
+          <div key={m.t} className="rounded-md bg-[#141414] border border-[#262626] px-3 py-2">
+            <div className="text-[10.5px] text-gray-500">{m.t}</div>
+            <div className={`text-lg font-bold ${m.c}`}>{m.v}</div>
+            <div className="text-[10px] text-gray-600">{m.s}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Legend */}
+      <div className="flex flex-wrap gap-x-4 gap-y-1 mb-1.5 text-[11px] text-gray-400">
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: '#e0524f' }} /> Money lost each year</span>
+        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: '#1d9e75' }} /> Profit from running the business (2024-25)</span>
+      </div>
+
+      {/* Hand-rolled SVG bar chart */}
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" role="img"
+           aria-label="Bar chart: TANGEDCO yearly loss falling from 12,995 crore (FY22) to 437 crore (FY25); FY25 also shows 2,073 crore profit from running the business.">
+        {/* gridlines + y labels */}
+        {GRID.map(g => (
+          <g key={g}>
+            <line x1={padL} x2={W - padR} y1={yOf(g)} y2={yOf(g)}
+                  stroke={g === 0 ? '#4a4a4a' : '#242424'} strokeWidth={g === 0 ? 1.2 : 1} />
+            <text x={padL - 4} y={yOf(g) + 3} textAnchor="end" fontSize="9.5" fill="#6b6b6b">
+              {g === 0 ? '0' : (g / 1000) + 'k'}
+            </text>
+          </g>
+        ))}
+
+        {/* red loss bars (FY22-FY24 + tiny FY25) */}
+        {NET.map((d, i) => {
+          const isFy25 = i === 3;
+          const bw = isFy25 ? 26 : 54;
+          const x = isFy25 ? cx(i) - 30 : cx(i) - bw / 2;
+          const h = yOf(d.v) - yZero;
           return (
-            <div key={y.year} className="flex items-center gap-3">
-              <span className="w-16 text-[11px] text-gray-500 shrink-0">{y.year}</span>
-              <div className="flex-1 bg-[#111] rounded h-6 overflow-hidden relative">
-                <div
-                  className={`h-full rounded ${last ? 'bg-emerald-600/70' : 'bg-red-600/70'}`}
-                  style={{ width: `${pct}%` }}
-                />
-                <span className="absolute left-2 top-0 h-6 flex items-center text-[11px] font-semibold text-white">
-                  {y.label}
-                </span>
-              </div>
-            </div>
+            <g key={d.y}>
+              <rect x={x} y={yZero} width={bw} height={Math.max(h, 1.5)} rx="2" fill="#e0524f" />
+              <text x={isFy25 ? x + bw / 2 : cx(i)} y={yOf(d.v) + 13} textAnchor="middle"
+                    fontSize="11" fontWeight="600" fill="#f08a87">{inr(d.v)}</text>
+            </g>
           );
         })}
-      </div>
-      <p className="text-[11px] text-gray-500 mb-4">
-        The yearly loss fell from <span className="text-red-300">₹12,995 cr</span> to just
-        <span className="text-emerald-300"> ₹437 cr</span> — down nearly <span className="text-white font-semibold">97%</span> in four years.
-      </p>
+
+        {/* green operating-profit bar (FY25, above zero) */}
+        <rect x={cx(3) + 4} y={yOf(OP_FY25)} width={26} height={yZero - yOf(OP_FY25)} rx="2" fill="#1d9e75" />
+        <text x={cx(3) + 17} y={yOf(OP_FY25) - 5} textAnchor="middle" fontSize="11" fontWeight="600" fill="#4cc79f">
+          {inr(OP_FY25)}
+        </text>
+
+        {/* year labels */}
+        {NET.map((d, i) => (
+          <text key={d.y} x={cx(i)} y={H - 6} textAnchor="middle" fontSize="12" fill="#9a9a9a">{d.y}</text>
+        ))}
+      </svg>
 
       {/* The good news — plain */}
-      <div className="rounded-md border border-emerald-800/40 bg-emerald-950/20 px-3 py-2.5 mb-2.5">
+      <div className="rounded-md border border-emerald-800/40 bg-emerald-950/20 px-3 py-2.5 mt-2 mb-2.5">
         <div className="flex gap-2 text-[13px] text-gray-200 leading-relaxed">
           <CheckCircle2 size={15} className="text-emerald-400 shrink-0 mt-0.5" />
           <span>
