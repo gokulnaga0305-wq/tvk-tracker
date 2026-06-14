@@ -12,7 +12,19 @@
  * Chart is hand-rolled SVG (no charting dep, dark-mode native).
  * Source: TNPDCL Annual Report 2024-25, ICRA, CAG, DT Next.
  */
-import { TrendingDown, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
+import {
+  TrendingDown, CheckCircle2, AlertTriangle, Info,
+  Network, Cpu, Factory, Sun, Building2, Zap,
+} from 'lucide-react';
+
+// What was actually done (plain English, each sourced).
+const MEASURES: { icon: any; text: string }[] = [
+  { icon: Network,   text: 'Built and strengthened substations, lines and the grid across the state.' },
+  { icon: Cpu,       text: 'Digitised billing and meter-reading (mobile app + smart meters), and cut power theft & line losses from about 14% to under 12%.' },
+  { icon: Factory,   text: 'Added its own power — the Udangudi super-critical plant (1,320 MW) was switched on in 2025, with more plants being built (Uppur, North Chennai Stage-III).' },
+  { icon: Sun,       text: 'Big clean-energy push — over 27,000 MW of wind and solar, among the highest of any Indian state, with record solar generation in 2024-25.' },
+  { icon: Building2, text: 'Split the company into three — generation, distribution and green energy — so each part has a clear focus.' },
+];
 
 // Audited net profit/(loss), ₹ crore (negative = loss).
 const NET = [
@@ -130,7 +142,38 @@ export default function TangedcoTurnaround() {
           <li className="flex gap-1.5"><span className="text-amber-600/70">·</span><span>It is <span className="text-gray-300">not fully in profit yet</span> — 2024-25 still ended ₹437 cr in the red.</span></li>
           <li className="flex gap-1.5"><span className="text-amber-600/70">·</span><span>It still carries about <span className="text-gray-300">₹1.62 lakh crore of old debt</span> built up over many years.</span></li>
           <li className="flex gap-1.5"><span className="text-amber-600/70">·</span><span>Part of the improvement came from the <span className="text-gray-300">state paying its share on time</span>, not the company alone.</span></li>
+          <li className="flex gap-1.5"><span className="text-amber-600/70">·</span><span>It is <span className="text-gray-300">not financially self-standing yet</span> — the state has budgeted ₹16,291 cr to fund its losses again in 2025-26.</span></li>
         </ul>
+      </div>
+
+      {/* What was actually done */}
+      <div className="rounded-md border border-[#2a2a2a] bg-[#141414] px-3 py-3 mb-2.5">
+        <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-2">What the government actually did</div>
+        <div className="space-y-2">
+          {MEASURES.map((m, i) => {
+            const Icon = m.icon;
+            return (
+              <div key={i} className="flex gap-2.5 text-[12.5px] text-gray-300 leading-relaxed">
+                <Icon size={14} className="text-emerald-400/80 shrink-0 mt-0.5" />
+                <span>{m.text}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Do we make our own power? — honest */}
+      <div className="rounded-md border border-[#2a2a2a] bg-[#141414] px-3 py-2.5 mb-2.5">
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-300 mb-1.5">
+          <Zap size={12} className="text-amber-400" /> Do we make our own power, or buy it?
+        </div>
+        <p className="text-[12px] text-gray-400 leading-relaxed">
+          <span className="text-gray-300">Mostly buy.</span> On a peak day, Tamil Nadu&rsquo;s own plants
+          supply only about <span className="text-gray-300">a sixth (~17%)</span> of the power — the rest
+          comes from private producers (~36%), central stations (~25%) and wind/solar (~13%). That home-grown
+          share is slowly rising as new plants and record solar/wind come online, but TN is
+          <span className="text-gray-300"> still a big buyer of power</span>, not self-producing.
+        </p>
       </div>
 
       {/* Why it changed — plain */}
@@ -144,7 +187,8 @@ export default function TangedcoTurnaround() {
       </div>
 
       <p className="text-[10px] text-gray-600">
-        Figures are audited. Source: TNPDCL Annual Report 2024-25 · ICRA · CAG · DT Next.
+        Latest audited year shown is FY25 (2024-25); FY2025-26 results aren&rsquo;t published yet.
+        Sources: TNPDCL Annual Report 2024-25 · ICRA · CAG · TN Budget 2025-26 · DT Next.
       </p>
     </section>
   );
