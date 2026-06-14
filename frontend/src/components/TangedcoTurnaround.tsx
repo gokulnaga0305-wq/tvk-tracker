@@ -188,7 +188,11 @@ export default function TangedcoTurnaround() {
 
       <p className="text-[10px] text-gray-600">
         Latest audited year shown is FY25 (2024-25); FY2025-26 results aren&rsquo;t published yet.
-        Sources: TNPDCL Annual Report 2024-25 · ICRA · CAG · TN Budget 2025-26 · DT Next.
+        Primary source:{' '}
+        <a href="https://www.tnpdcl.org/static/tnpdcl/assets/files/linkpdf/annualreport/annualreport20242025.pdf"
+           target="_blank" rel="noopener noreferrer" className="text-emerald-400/80 hover:text-emerald-300 underline">
+          TNPDCL audited Annual Report 2024-25
+        </a>{' '}(official). As analysed by ICRA &amp; CRISIL · CAG · TN Budget 2025-26 · DT Next.
       </p>
     </section>
   );
