@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Zap, TrendingUp, Award, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
+import TangedcoTurnaround from '@/components/TangedcoTurnaround';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -105,6 +106,9 @@ export default function PowerPage() {
           <p className="text-[11px] text-gray-400 leading-relaxed">{d.rating.detail}</p>
         </section>
       </div>
+
+      {/* TANGEDCO financial turnaround — plain-English, audited */}
+      <TangedcoTurnaround />
 
       {/* Honest context */}
       <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
