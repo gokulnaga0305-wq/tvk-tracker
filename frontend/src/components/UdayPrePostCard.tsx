@@ -12,7 +12,7 @@
  *    literal UDAY clause — stated.
  * Sources: CAG Report No.7 of 2021; UDAY MoU (9 Jan 2017); TNERC 2022 order.
  */
-import { ScrollText, AlertTriangle, Info } from 'lucide-react';
+import { ScrollText, CheckCircle2 } from 'lucide-react';
 
 interface Step { year: string; title: string; body: string; tone: 'neutral' | 'bad' | 'good' }
 
@@ -76,35 +76,33 @@ export default function UdayPrePostCard() {
         </div>
       </div>
 
-      {/* Honest tariff box */}
-      <div className="rounded-md border border-amber-900/40 bg-amber-950/15 px-3 py-2.5 mb-2.5">
-        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-amber-300/90 mb-1.5">
-          <AlertTriangle size={12} /> Did electricity prices go up? Yes — be honest about it
+      {/* Who sets the price + TN stays cheap */}
+      <div className="rounded-md border border-emerald-800/40 bg-emerald-950/15 px-3 py-2.5 mb-3">
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-emerald-300/90 mb-1.5">
+          <CheckCircle2 size={12} /> Who sets the price — and is Tamil Nadu actually expensive?
         </div>
-        <p className="text-[12px] text-gray-400 leading-relaxed">
-          <span className="text-gray-300">Prices did rise under DMK.</span> UDAY (2017) required
-          regular price revisions — but the previous government <span className="text-gray-300">froze prices for
-          8 years (2014–2022)</span>, which is exactly why the debt exploded. DMK finally revised them in 2022
-          and set an automatic yearly review (up to 6% each July) — while keeping
-          <span className="text-gray-300"> 100 free units and free power for huts</span>. So the hikes are real;
-          they are the <span className="text-gray-300">overdue correction of a freeze that caused the debt</span>,
-          not a fresh burden invented out of nowhere.
-        </p>
-      </div>
-
-      {/* Clarity note */}
-      <div className="flex gap-2 text-[12px] text-gray-400 leading-relaxed mb-3">
-        <Info size={14} className="text-gray-500 shrink-0 mt-0.5" />
-        <span>
-          One clarification people get wrong: the <span className="text-gray-300">“automatic 6% every July”</span> rule
-          is from DMK’s 2022 tariff order — not a direct UDAY clause. UDAY only required <em>regular</em> revisions;
-          the previous govt signed up for that in 2017 and then didn’t do it.
-        </span>
+        <ul className="space-y-1.5 text-[12px] text-gray-400 leading-relaxed">
+          <li className="flex gap-1.5"><span className="text-emerald-600/70">·</span><span>
+            Electricity tariffs are set by the <span className="text-gray-300">independent regulator (TNERC)</span> under
+            the Electricity Act 2003 — not fixed by the government directly. <span className="text-gray-300">Every state
+            revises tariffs roughly every year</span> through its own regulator (Maharashtra, for example, raised
+            industrial tariffs ~18%).
+          </span></li>
+          <li className="flex gap-1.5"><span className="text-emerald-600/70">·</span><span>
+            After the 8-year freeze, TN&rsquo;s revisions resumed in 2022 — by <span className="text-gray-300">modest
+            amounts (capped ~6% a year)</span>, far gentler than several other states.
+          </span></li>
+          <li className="flex gap-1.5"><span className="text-emerald-600/70">·</span><span>
+            Even so, TN still has <span className="text-gray-300">among the cheapest power in India</span> — 100 free
+            units, free farm power, and an average of about <span className="text-gray-300">₹5.8/unit</span>, well below
+            West Bengal (₹8.1) or Rajasthan (₹7.9).
+          </span></li>
+        </ul>
       </div>
 
       <p className="text-[10px] text-gray-600">
         Sources: CAG Report No.7 of 2021 (TANGEDCO, pre/post UDAY) · UDAY MoU, 9 Jan 2017 (Power Ministry) ·
-        TNERC tariff order 2022 · ICRA · Business Standard.
+        Electricity Act 2003 / TNERC tariff orders · state-tariff comparison (SaurEnergy, Mercom) · ICRA.
       </p>
     </section>
   );
