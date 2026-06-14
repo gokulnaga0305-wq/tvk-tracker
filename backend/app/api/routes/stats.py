@@ -31,6 +31,29 @@ TRACKED_CATEGORIES = [
 VERIFIED_STATUSES = {"multi_source_verified", "admin_verified", "press_verified", "single_source"}
 
 
+def _fetch_all(make_query, page_size: int = 1000):
+    """Fetch ALL rows for a query, paginating past Supabase's 1000-row
+    default cap.
+
+    `make_query()` must return a FRESH query builder (filters applied, but
+    no .range()/.execute()). Critical correctness fix (2026-06): once the
+    incidents table exceeded 1000 rows, any endpoint doing a bare
+    `.select(...).execute()` silently received only the first 1000 rows and
+    UNDERCOUNTED every headline figure (this caused the dashboard 911 vs
+    propaganda 976 mismatch). Always page the full set when counting.
+    """
+    rows: list = []
+    offset = 0
+    while True:
+        res = make_query().range(offset, offset + page_size - 1).execute()
+        batch = res.data or []
+        rows.extend(batch)
+        if len(batch) < page_size:
+            break
+        offset += page_size
+    return rows
+
+
 @router.get("/dashboard")
 async def get_dashboard_stats():
     """Top-line dashboard counters with a verified/unverified split.
@@ -46,16 +69,10 @@ async def get_dashboard_stats():
     """
     db = get_db()
 
-    incidents_res = (
-        db.table("incidents")
-        .select(
-            "id, title, incident_date, source_urls, severity, "
-            "category, is_credit_steal, ai_raw, verification_status"
-        )
-        .eq("status", "approved")
-        .execute()
-    )
-    incidents = incidents_res.data or []
+    incidents = _fetch_all(lambda: db.table("incidents").select(
+        "id, title, incident_date, source_urls, severity, "
+        "category, is_credit_steal, ai_raw, verification_status"
+    ).eq("status", "approved"))
 
     # TVK-ERA FLOOR (2026-06-11): this is a TVK-government accountability
     # tracker, so every headline counter must count only events on TVK's
@@ -323,20 +340,13 @@ async def get_incumbency_meter():
     # the column doesn't exist yet (migration 010 may not have been applied
     # on this Supabase project).
     try:
-        incidents_res = (
-            db.table("incidents")
-            .select("category, is_credit_steal, verification_status, severity, incident_date, press_sentiment")
-            .eq("status", "approved")
-            .execute()
-        )
+        incidents = _fetch_all(lambda: db.table("incidents").select(
+            "category, is_credit_steal, verification_status, severity, incident_date, press_sentiment"
+        ).eq("status", "approved"))
     except Exception:
-        incidents_res = (
-            db.table("incidents")
-            .select("category, is_credit_steal, verification_status, severity, incident_date")
-            .eq("status", "approved")
-            .execute()
-        )
-    incidents = incidents_res.data or []
+        incidents = _fetch_all(lambda: db.table("incidents").select(
+            "category, is_credit_steal, verification_status, severity, incident_date"
+        ).eq("status", "approved"))
 
     promises_res = db.table("promises").select("status").execute()
     promises = promises_res.data or []
@@ -839,15 +849,11 @@ async def get_districts_mood():
     # Pull every approved incident with a district tag in the last 30 days
     cutoff_30 = (date.today() - timedelta(days=30)).isoformat()
     try:
-        res = (
-            db.table("incidents")
+        incidents = _fetch_all(lambda: db.table("incidents")
             .select("district, category, incident_date, severity, verification_status, title")
             .eq("status", "approved")
             .not_.is_("district", "null")
-            .gte("incident_date", cutoff_30)
-            .execute()
-        )
-        incidents = res.data or []
+            .gte("incident_date", cutoff_30))
     except Exception:
         # Migration 015 may not be applied yet -> return all-quiet baseline
         incidents = []

@@ -25,6 +25,22 @@ from app.config import settings
 router = APIRouter(prefix="/propaganda", tags=["propaganda"])
 
 
+def _fetch_all(make_query, page_size: int = 1000):
+    """Page past Supabase's 1000-row default cap so full-table counts stay
+    accurate as the incidents corpus grows. make_query() returns a fresh
+    query builder (filters applied, no range/execute)."""
+    rows: list = []
+    offset = 0
+    while True:
+        res = make_query().range(offset, offset + page_size - 1).execute()
+        batch = res.data or []
+        rows.extend(batch)
+        if len(batch) < page_size:
+            break
+        offset += page_size
+    return rows
+
+
 class PropagandaCreate(BaseModel):
     title: str
     description: Optional[str] = None
@@ -188,13 +204,10 @@ async def propaganda_summary():
     # so the word "verified" in the label is literally true.
     STRICT_VERIFIED = {"multi_source_verified", "press_verified", "admin_verified"}
     try:
-        acc_rows = (
-            db.table("incidents")
+        acc_rows = _fetch_all(lambda: db.table("incidents")
             .select("id, category, verification_status, ai_raw")
             .eq("status", "approved")
-            .gte("incident_date", govt_start)
-            .execute()
-        ).data or []
+            .gte("incident_date", govt_start))
         accountability_events = len(acc_rows)
 
         def _is_failure(inc: dict) -> bool:
@@ -282,15 +295,11 @@ async def propaganda_summary():
     # surface them in the same widget so admins / readers see ONE fake-
     # content story, not two contradictory numbers.
     try:
-        inc_res = (
-            db.table("incidents")
+        all_incidents = _fetch_all(lambda: db.table("incidents")
             .select("id, title, source_urls, incident_date, "
                     "verification_status, category, ai_raw")
             .eq("status", "approved")
-            .gte("incident_date", govt_start)
-            .execute()
-        )
-        all_incidents = inc_res.data or []
+            .gte("incident_date", govt_start))
     except Exception:
         all_incidents = []
 
