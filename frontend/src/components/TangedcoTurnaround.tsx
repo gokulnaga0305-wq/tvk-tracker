@@ -176,6 +176,27 @@ export default function TangedcoTurnaround() {
         </p>
       </div>
 
+      {/* Official-sourced operational growth */}
+      <div className="rounded-md border border-[#2a2a2a] bg-[#141414] px-3 py-2.5 mb-2.5">
+        <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-2">
+          On the ground (official TNPDCL figures)
+        </div>
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            <div className="text-base font-bold text-white">336.8 lakh</div>
+            <div className="text-[10.5px] text-gray-500 leading-tight">connections, up from 279.3 lakh in 2017</div>
+          </div>
+          <div>
+            <div className="text-base font-bold text-white">21,307 MW</div>
+            <div className="text-[10.5px] text-gray-500 leading-tight">all-time peak demand met (29 Apr 2026)</div>
+          </div>
+          <div>
+            <div className="text-base font-bold text-white">1,792</div>
+            <div className="text-[10.5px] text-gray-500 leading-tight">units used per person — among India&rsquo;s highest</div>
+          </div>
+        </div>
+      </div>
+
       {/* Why it changed — plain */}
       <div className="flex gap-2 text-[12px] text-gray-400 leading-relaxed mb-3">
         <Info size={14} className="text-gray-500 shrink-0 mt-0.5" />
@@ -193,6 +214,11 @@ export default function TangedcoTurnaround() {
            target="_blank" rel="noopener noreferrer" className="text-emerald-400/80 hover:text-emerald-300 underline">
           TNPDCL audited Annual Report 2024-25
         </a>{' '}(official). As analysed by ICRA &amp; CRISIL · CAG · TN Budget 2025-26 · DT Next.
+        Operational figures from{' '}
+        <a href="https://www.tnpdcl.org/en/tnpdcl/about-us/tnpdcl-profile/"
+           target="_blank" rel="noopener noreferrer" className="text-emerald-400/80 hover:text-emerald-300 underline">
+          TNPDCL profile (official)
+        </a>.
       </p>
     </section>
   );
