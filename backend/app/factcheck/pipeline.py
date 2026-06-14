@@ -413,9 +413,12 @@ def run_factcheck(factcheck_id: str) -> dict[str, Any]:
                    "dmk_match": dmk or None})
             return {"error": "synthesis failed"}
 
-        # attach stances back onto evidence
-        stances = {s.get("url"): s.get("stance")
-                   for s in (synth.get("evidence_stances") or []) if s.get("url")}
+        # attach stances back onto evidence (guard non-dict/null elements —
+        # the LLM occasionally emits a null or a bare string in this list)
+        stances = {}
+        for s in (synth.get("evidence_stances") or []):
+            if isinstance(s, dict) and s.get("url"):
+                stances[s["url"]] = s.get("stance")
         for ev in evidence:
             ev["stance"] = stances.get(ev["url"], "related")
 
