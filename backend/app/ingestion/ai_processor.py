@@ -1131,11 +1131,17 @@ async def process_article(item: ApifyWebhookItem) -> None:
     except Exception:
         resolved_district = None
 
+    # Clamp the incident date: never let an event be dated in the FUTURE
+    # (the LLM occasionally mis-parses a scheduled/post-dated article).
+    _idate = extracted.get("incident_date") or date.today().isoformat()
+    if str(_idate)[:10] > date.today().isoformat():
+        _idate = date.today().isoformat()
+
     incident_payload = {
         "title": extracted["title"],
         "summary": extracted["summary"],
         "category": extracted["category"],
-        "incident_date": extracted.get("incident_date", date.today().isoformat()),
+        "incident_date": _idate,
         "location": extracted.get("location"),
         "district": resolved_district,
         "source_urls": [item.url],
