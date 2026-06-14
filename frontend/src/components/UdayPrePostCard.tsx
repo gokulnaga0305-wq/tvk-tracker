@@ -12,7 +12,7 @@
  *    literal UDAY clause — stated.
  * Sources: CAG Report No.7 of 2021; UDAY MoU (9 Jan 2017); TNERC 2022 order.
  */
-import { ScrollText, CheckCircle2 } from 'lucide-react';
+import { ScrollText, CheckCircle2, TrendingUp } from 'lucide-react';
 
 interface Step { year: string; title: string; body: string; tone: 'neutral' | 'bad' | 'good' }
 
@@ -85,6 +85,34 @@ export default function UdayPrePostCard() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* How UDAY loaded the debt onto TN — the strong point */}
+      <div className="rounded-md border border-red-900/40 bg-red-950/15 px-3 py-2.5 mb-3">
+        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-red-300/90 mb-1.5">
+          <TrendingUp size={12} /> The key point: UDAY put the debt on Tamil Nadu’s own shoulders
+        </div>
+        <ul className="space-y-1.5 text-[12px] text-gray-400 leading-relaxed">
+          <li className="flex gap-1.5"><span className="text-red-600/70">·</span><span>
+            In 2017 the <span className="text-gray-300">previous (AIADMK) government signed UDAY</span> — a deal with
+            the Centre. Per TN’s Electricity Minister, <span className="text-gray-300">Jayalalithaa had opposed it</span>;
+            interim CM O. Panneerselvam signed it under pressure from the Centre.
+          </span></li>
+          <li className="flex gap-1.5"><span className="text-red-600/70">·</span><span>
+            Two things came bundled in: the <span className="text-gray-300">State took 75% of the company’s debt onto
+            its OWN books</span>, and the agreement <span className="text-gray-300">requires the State to raise power
+            tariffs every year</span>. So both the state debt and the yearly hikes flow from that 2017 decision —
+            not from the current government.
+          </span></li>
+          <li className="flex gap-1.5"><span className="text-red-600/70">·</span><span>
+            Under that decade, the company’s losses exploded:
+            <span className="text-gray-300"> ₹18,954 cr (2011) → ₹94,312 cr → ₹1,13,266 cr by 2021</span>;
+            interest alone reached ₹16,511 cr. That is the debt the current government inherited and is now clearing.
+          </span></li>
+        </ul>
+        <p className="text-[10px] text-gray-600 mt-2">
+          Per TN Electricity/Finance Minister Thangam Thennarasu, 23 Jul 2024 (The Hindu); UDAY MoU, 9 Jan 2017.
+        </p>
       </div>
 
       {/* Who sets the price + TN stays cheap */}
