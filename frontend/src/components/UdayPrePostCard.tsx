@@ -47,6 +47,17 @@ const DOT: Record<Step['tone'], string> = {
   neutral: 'bg-gray-500', bad: 'bg-red-500', good: 'bg-emerald-500',
 };
 
+// Approximate AVERAGE domestic rate (₹/unit). India uses slab pricing so
+// these are indicative, not exact — but the ranking is solid. Sorted cheapest→priciest.
+const STATE_RATES: { state: string; rate: number; kind: 'tn' | 'avg' | 'other'; note?: string }[] = [
+  { state: 'Tamil Nadu',       rate: 5.8, kind: 'tn', note: '+ 100 units free' },
+  { state: 'National average', rate: 7.2, kind: 'avg' },
+  { state: 'Rajasthan',        rate: 7.9, kind: 'other' },
+  { state: 'West Bengal',      rate: 8.1, kind: 'other' },
+  { state: 'Maharashtra',      rate: 9.0, kind: 'other', note: 'up to ₹12' },
+];
+const RATE_MAX = 9;
+
 export default function UdayPrePostCard() {
   return (
     <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5 mb-5">
@@ -98,6 +109,36 @@ export default function UdayPrePostCard() {
             West Bengal (₹8.1) or Rajasthan (₹7.9).
           </span></li>
         </ul>
+      </div>
+
+      {/* State price comparison bars */}
+      <div className="rounded-md border border-[#2a2a2a] bg-[#141414] px-3 py-3 mb-3">
+        <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-2.5">
+          Average home electricity rate (₹ per unit)
+        </div>
+        <div className="space-y-2">
+          {STATE_RATES.map(s => {
+            const pct = Math.round((s.rate / RATE_MAX) * 100);
+            const bar = s.kind === 'tn' ? 'bg-emerald-500' : s.kind === 'avg' ? 'bg-gray-500' : 'bg-red-600/70';
+            return (
+              <div key={s.state} className="flex items-center gap-2.5">
+                <span className={`w-24 text-[11px] shrink-0 ${s.kind === 'tn' ? 'text-emerald-300 font-medium' : 'text-gray-400'}`}>
+                  {s.state}
+                </span>
+                <div className="flex-1 bg-[#0f0f0f] rounded h-5 overflow-hidden relative">
+                  <div className={`h-full ${bar} rounded`} style={{ width: `${pct}%` }} />
+                  <span className="absolute left-2 top-0 h-5 flex items-center text-[11px] font-semibold text-white">
+                    ₹{s.rate.toFixed(1)}{s.note ? <span className="font-normal text-gray-300 ml-1.5">{s.note}</span> : null}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <p className="text-[10px] text-gray-600 mt-2.5">
+          Indicative average domestic rate; India uses slab pricing so exact rates vary by usage. TN is the
+          lowest here and far below the national average — before counting its 100 free units.
+        </p>
       </div>
 
       <p className="text-[10px] text-gray-600">
