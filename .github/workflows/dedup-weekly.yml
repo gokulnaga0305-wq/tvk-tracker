@@ -1,0 +1,47 @@
+name: Weekly de-duplication
+
+# Merges incidents that are the SAME event logged 2-3 times (location-variant
+# dedup gap). Title-similarity guarded; generic-title categories (power cuts)
+# excluded; reversible (dups -> rejected + audit on /corrections). The live
+# ingestion gate stops most new dups; this weekly pass catches the drift so the
+# headline counts stay honest.
+#
+# Weekly cadence tolerates GH Actions schedule drift, so it lives here (unlike
+# the high-frequency jobs on cron-job.org). Mirror on cron-job.org if desired:
+#   POST /api/cron/dedup-incidents?days=14  (x-admin-secret header)
+
+on:
+  schedule:
+    - cron: '30 22 * * 6'   # Sat 22:30 UTC = Sun 04:00 IST
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Look-back window (days)'
+        required: false
+        default: '14'
+      dry_run:
+        description: 'true = preview clusters without merging'
+        required: false
+        default: 'false'
+
+jobs:
+  dedup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger de-duplication
+        env:
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+          BACKEND: https://goknaga-tvk-tracker-backend.hf.space
+          DAYS: ${{ inputs.days || '14' }}
+          DRY: ${{ inputs.dry_run || 'false' }}
+        run: |
+          set -e
+          if [ -z "$ADMIN_SECRET" ]; then
+            echo "::error::ADMIN_SECRET repo secret not set"
+            exit 1
+          fi
+          curl -fsS --max-time 120 -X POST \
+            -H "x-admin-secret: ${ADMIN_SECRET}" \
+            "${BACKEND}/api/cron/dedup-incidents?days=${DAYS}&dry_run=${DRY}"
+          echo "::notice::Weekly dedup triggered (days=${DAYS}, dry_run=${DRY})"

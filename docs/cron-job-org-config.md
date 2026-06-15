@@ -206,6 +206,27 @@ catches strays.
 | Headers | `x-admin-secret: <YOUR_ADMIN_SECRET>` |
 | Timeout | 60s |
 
+### Job 11 — Weekly de-duplication (NEW, 2026-06-15)
+
+Merges incidents that are the SAME event logged 2-3 times (the location-variant
+gap: "Gummidipoondi" vs "Thiruvallur" vs blank → 3 rows). Title-similarity
+guarded so distinct events never merge; generic-title categories (power cuts)
+excluded; merges are reversible (dups → rejected + audit, visible on
+/corrections). The live ingestion gate prevents most new dups, but a few drift
+in over a day — this weekly pass keeps the counts honest.
+
+| Field | Value |
+|---|---|
+| Title | `TVK · weekly dedup` |
+| URL | `https://goknaga-tvk-tracker-backend.hf.space/api/cron/dedup-incidents?days=14` |
+| Schedule | Weekly, Sunday 04:00 IST |
+| HTTP method | POST |
+| Headers | `x-admin-secret: <YOUR_ADMIN_SECRET>` |
+| Timeout | 60s |
+
+> Tip: to preview before it ever merges, hit the same URL with `&dry_run=true`
+> — it returns the clusters it *would* merge without touching anything.
+
 ---
 
 ## Step 3 — Get your ADMIN_SECRET
