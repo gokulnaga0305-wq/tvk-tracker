@@ -138,6 +138,11 @@ def dedup_existing(*, days: int = 21, dry_run: bool = False) -> dict:
             for d in dups:
                 try:
                     db.table("incidents").update({
+                        # status=rejected is what actually removes it from the
+                        # dashboard / incidents list / counts (the approved-only
+                        # queries); verification_status + reason keep the audit
+                        # trail and surface it on the Corrections page.
+                        "status": "rejected",
                         "verification_status": "retracted",
                         "retraction_reason": f"Merged duplicate of {keeper['id']} "
                                              f"(same event, different source/location wording)",
