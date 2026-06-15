@@ -301,27 +301,37 @@ export default function TasmacTruth() {
       {/* ── The ₹10/bottle truth ───────────────────────────────────── */}
       <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
         <div className="flex items-center gap-2 text-sm font-semibold text-white mb-1">
-          <Receipt size={15} className="text-amber-400" /> The ₹10-per-bottle surcharge — the raw truth
+          <Receipt size={15} className="text-amber-400" /> The extra ₹10 per bottle — it&rsquo;s a refundable deposit (with a catch)
         </div>
-        <p className="text-[12px] text-gray-500 mb-3">Both things are true at once. We&rsquo;re not hiding either side.</p>
+        <p className="text-[12px] text-gray-500 mb-3">
+          Commonly misread as a simple &ldquo;overcharge.&rdquo; The honest version has two sides.
+        </p>
         <div className="grid md:grid-cols-2 gap-3">
-          <div className="rounded-md border border-[#262626] bg-[#141414] px-3 py-3">
-            <div className="text-[11px] font-semibold text-gray-300 mb-1.5">The vendors&rsquo; case (real costs)</div>
+          <div className="rounded-md border border-emerald-800/40 bg-emerald-950/15 px-3 py-3">
+            <div className="text-[11px] font-semibold text-emerald-300 mb-1.5">It&rsquo;s a deposit, refunded on return</div>
             <p className="text-[12px] text-gray-400 leading-relaxed">
-              Shop salesmen are <span className="text-gray-300">not conventional government servants</span>. The shops carry
-              <span className="text-gray-300"> rent, electricity (EB) bills, loadmen wages</span> and empty-bottle handling — and staff
-              recover those costs through the extra ₹10. The running-cost problem is genuine.
+              Since 2025 the extra ₹10 is officially a <span className="text-gray-300">refundable deposit</span> — pay ₹10, bring the
+              empty bottle back, get ₹10 returned (the minister called it a &ldquo;deposit,&rdquo; not a fee). It exists for a real reason:
+              the <span className="text-gray-300">Madras High Court has, since ~2023, ordered TASMAC to buy back empties</span> so they
+              can&rsquo;t be reused for spurious/illicit liquor. There&rsquo;s also a genuine shop running-cost angle (rent, EB bills,
+              loadmen) — vendors aren&rsquo;t conventional govt servants.
             </p>
           </div>
-          <div className="rounded-md border border-red-900/40 bg-red-950/15 px-3 py-3">
-            <div className="text-[11px] font-semibold text-red-300 mb-1.5">But it&rsquo;s still illegal overcharging</div>
+          <div className="rounded-md border border-amber-900/40 bg-amber-950/15 px-3 py-3">
+            <div className="text-[11px] font-semibold text-amber-300 mb-1.5">The catch: the refund often doesn&rsquo;t happen</div>
             <p className="text-[12px] text-gray-400 leading-relaxed">
-              There is <span className="text-gray-300">no gazetted order</span> authorising it — it breaches the printed MRP.
-              TASMAC itself logged <span className="text-gray-300">9,319 overcharging cases (FY20)</span> and has prosecuted staff.
-              The viral &ldquo;₹15 crore a day&rdquo; figure is an <span className="text-gray-300">opposition extrapolation, not audited.</span>
+              In practice the buyback <span className="text-gray-300">failed to take off</span> — empties pile up, consumers find it
+              cumbersome. In June 2026 the Madras HC <span className="text-gray-300">rapped TASMAC</span> — &ldquo;no licence to collect
+              extra money from tipplers&rdquo; unless it&rsquo;s properly refunded — and set deadlines; TASMAC is now rolling out
+              <span className="text-gray-300"> deposit-return machines</span> to automate refunds. So when the ₹10 isn&rsquo;t returned,
+              it works like overcharging — which is exactly what the court is forcing TASMAC to fix.
             </p>
           </div>
         </div>
+        <p className="text-[10px] text-gray-600 mt-2">
+          Separately, TASMAC has faced complaints/prosecutions for charging <span className="text-gray-500">above MRP</span> (9,319 cases, FY20) —
+          a different issue from the deposit. The viral &ldquo;₹15 crore a day&rdquo; figure is an unaudited opposition extrapolation.
+        </p>
       </section>
 
       {/* ── The 717 closures — accountability (June 2026) ──────────── */}
@@ -421,7 +431,9 @@ export default function TasmacTruth() {
       <p className="text-[10px] text-gray-600 leading-relaxed">
         Sources: TASMAC revenue & FY25 VAT/excise split — The Federal, dtnext, spiritz.in (2023–2025) ·
         TN own-tax composition & denominators — PRS Legislative Research (TN Budget analyses), CAG provisional accounts ·
-        VAT-vs-excise routing — RBI &ldquo;State Finances: A Study of Budgets&rdquo; · ₹10 overcharge & 9,319 cases — The News Minute, dtnext ·
+        VAT-vs-excise routing — RBI &ldquo;State Finances: A Study of Budgets&rdquo; ·
+        ₹10 bottle-deposit & buyback / Madras HC orders — Times of India, New Indian Express, DT Next, ETV Bharat, The Hindu (2023–2026);
+        above-MRP overcharge cases — The News Minute, dtnext ·
         budget size & GSDP — PRS Legislative Research (TN Budget 2025-26), RBI / TN Economic Survey ·
         hooch tragedies — Wikipedia, ETV Bharat, The Quint, The News Minute. Figures are best-available;
         the FY24 own-tax breakdown uses approximate liquor-VAT/fuel-VAT splits (the budget reports them on one line).
