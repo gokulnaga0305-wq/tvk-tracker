@@ -22,6 +22,7 @@ export const STRINGS = {
   "nav.dmk_timeline": { en: "DMK 2021-2026",    ta: "திமுக 2021-2026" },
   "nav.investments":  { en: "Investments",      ta: "முதலீடுகள்" },
   "nav.power":        { en: "Power / EB",       ta: "மின்சாரம்" },
+  "nav.tasmac":       { en: "TASMAC Truth",     ta: "டாஸ்மாக் உண்மை" },
   "nav.receipts":     { en: "Receipts",          ta: "ஆதாரங்கள்" },
   "nav.promises":     { en: "Promises",         ta: "வாக்குறுதிகள்" },
   "nav.members":      { en: "Members",          ta: "உறுப்பினர்கள்" },
