@@ -112,48 +112,56 @@ def run_once(*, dry_run: bool = False) -> dict:
     errors  = 0
 
     for w in watches:
-        url = w["url"]
-        print(f"  → {w['label']}")
-        body = _fetch(url)
-        if body is None:
+        # Guard each watch independently: a flaky govt publisher page or a
+        # transient DB blip must not crash the whole weekly run (that was
+        # firing false "workflow failed" emails).
+        try:
+            url = w["url"]
+            print(f"  → {w['label']}")
+            body = _fetch(url)
+            if body is None:
+                errors += 1
+                continue
+
+            new_hash = _hash(body)
+            old_hash = w.get("last_hash")
+            # Be polite — 1s between requests so we don't hammer any single origin
+            time.sleep(1)
+
+            if old_hash == new_hash:
+                print(f"    unchanged (hash {new_hash[:8]}…)")
+                if not dry_run:
+                    db.table("economic_release_watches").update(
+                        {"last_checked": now_iso}
+                    ).eq("id", w["id"]).execute()
+                continue
+
+            # Changed!
+            print(f"    [CHANGED] {old_hash or '(first run)'} → {new_hash}")
+            changed += 1
+            if dry_run:
+                continue
+
+            # Skip event emission on first-ever observation (we don't yet have a
+            # baseline to compare against).
+            emit_event = old_hash is not None
+            db.table("economic_release_watches").update({
+                "last_hash":       new_hash,
+                "last_checked":    now_iso,
+                "last_changed_at": now_iso,
+            }).eq("id", w["id"]).execute()
+
+            if emit_event:
+                db.table("economic_release_events").insert({
+                    "watch_id":   w["id"],
+                    "old_hash":   old_hash,
+                    "new_hash":   new_hash,
+                    "status":     "pending",
+                }).execute()
+        except Exception as e:
             errors += 1
+            print(f"    [skip] {w.get('label')}: {type(e).__name__}: {str(e)[:120]}")
             continue
-
-        new_hash = _hash(body)
-        old_hash = w.get("last_hash")
-        # Be polite — 1s between requests so we don't hammer any single origin
-        time.sleep(1)
-
-        if old_hash == new_hash:
-            print(f"    unchanged (hash {new_hash[:8]}…)")
-            if not dry_run:
-                db.table("economic_release_watches").update(
-                    {"last_checked": now_iso}
-                ).eq("id", w["id"]).execute()
-            continue
-
-        # Changed!
-        print(f"    [CHANGED] {old_hash or '(first run)'} → {new_hash}")
-        changed += 1
-        if dry_run:
-            continue
-
-        # Skip event emission on first-ever observation (we don't yet have a
-        # baseline to compare against).
-        emit_event = old_hash is not None
-        db.table("economic_release_watches").update({
-            "last_hash":       new_hash,
-            "last_checked":    now_iso,
-            "last_changed_at": now_iso,
-        }).eq("id", w["id"]).execute()
-
-        if emit_event:
-            db.table("economic_release_events").insert({
-                "watch_id":   w["id"],
-                "old_hash":   old_hash,
-                "new_hash":   new_hash,
-                "status":     "pending",
-            }).execute()
 
     summary = {
         "checked":     len(watches),
@@ -171,5 +179,10 @@ if __name__ == "__main__":
                     help="Don't write to DB; just print what would change")
     args = ap.parse_args()
     out = run_once(dry_run=args.dry_run)
-    # Exit non-zero only on hard errors (helps CI gating)
-    sys.exit(0 if out["errors"] == 0 else 2)
+    # Only FAIL the workflow on a CATASTROPHIC run (every watch errored —
+    # i.e. a systemic problem like no network or DB down). A few flaky govt
+    # publisher pages (DPIIT, MoSPI are routinely slow/down) are normal and
+    # must NOT page the maintainer — those URLs just retry next week.
+    total = out.get("checked", 0)
+    catastrophic = total > 0 and out["errors"] >= total
+    sys.exit(2 if catastrophic else 0)
