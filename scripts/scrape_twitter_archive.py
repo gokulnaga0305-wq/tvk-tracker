@@ -111,11 +111,20 @@ def main():
         return
 
     db = get_db()
+    from app.config import settings as _settings
+    _dmk_end = _settings.dmk_tenure_end_date
+
     inserted = skipped = failed = 0
+    post_tenure = 0
     for tw in real:
         try:
             dt = datetime.strptime(tw["createdAt"], TWITTER_DATE_FMT)
         except (ValueError, TypeError):
+            continue
+        # The govt handles (@CMOTamilnadu, @TNDIPRNEWS) keep posting under the
+        # new TVK govt. Only their DMK-tenure posts belong in the DMK archive.
+        if dt.date() > _dmk_end:
+            post_tenure += 1
             continue
         tweet_id = str(tw.get("id") or tw.get("tweet_id") or "")
         if not tweet_id or tweet_id == "-1":
@@ -168,7 +177,8 @@ def main():
             if failed <= 3:
                 print(f"  FAIL [{title[:50]}]: {e}")
 
-    print(f"\nDone. inserted={inserted}, skipped(dup)={skipped}, failed={failed}")
+    print(f"\nDone. inserted={inserted}, skipped(dup)={skipped}, "
+          f"post-tenure(skipped)={post_tenure}, failed={failed}")
 
 
 if __name__ == "__main__":

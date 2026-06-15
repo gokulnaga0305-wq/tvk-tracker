@@ -7,9 +7,14 @@ the frontend.
 """
 from fastapi import APIRouter, Query
 from app.database import get_db
+from app.config import settings
 from typing import Optional
 
 router = APIRouter(prefix="/dmk-archive", tags=["dmk-archive"])
+
+# DMK tenure ended on this date; govt handles kept posting under TVK afterward.
+# Everything in the DMK archive must be on/before this boundary.
+_DMK_END = settings.dmk_tenure_end_date.isoformat()
 
 
 @router.get("/schemes")
@@ -76,7 +81,7 @@ async def timeline(
     query = db.table("dmk_announcements").select(
         "id, source, source_url, announcement_date, title, content, "
         "media_urls, tags, scheme_name_hint"
-    )
+    ).lte("announcement_date", _DMK_END)  # DMK tenure only — no post-handover posts
 
     if source:
         query = query.eq("source", source)
@@ -106,12 +111,14 @@ async def archive_stats():
             db.table("dmk_announcements")
             .select("id", count="exact")
             .eq("source", source)
+            .lte("announcement_date", _DMK_END)
             .execute()
         )
         out[source] = res.count or 0
 
-    # Top tags across all sources
-    res = db.table("dmk_announcements").select("tags").limit(2000).execute()
+    # Top tags across all sources (DMK tenure only)
+    res = (db.table("dmk_announcements").select("tags")
+           .lte("announcement_date", _DMK_END).limit(2000).execute())
     from collections import Counter
     tag_count: Counter = Counter()
     for row in res.data or []:

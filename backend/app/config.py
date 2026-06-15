@@ -17,6 +17,11 @@ class Settings(BaseSettings):
     google_fact_check_api_key: str = ""
     huggingface_api_key: str = ""
     govt_start_date: date = date(2026, 5, 11)
+    # DMK's tenure ended 2026-05-04. The govt social handles (@CMOTamilnadu,
+    # @TNDIPRNEWS) are continuous across administrations, so anything they
+    # posted AFTER this date is TVK-era content and must NOT pollute the DMK
+    # reference archive (which also feeds credit-steal detection).
+    dmk_tenure_end_date: date = date(2026, 5, 4)
     govt_name: str = "TVK"
     admin_secret: str = "change-this"
     allowed_origins: str = "http://localhost:3000"
