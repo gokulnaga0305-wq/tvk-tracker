@@ -638,6 +638,42 @@ async def cron_dedup_incidents(
     return {"status": "queued", "days": days}
 
 
+@router.post("/credit-steal-sweep")
+async def cron_credit_steal_sweep(
+    background_tasks: BackgroundTasks,
+    days: int = Query(60, ge=1, le=180),
+    dry_run: bool = Query(False, description="Preview decisions without writing"),
+    use_ai: bool = Query(True, description="LLM judge decides; false = keyword preview only"),
+    max_ai: int = Query(35, ge=1, le=60, description="LLM-call cap (HF free-tier safety)"),
+    x_admin_secret: Optional[str] = Header(None),
+):
+    """Cross-check recent TVK announcements against the FULL DMK archive
+    (3,000+ items, beyond the ~387 curated schemes the AI prompt knows). Keyword
+    search shortlists; an LLM judge confirms before anything is auto-marked —
+    keyword overlap alone is too noisy to publish a credit-steal accusation.
+
+    dry_run=true runs synchronously and returns what it WOULD auto-mark /
+    review (eyeball it first). use_ai=false returns the keyword shortlist with
+    NO decisions. Real runs go to the background (LLM calls are slow); capped at
+    max_ai calls so it never hangs the free Space."""
+    _require_admin(x_admin_secret)
+    from app.ingestion.credit_steal_sweep import sweep_credit_steals
+    if dry_run:
+        return sweep_credit_steals(days=days, dry_run=True, use_ai=use_ai, max_ai=max_ai)
+
+    def _go():
+        try:
+            r = sweep_credit_steals(days=days, dry_run=False, use_ai=use_ai, max_ai=max_ai)
+            logger.info("credit-steal-sweep: scanned=%s shortlisted=%s ai=%s auto=%s review=%s cleared=%s",
+                        r["scanned"], r["shortlisted"], r["ai_calls"],
+                        r["auto_marked"], r["sent_to_review"], r["ai_cleared"])
+        except Exception as e:
+            logger.error("credit-steal-sweep failed: %s", e)
+
+    background_tasks.add_task(_go)
+    return {"status": "queued", "days": days, "use_ai": use_ai, "max_ai": max_ai}
+
+
 # ---------------------------------------------------------------------------
 # Keep-warm — no work, just touches the Space
 # ---------------------------------------------------------------------------

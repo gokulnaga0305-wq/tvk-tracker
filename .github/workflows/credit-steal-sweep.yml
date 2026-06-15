@@ -1,0 +1,54 @@
+name: Weekly credit-steal cross-check
+
+# Cross-checks recent TVK government announcements against the FULL DMK archive
+# (3,000+ items — far beyond the ~387 curated schemes the AI prompt knows). A
+# keyword search shortlists precedents; an LLM judge then CONFIRMS each before
+# anything is auto-marked, because keyword overlap alone is too noisy to publish
+# a credit-steal accusation. AI-confirmed (high conf) -> auto-marked; medium ->
+# pending_review; the rest cleared. Every flag carries the dated DMK precedent.
+#
+# Scheduled just after Groq's daily reset (00:00 UTC) so the AI pool is fresh.
+# LLM-call cap keeps it inside the HF free-tier envelope. On-demand mirror:
+#   POST /api/cron/credit-steal-sweep?days=60  (x-admin-secret header)
+#   add &dry_run=true to preview, &use_ai=false for a keyword-only shortlist.
+
+on:
+  schedule:
+    - cron: '20 0 * * 1'    # Mon 00:20 UTC = Mon 05:50 IST (fresh Groq pool)
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Look-back window (days)'
+        required: false
+        default: '60'
+      dry_run:
+        description: 'true = preview decisions without writing'
+        required: false
+        default: 'false'
+      max_ai:
+        description: 'LLM-call cap (HF free-tier safety)'
+        required: false
+        default: '35'
+
+jobs:
+  credit-steal-sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger credit-steal cross-check
+        env:
+          ADMIN_SECRET: ${{ secrets.ADMIN_SECRET }}
+          BACKEND: https://goknaga-tvk-tracker-backend.hf.space
+          DAYS: ${{ inputs.days || '60' }}
+          DRY: ${{ inputs.dry_run || 'false' }}
+          MAX_AI: ${{ inputs.max_ai || '35' }}
+        run: |
+          set -e
+          if [ -z "$ADMIN_SECRET" ]; then
+            echo "::error::ADMIN_SECRET repo secret not set"
+            exit 1
+          fi
+          curl -fsS --max-time 120 -X POST \
+            -H "x-admin-secret: ${ADMIN_SECRET}" \
+            "${BACKEND}/api/cron/credit-steal-sweep?days=${DAYS}&dry_run=${DRY}&max_ai=${MAX_AI}"
+          echo "::notice::Credit-steal cross-check triggered (days=${DAYS}, dry_run=${DRY}, max_ai=${MAX_AI})"
