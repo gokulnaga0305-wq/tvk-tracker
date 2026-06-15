@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from app.config import settings
 from app.database import get_db
@@ -27,9 +27,21 @@ def _require_admin(secret: Optional[str]) -> None:
 
 
 class FactcheckRun(BaseModel):
-    input_type: str = Field("text", pattern="^(text|url)$")
-    content: str = Field(..., min_length=8, max_length=8000,
-                         description="The claim text, or a URL to check")
+    input_type: str = Field("text", pattern="^(text|url|image)$")
+    # max_length is generous so an image's base64 data: URL fits; text/url are
+    # held to the tight 8 KB cap by the validator below. (Frontend downscales
+    # images to ~1024px before encoding, keeping payloads well under this.)
+    content: str = Field(..., min_length=8, max_length=4_000_000,
+                         description="The claim text, a URL, or an image data: URL")
+
+    @model_validator(mode="after")
+    def _check_content(self) -> "FactcheckRun":
+        if self.input_type == "image":
+            if not self.content.startswith("data:image/"):
+                raise ValueError("image input must be a base64 data:image/ URL")
+        elif len(self.content) > 8000:
+            raise ValueError("text/url content must be <= 8000 characters")
+        return self
 
 
 class FactcheckReview(BaseModel):

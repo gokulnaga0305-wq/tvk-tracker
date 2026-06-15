@@ -13,6 +13,7 @@ import { useEffect, useRef, useState } from 'react';
 import {
   ShieldQuestion, Link2, Type, Loader2, CheckCircle2, XCircle,
   ExternalLink, AlertTriangle, Scale, RefreshCw, Database, Landmark,
+  Image as ImageIcon, X,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -21,7 +22,7 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 interface Evidence { url: string; headline: string; outlet: string; tier: string; date: string; stance?: string }
 interface Factcheck {
   id: string;
-  input_type: 'text' | 'url';
+  input_type: 'text' | 'url' | 'image';
   input_content: string;
   fetched_excerpt?: string | null;
   claim_text?: string | null;
@@ -59,13 +60,44 @@ function VerdictChip({ v }: { v?: string | null }) {
   return <span className={clsx('text-[11px] font-bold px-2 py-0.5 rounded', m.cls)}>{m.label}</span>;
 }
 
+// Read an image File, downscale to <=1024px on the long edge, and return a
+// JPEG base64 data: URL. Keeps the request body small (free-tier friendly)
+// while staying legible enough for Gemini Vision to OCR the card.
+function downscaleImage(file: File, maxEdge = 1024, quality = 0.85): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('read failed'));
+    reader.onload = () => {
+      const img = new window.Image();
+      img.onerror = () => reject(new Error('decode failed'));
+      img.onload = () => {
+        const scale = Math.min(1, maxEdge / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return reject(new Error('no canvas'));
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function FactcheckAdminPage() {
   const [secret, setSecret] = useState('');
   const [authed, setAuthed] = useState(false);
   const [message, setMessage] = useState('');
-  const [inputType, setInputType] = useState<'text' | 'url'>('text');
+  const [inputType, setInputType] = useState<'text' | 'url' | 'image'>('text');
   const [content, setContent] = useState('');
+  // For image input: the downscaled base64 data: URL is the submit payload;
+  // imagePreview shows it back to the user before they run the check.
+  const [imagePreview, setImagePreview] = useState<string>('');
   const [submitting, setSubmitting] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
   const [items, setItems] = useState<Factcheck[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -93,19 +125,42 @@ export default function FactcheckAdminPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, authed]);
 
+  async function onPickImage(file: File | undefined) {
+    if (!file) return;
+    if (!file.type.startsWith('image/')) { setMessage('Please choose an image file'); return; }
+    try {
+      const dataUrl = await downscaleImage(file);
+      setImagePreview(dataUrl);
+      setMessage('');
+    } catch { setMessage('Could not read that image'); }
+  }
+
+  function clearImage() {
+    setImagePreview('');
+    if (fileRef.current) fileRef.current.value = '';
+  }
+
+  function switchType(t: 'text' | 'url' | 'image') {
+    setInputType(t);
+    setMessage('');
+    if (t !== 'image') clearImage();
+  }
+
   async function submit() {
-    if (!content.trim()) return;
+    const payload = inputType === 'image' ? imagePreview : content.trim();
+    if (!payload) return;
     setSubmitting(true);
     try {
       const res = await fetch(`${API}/api/factcheck/run`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-admin-secret': secret },
-        body: JSON.stringify({ input_type: inputType, content: content.trim() }),
+        body: JSON.stringify({ input_type: inputType, content: payload }),
       });
       if (res.ok) {
         const j = await res.json();
         setActiveId(j.id);
         setContent('');
+        clearImage();
         await load(secret);
       } else {
         setMessage(`Submit failed (${res.status})`);
@@ -167,25 +222,56 @@ export default function FactcheckAdminPage() {
       {/* Input */}
       <div className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-4 mb-6">
         <div className="flex gap-2 mb-3">
-          {(['text', 'url'] as const).map(t => (
-            <button key={t} onClick={() => setInputType(t)}
+          {(['text', 'url', 'image'] as const).map(t => (
+            <button key={t} onClick={() => switchType(t)}
               className={clsx('flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border',
                 inputType === t ? 'bg-violet-600 border-violet-600 text-white font-semibold'
                   : 'bg-[#1e1e1e] border-[#2a2a2a] text-gray-400 hover:text-white')}>
-              {t === 'text' ? <Type size={11} /> : <Link2 size={11} />} {t === 'text' ? 'Claim text' : 'URL'}
+              {t === 'text' ? <Type size={11} /> : t === 'url' ? <Link2 size={11} /> : <ImageIcon size={11} />}
+              {t === 'text' ? 'Claim text' : t === 'url' ? 'URL' : 'Image / screenshot'}
             </button>
           ))}
         </div>
-        <textarea
-          value={content} onChange={e => setContent(e.target.value)}
-          rows={inputType === 'text' ? 3 : 1}
-          placeholder={inputType === 'text'
-            ? 'Paste the claim to check, e.g. "TN is the first state in the country to use drone patrolling for women’s safety"'
-            : 'https://x.com/... or any article URL'}
-          className="w-full bg-[#111] border border-[#2a2a2a] text-white text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-violet-500 resize-y"
-        />
+
+        {inputType === 'image' ? (
+          <div>
+            <input
+              ref={fileRef} type="file" accept="image/*" className="hidden"
+              onChange={e => onPickImage(e.target.files?.[0])}
+            />
+            {imagePreview ? (
+              <div className="relative inline-block">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={imagePreview} alt="Selected card to fact-check"
+                  className="max-h-64 rounded-lg border border-[#2a2a2a]" />
+                <button onClick={clearImage} aria-label="Remove image"
+                  className="absolute -top-2 -right-2 bg-[#2a2a2a] hover:bg-red-700 text-white rounded-full p-1">
+                  <X size={13} />
+                </button>
+              </div>
+            ) : (
+              <button onClick={() => fileRef.current?.click()}
+                className="w-full border border-dashed border-[#333] hover:border-violet-500 rounded-lg py-8 flex flex-col items-center gap-2 text-gray-500 hover:text-gray-300 transition-colors">
+                <ImageIcon size={22} />
+                <span className="text-sm">Upload a poster, screenshot, or news card</span>
+                <span className="text-[11px] text-gray-600">AI reads the text (English + Tamil), then checks the claim</span>
+              </button>
+            )}
+          </div>
+        ) : (
+          <textarea
+            value={content} onChange={e => setContent(e.target.value)}
+            rows={inputType === 'text' ? 3 : 1}
+            placeholder={inputType === 'text'
+              ? 'Paste the claim to check, e.g. "TN is the first state in the country to use drone patrolling for women’s safety"'
+              : 'https://x.com/... or any article URL'}
+            className="w-full bg-[#111] border border-[#2a2a2a] text-white text-sm px-3 py-2 rounded-lg focus:outline-none focus:border-violet-500 resize-y"
+          />
+        )}
+
         <div className="flex justify-end mt-2">
-          <button onClick={submit} disabled={submitting || !content.trim()}
+          <button onClick={submit}
+            disabled={submitting || (inputType === 'image' ? !imagePreview : !content.trim())}
             className="bg-violet-600 hover:bg-violet-500 disabled:opacity-40 text-white text-sm font-semibold px-5 py-2 rounded-lg flex items-center gap-2">
             {submitting ? <Loader2 size={14} className="animate-spin" /> : <Scale size={14} />} Run fact-check
           </button>
@@ -215,7 +301,10 @@ export default function FactcheckAdminPage() {
                 </span>
               </div>
               <div className="text-[12px] text-gray-300 line-clamp-2">
-                {i.claim_text || i.input_content}
+                {i.claim_text
+                  || (i.input_type === 'image'
+                    ? <span className="flex items-center gap-1 text-gray-500"><ImageIcon size={11} /> Image upload</span>
+                    : i.input_content)}
               </div>
               <div className="text-[10px] text-gray-600 mt-1 uppercase">{i.status}</div>
             </button>

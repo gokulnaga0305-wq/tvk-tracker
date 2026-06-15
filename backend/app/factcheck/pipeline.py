@@ -99,6 +99,48 @@ def _fetch_url_text(url: str) -> Optional[str]:
     return None
 
 
+_IMAGE_OCR_PROMPT = (
+    "This is a social-media card, poster, or screenshot about Tamil Nadu "
+    "politics (often a 'breaking news' graphic). Do two things:\n"
+    "1. Transcribe ALL visible text — English AND Tamil — including small print, "
+    "handles, and captions.\n"
+    "2. Then write, in ONE clear English sentence prefixed with 'CLAIM: ', the "
+    "single main factual claim the image is making.\n"
+    "Output the CLAIM line first, then the full transcription. Do not judge "
+    "truth — just transcribe and state the claim."
+)
+
+
+def _ocr_image(data_url: str) -> Optional[str]:
+    """Read the text + main claim from an uploaded image via Gemini Vision
+    (free tier, vision-capable). `data_url` is a base64 data: URL. Returns the
+    CLAIM line + transcription, or None."""
+    from app.config import settings
+    gem = getattr(settings, "gemini_api_key", None)
+    if not gem:
+        logger.warning("factcheck image OCR: no GEMINI_API_KEY configured")
+        return None
+    try:
+        from openai import OpenAI
+        client = OpenAI(
+            timeout=45, max_retries=1, api_key=gem,
+            base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
+        )
+        resp = client.chat.completions.create(
+            model="gemini-2.0-flash",
+            max_tokens=600,
+            messages=[{"role": "user", "content": [
+                {"type": "text", "text": _IMAGE_OCR_PROMPT},
+                {"type": "image_url", "image_url": {"url": data_url}},
+            ]}],
+        )
+        out = (resp.choices[0].message.content or "").strip()
+        return out or None
+    except Exception as e:
+        logger.warning("factcheck image OCR failed: %s", e)
+        return None
+
+
 # --------------------------------------------------------------------------
 # Stage 2 — claim extraction
 # --------------------------------------------------------------------------
@@ -340,6 +382,18 @@ def run_factcheck(factcheck_id: str) -> dict[str, Any]:
                        "error_detail": "Could not fetch/extract the URL content."})
                 return {"error": "fetch failed"}
             _save({"fetched_excerpt": fetched[:2000]})
+            content = fetched
+        elif row["input_type"] == "image":
+            fetched = _ocr_image(content)
+            if not fetched:
+                _save({"status": "error",
+                       "error_detail": "Could not read the image. The AI vision "
+                       "quota may be exhausted (resets 5:30 AM IST), or the image "
+                       "had no legible text."})
+                return {"error": "ocr failed"}
+            # Replace the bulky base64 payload with the OCR'd text so the row
+            # stays lean and the rest of the pipeline runs on the transcription.
+            _save({"fetched_excerpt": fetched[:2000], "input_content": "[image upload]"})
             content = fetched
 
         # 2. extract claims
