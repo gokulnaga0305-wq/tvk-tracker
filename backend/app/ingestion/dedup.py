@@ -22,7 +22,7 @@ from collections import defaultdict
 from datetime import date, datetime, timedelta, timezone
 
 from app.database import get_db
-from app.ingestion.ai_processor import _title_jaccard
+from app.ingestion.ai_processor import _title_jaccard, _GENERIC_TITLE_CATS
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,10 @@ def _are_duplicates(a: dict, b: dict) -> bool:
     """Same event? Same category + within ±1 day + similar headline. The
     title threshold relaxes only when the district matches."""
     if a.get("category") != b.get("category"):
+        return False
+    # Generic-title infra categories (power cuts etc.) recur with the same
+    # wording for different events — don't fuzzy-merge them (see ai_processor).
+    if a.get("category") in _GENERIC_TITLE_CATS:
         return False
     if not _within_a_day(a.get("incident_date"), b.get("incident_date")):
         return False

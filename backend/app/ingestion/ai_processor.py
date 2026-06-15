@@ -852,6 +852,12 @@ _TITLE_STOP = {
 }
 
 
+# Categories whose titles are generic/location-only ("Power Cut in Chennai")
+# and recur for genuinely different events — excluded from fuzzy title-merge
+# (they still dedup via the exact category+location+date signature).
+_GENERIC_TITLE_CATS = {"power_cut", "eb_failure", "civic_failure", "water_shortage"}
+
+
 def _title_tokens(s: str) -> set[str]:
     """Tokenise a headline for similarity. Keeps Latin + Tamil word chars so
     Tamil-script duplicates can match too."""
@@ -884,6 +890,13 @@ def _find_fuzzy_duplicate(db, extracted: dict, cutoff_iso: str):
     title = extracted.get("title") or ""
     idate = (extracted.get("incident_date") or "")[:10]
     if not (cat and title and idate):
+        return None
+    # Infrastructure categories have generic, location-only titles ("Power Cut
+    # in Chennai") that legitimately recur for DIFFERENT events — title
+    # similarity can't tell two distinct outages apart, so fuzzy-merging them
+    # would HIDE real incidents. They still dedup via the exact category+
+    # location+date signature; we just don't fuzzy-match them.
+    if cat in _GENERIC_TITLE_CATS:
         return None
     district = None
     try:
