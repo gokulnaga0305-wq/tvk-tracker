@@ -483,6 +483,16 @@ async def cron_promise_evidence(
     return {"status": "queued", "limit": limit}
 
 
+@router.post("/promise-evidence-clean")
+async def cron_promise_evidence_clean(x_admin_secret: Optional[str] = Header(None)):
+    """One-off: revert the loose auto-matches from the earlier date-blind
+    promise-evidence sweep (single Google-News-redirect evidence → cleared,
+    'partial' → 'pending'). Synchronous and small. Safe to re-run."""
+    _require_admin(x_admin_secret)
+    from app.ingestion.promise_evidence import clear_lowquality_evidence
+    return clear_lowquality_evidence()
+
+
 # ---------------------------------------------------------------------------
 # District backfill — fix incidents with no district tag
 # ---------------------------------------------------------------------------

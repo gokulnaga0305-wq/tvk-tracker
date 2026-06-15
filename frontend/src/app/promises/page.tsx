@@ -71,22 +71,25 @@ function PromiseRow({ promise }: { promise: Promise_ }) {
 }
 
 export default function PromisesPage() {
-  const [promises, setPromises] = useState<Promise_[]>([]);
+  // Fetch ALL promises once; filter client-side. The summary must always
+  // reflect the full set — fetching per-tab made the totals show only the
+  // filtered slice (e.g. "0 Pending / 6 Partial" when Partial was selected).
+  const [allPromises, setAllPromises] = useState<Promise_[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('');
 
   useEffect(() => {
-    const url = tab ? `${API}/api/promises/?status=${tab}` : `${API}/api/promises/`;
-    fetch(url)
+    fetch(`${API}/api/promises/`)
       .then(r => r.json())
-      .then(setPromises)
-      .catch(() => setPromises([]))
+      .then(d => setAllPromises(Array.isArray(d) ? d : []))
+      .catch(() => setAllPromises([]))
       .finally(() => setLoading(false));
-  }, [tab]);
+  }, []);
 
-  const kept = promises.filter(p => p.status === 'kept').length;
-  const total = promises.length;
+  const kept = allPromises.filter(p => p.status === 'kept').length;
+  const total = allPromises.length;
   const pct = total > 0 ? Math.round((kept / total) * 100) : 0;
+  const promises = tab ? allPromises.filter(p => p.status === tab) : allPromises;
 
   return (
     <div className="flex-1 p-3 sm:p-6 max-w-5xl mx-auto w-full">
@@ -116,10 +119,10 @@ export default function PromisesPage() {
           />
         </div>
         <div className="flex gap-4 mt-3 text-xs text-gray-600">
-          <span className="text-green-400">{promises.filter(p => p.status === 'kept').length} Kept</span>
-          <span className="text-red-400">{promises.filter(p => p.status === 'broken').length} Broken</span>
-          <span className="text-yellow-400">{promises.filter(p => p.status === 'partial').length} Partial</span>
-          <span className="text-gray-400">{promises.filter(p => p.status === 'pending').length} Pending</span>
+          <span className="text-green-400">{allPromises.filter(p => p.status === 'kept').length} Kept</span>
+          <span className="text-red-400">{allPromises.filter(p => p.status === 'broken').length} Broken</span>
+          <span className="text-yellow-400">{allPromises.filter(p => p.status === 'partial').length} Partial</span>
+          <span className="text-gray-400">{allPromises.filter(p => p.status === 'pending').length} Pending</span>
         </div>
       </div>
 
@@ -128,7 +131,7 @@ export default function PromisesPage() {
         {STATUS_TABS.map(t => (
           <button
             key={t.key}
-            onClick={() => { setTab(t.key); setLoading(true); }}
+            onClick={() => setTab(t.key)}
             className={clsx('text-sm px-4 py-1.5 rounded-lg border transition-colors',
               tab === t.key
                 ? 'bg-orange-600 border-orange-600 text-white'

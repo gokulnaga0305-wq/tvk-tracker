@@ -28,6 +28,7 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import Any, Optional
 
 from app.database import get_db
@@ -36,6 +37,8 @@ logger = logging.getLogger(__name__)
 
 GNEWS_RSS = "https://news.google.com/rss/search?q={query}&hl=en-IN&gl=IN&ceid=IN:en"
 UA = "Mozilla/5.0 (compatible; TVKTracker-PromiseEvidence/1.0)"
+# The govt took office on this date — evidence of IT delivering must post-date it.
+GOVT_START = "2026-05-11"
 
 # Words that carry no search signal in promise text.
 _STOPWORDS = {
@@ -77,8 +80,21 @@ def _gnews_search(query_text: str, *, max_items: int = 5) -> list[dict[str, str]
             title = (it.findtext("title") or "").strip()
             link = (it.findtext("link") or "").strip()
             src = (it.findtext("source") or "").strip()
-            if title and link:
-                items.append({"title": title, "url": link, "source": src})
+            pub = (it.findtext("pubDate") or "").strip()
+            if not (title and link):
+                continue
+            # HARD date gate: an article can only be evidence of THIS govt
+            # delivering if it was published on/after the govt took office.
+            # No parseable date OR a pre-era date → not eligible. (This is what
+            # let a Sep-2025 'caste bias in schools' article wrongly mark a TVK
+            # employment promise as 'partial'.)
+            try:
+                pdate = parsedate_to_datetime(pub).date().isoformat()
+            except Exception:
+                pdate = None
+            if not pdate or pdate < GOVT_START:
+                continue
+            items.append({"title": title, "url": link, "source": src, "date": pdate})
             if len(items) >= max_items:
                 break
     except ET.ParseError:
@@ -100,7 +116,13 @@ STRICT RULES — identical discipline to the Promise Comparator:
 - Announcements of INTENT ("CM says will...", "govt plans...") are NOT delivery.
 - Protests, demands, criticism, or coverage of the promise being UNMET are NOT delivery.
 - Pre-2026-05-11 events or other states' news are NOT delivery.
+- The headline must be about the EXACT SAME subject as the promise — not a
+  related theme. A promise about caste bias in EMPLOYMENT is NOT matched by an
+  article about caste bias in SCHOOLS; a women's-health promise is NOT matched
+  by general women's-safety news. Different sub-domain = NOT a match.
 - A headline merely sharing keywords with the promise is NOT a match.
+- WHEN IN DOUBT, answer delivery_signal=false. A wrong match destroys trust;
+  a missed match costs nothing (the weekly sweep retries).
 
 Output ONLY this JSON:
 {{"delivery_signal": true/false, "best_index": <0-based index or null>,
@@ -109,7 +131,9 @@ Output ONLY this JSON:
 
 def _judge(promise_text: str, hits: list[dict[str, str]]) -> Optional[dict[str, Any]]:
     from app.ingestion.ai_processor import llm_call_with_fallback
-    headlines = "\n".join(f"{i}. [{h['source']}] {h['title']}" for i, h in enumerate(hits))
+    headlines = "\n".join(
+        f"{i}. [{h['source']}, {h.get('date', '?')}] {h['title']}"
+        for i, h in enumerate(hits))
     raw = llm_call_with_fallback(
         [{"role": "user", "content": _JUDGE_PROMPT.format(
             promise=promise_text, headlines=headlines)}],
@@ -156,7 +180,9 @@ def sweep_promise_evidence(*, limit: int = 50) -> dict[str, Any]:
                 continue
             conf = float(verdict.get("confidence") or 0)
             idx = verdict.get("best_index")
-            if conf < 0.7 or idx is None or not (0 <= int(idx) < len(hits)):
+            # 0.8 bar (raised from 0.7): a loose match marking a promise
+            # 'partial' with weak evidence is far worse than leaving it pending.
+            if conf < 0.8 or idx is None or not (0 <= int(idx) < len(hits)):
                 continue
             best = hits[int(idx)]
             updates: dict[str, Any] = {"evidence_url": best["url"]}
@@ -173,3 +199,33 @@ def sweep_promise_evidence(*, limit: int = 50) -> dict[str, Any]:
             logger.exception("promise-evidence failed for promise %s", p.get("id"))
 
     return out
+
+
+def clear_lowquality_evidence() -> dict[str, Any]:
+    """Undo the loose auto-matches from the earlier date-BLIND sweep.
+
+    The bad matches (e.g. a TVK employment promise pointing at a Sep-2025
+    'caste bias in schools' article) all share one signature: the promise's
+    ONLY evidence is a single Google-News redirect URL. Genuine evidence
+    (comparator / admin) carries multiple real article links. We revert those
+    auto-matches — clear the evidence and drop 'partial' back to 'pending' — so
+    the fixed, date-gated, stricter sweep can re-evaluate them cleanly."""
+    db = get_db()
+    rows = db.table("promises").select("id, status, evidence_url").execute().data or []
+    reverted: list[str] = []
+    for r in rows:
+        ev = (r.get("evidence_url") or "").strip()
+        if not ev:
+            continue
+        urls = [u.strip() for u in ev.split(";") if u.strip()]
+        if len(urls) == 1 and "news.google.com/rss/articles" in urls[0]:
+            upd: dict[str, Any] = {"evidence_url": None}
+            if r.get("status") == "partial":
+                upd["status"] = "pending"
+            try:
+                db.table("promises").update(upd).eq("id", r["id"]).execute()
+                reverted.append(r["id"])
+            except Exception:
+                logger.exception("clear_lowquality_evidence failed for %s", r["id"])
+    logger.info("clear_lowquality_evidence: reverted %d auto-matches", len(reverted))
+    return {"reverted": len(reverted), "ids": reverted}
