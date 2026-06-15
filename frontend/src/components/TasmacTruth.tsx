@@ -84,11 +84,16 @@ const STATE_REV = [
   { s: 'Maharashtra',   v: 37000, note: 'mostly excise' },
   { s: 'Telangana',     v: 36493, note: 'VAT + excise' },
   { s: 'Karnataka',     v: 36000, note: 'mostly excise' },
+  { s: 'Andhra Pradesh',v: 25000, note: 'VAT + excise (est.)' },
   { s: 'West Bengal',   v: 18851, note: 'mostly excise' },
   { s: 'Madhya Pradesh',v: 13914, note: 'mostly excise' },
+  { s: 'Haryana',       v: 11000, note: 'excise' },
   { s: 'Punjab',        v: 10000, note: 'mostly excise' },
   { s: 'Rajasthan',     v: 9100,  note: 'mostly excise' },
   { s: 'Kerala',        v: 7800,  note: 'excise only (understates)' },
+  { s: 'Delhi',         v: 7431,  note: 'incl. VAT' },
+  { s: 'Odisha',        v: 7217,  note: 'excise' },
+  { s: 'Uttarakhand',   v: 4039,  note: 'excise · yet >20% of own-tax' },
 ];
 
 // Dependence = liquor as a share of the state's OWN TAX REVENUE (RBI bands).
@@ -365,6 +370,19 @@ export default function TasmacTruth() {
             );
           })}
         </div>
+        {/* Prohibition extreme — the ₹0 contrast */}
+        <div className="rounded-md border border-[#262626] bg-[#141414] px-3 py-2.5 mt-3">
+          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-300 mb-1">
+            <Skull size={12} className="text-amber-400" /> The other extreme: prohibition = ₹0
+          </div>
+          <p className="text-[12px] text-gray-400 leading-relaxed">
+            <span className="text-gray-300">Bihar</span> (dry since 2016) and <span className="text-gray-300">Gujarat</span> (dry for
+            decades) earn <span className="text-gray-300">~₹0</span> from liquor — Bihar forgoes an estimated
+            <span className="text-gray-300"> ₹4,000–8,000 cr a year</span> — yet both still see recurring hooch deaths.
+            Banning the revenue didn&rsquo;t ban the drinking.
+          </p>
+        </div>
+
         <div className="flex gap-2 text-[11px] text-gray-500 leading-relaxed mt-3 border-t border-[#262626] pt-2">
           <AlertTriangle size={12} className="text-amber-500/70 shrink-0 mt-0.5" />
           <span>
@@ -376,8 +394,9 @@ export default function TasmacTruth() {
         </div>
         <p className="text-[10px] text-gray-600 mt-2">
           Sources: per-state liquor revenue — state excise depts / Economic Survey 2023-24, The Print (UP), Deccan Herald (Karnataka),
-          PRS (West Bengal), The Commune (TN VAT+excise split) · dependence bands — RBI &ldquo;State Finances: A Study of Budgets&rdquo;,
-          CRISIL (2020). Ranges exist; figures are best-available, directional.
+          PRS (West Bengal), Business Standard (Delhi, Gujarat), Sambad (Odisha), Drishti IAS (Uttarakhand), Haryana Economic Survey,
+          ORF (Bihar), The Commune (TN VAT+excise split) · dependence bands — RBI &ldquo;State Finances: A Study of Budgets&rdquo;,
+          CRISIL (2020). Mixed vintages/bases; figures are best-available, directional.
         </p>
       </section>
 
