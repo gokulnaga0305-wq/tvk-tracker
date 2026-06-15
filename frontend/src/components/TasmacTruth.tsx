@@ -55,6 +55,25 @@ const ZOOMOUT = [
   { lens: "of Tamil Nadu's whole economy", sub: 'state GDP / GSDP (~₹31 lakh cr)', pct: 1.5, color: '#1d9e75' },
 ];
 
+// Excise duty as % of GSDP (2024-25, PRS "State of State Finances") — the
+// EXCISE-ONLY ranking that circulates as an infographic. TN sits 2nd-from-
+// bottom precisely because it taxes liquor via VAT, not excise. Subset shown.
+const EXCISE_GSDP = [
+  { s: 'Uttar Pradesh', v: 2.3 },
+  { s: 'Chhattisgarh', v: 2.0 },
+  { s: 'Andhra Pradesh', v: 1.6 },
+  { s: 'Telangana', v: 1.6 },
+  { s: 'Karnataka', v: 1.4 },
+  { s: 'West Bengal', v: 1.2 },
+  { s: 'Madhya Pradesh', v: 1.1 },
+  { s: 'Maharashtra', v: 0.7 },
+  { s: 'Tamil Nadu', v: 0.4, hi: true },
+  { s: 'Kerala', v: 0.2 },
+];
+const EXCISE_MAX = 2.5;          // chart scale
+const TN_EXCISE_PCT = 0.4;       // TN excise as % of GSDP
+const TN_VAT_PCT = 1.1;          // TN liquor VAT (~₹35k cr) as % of GSDP
+
 // Prohibition → illegal-liquor evidence.
 const HOOCH = [
   { place: 'Bihar (dry since 2016)', toll: '150+', detail: "govt-admitted illicit-liquor deaths; Chhapra/Siwan Oct 2024 alone ~32" },
@@ -397,6 +416,72 @@ export default function TasmacTruth() {
           PRS (West Bengal), Business Standard (Delhi, Gujarat), Sambad (Odisha), Drishti IAS (Uttarakhand), Haryana Economic Survey,
           ORF (Bihar), The Commune (TN VAT+excise split) · dependence bands — RBI &ldquo;State Finances: A Study of Budgets&rdquo;,
           CRISIL (2020). Mixed vintages/bases; figures are best-available, directional.
+        </p>
+      </section>
+
+      {/* ── Why TN's excise looks deceptively low (the VAT shift) ──── */}
+      <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
+        <div className="flex items-center gap-2 text-sm font-semibold text-white mb-1">
+          <AlertTriangle size={15} className="text-amber-400" /> Why TN&rsquo;s &ldquo;excise&rdquo; looks deceptively low — the VAT shift
+        </div>
+        <p className="text-[12px] text-gray-500 mb-4">
+          A popular infographic ranks states by <span className="text-gray-300">excise duty only</span> (% of GSDP) — and TN sits
+          almost at the bottom (0.4%). True, but a trap: TN barely uses excise because it taxes liquor through
+          <span className="text-gray-300"> VAT</span> instead.
+        </p>
+
+        {/* excise-only ranking */}
+        <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-2">Excise duty as % of GSDP (2024-25)</div>
+        <div className="space-y-1.5 mb-4">
+          {EXCISE_GSDP.map(r => {
+            const w = Math.round((r.v / EXCISE_MAX) * 100);
+            return (
+              <div key={r.s} className="flex items-center gap-2">
+                <span className={`w-28 shrink-0 text-[11px] ${r.hi ? 'text-amber-300 font-semibold' : 'text-gray-400'}`}>{r.s}</span>
+                <div className="flex-1 bg-[#111] rounded h-4 overflow-hidden">
+                  <div className="h-full rounded" style={{ width: `${w}%`, background: r.hi ? '#e0a23a' : '#9a3d3b' }} />
+                </div>
+                <span className={`w-10 shrink-0 text-[11px] text-right ${r.hi ? 'text-amber-300 font-semibold' : 'text-gray-500'}`}>{r.v}%</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* the reveal — add VAT */}
+        <div className="rounded-md border border-amber-800/40 bg-amber-950/15 px-3 py-3">
+          <div className="text-[11px] font-semibold text-amber-200 mb-2">Now add the VAT TN actually collects</div>
+          {[
+            { label: 'TN — excise only (what the chart shows)', seg: [{ v: TN_EXCISE_PCT, c: '#1d9e75' }], total: TN_EXCISE_PCT },
+            { label: 'TN — excise + VAT (the real liquor take)', seg: [{ v: TN_EXCISE_PCT, c: '#1d9e75' }, { v: TN_VAT_PCT, c: '#e0a23a' }], total: +(TN_EXCISE_PCT + TN_VAT_PCT).toFixed(1) },
+          ].map(row => (
+            <div key={row.label} className="mb-2 last:mb-0">
+              <div className="flex justify-between text-[11px] text-gray-400 mb-0.5">
+                <span>{row.label}</span><span className="text-gray-200 font-semibold">{row.total}% of GSDP</span>
+              </div>
+              <div className="flex bg-[#111] rounded h-4 overflow-hidden">
+                {row.seg.map((s, i) => (
+                  <div key={i} className="h-full" style={{ width: `${(s.v / EXCISE_MAX) * 100}%`, background: s.c }} />
+                ))}
+              </div>
+            </div>
+          ))}
+          <div className="flex flex-wrap gap-x-4 gap-y-1 mt-2 text-[10.5px] text-gray-500">
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: '#1d9e75' }} /> excise (₹11k cr)</span>
+            <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: '#e0a23a' }} /> liquor VAT (~₹35k cr)</span>
+          </div>
+        </div>
+
+        <div className="flex gap-2 text-[12.5px] text-gray-300 leading-relaxed mt-3">
+          <CheckCircle2 size={15} className="text-amber-400 shrink-0 mt-0.5" />
+          <span>
+            Counting only excise, TN looks 2nd-from-bottom. Add the VAT it really collects (~₹35,000 cr ≈ 1.1% of GSDP) and TN
+            jumps to <span className="text-white font-semibold">~1.5%</span> — up near Karnataka/AP, <span className="text-white">not</span> at the bottom.
+            So &ldquo;TN&rsquo;s excise is the lowest&rdquo; is a real number but a <span className="text-white">misleading</span> one — works in both directions,
+            which is why we show the whole take.
+          </span>
+        </div>
+        <p className="text-[10px] text-gray-600 mt-2">
+          Excise ranking: State of State Finances, PRS India (2024-25). TN VAT/excise split: TN Prohibition &amp; Excise Dept / The Commune (FY24).
         </p>
       </section>
 
