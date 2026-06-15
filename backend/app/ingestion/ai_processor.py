@@ -914,6 +914,7 @@ def _find_fuzzy_duplicate(db, extracted: dict, cutoff_iso: str):
                  .select("id, title, district, source_urls, source_count, "
                          "verification_status, ai_confidence")
                  .eq("category", cat)
+                 .neq("status", "rejected")  # don't revive merged duplicates
                  .gte("incident_date", lo).lte("incident_date", hi)
                  .gte("created_at", cutoff_iso)
                  .limit(60).execute().data or [])
@@ -1098,6 +1099,11 @@ async def process_article(item: ApifyWebhookItem) -> None:
         db.table("incidents")
         .select("id, source_urls, source_count, verification_status, ai_confidence")
         .eq("event_signature", signature)
+        # Never match a retracted/merged duplicate — otherwise a new source for
+        # the event resurrects the row we deliberately folded into the keeper
+        # (the Gummidipoondi 3yo case had 10 such revivals). Excluded rows fall
+        # through to the fuzzy matcher, which routes the source to the keeper.
+        .neq("status", "rejected")
         .gte("created_at", cutoff)
         .execute()
     )
