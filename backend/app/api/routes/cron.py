@@ -598,6 +598,37 @@ async def cron_reclassify_corruption(
 
 
 # ---------------------------------------------------------------------------
+# Retroactive de-duplication — merge same-event incidents logged 2-3 times
+# ---------------------------------------------------------------------------
+@router.post("/dedup-incidents")
+async def cron_dedup_incidents(
+    background_tasks: BackgroundTasks,
+    days: int = Query(21, ge=1, le=120),
+    dry_run: bool = Query(False, description="Report clusters without merging"),
+    x_admin_secret: Optional[str] = Header(None),
+):
+    """Find incidents that are the SAME event logged multiple times (the
+    location-variant dedup gap) and merge each cluster into one keeper,
+    retracting the rest. Title-similarity guarded so distinct events never
+    merge. dry_run=true returns the clusters it WOULD merge (runs synchronously
+    so you can eyeball them); otherwise runs in the background."""
+    _require_admin(x_admin_secret)
+    from app.ingestion.dedup import dedup_existing
+    if dry_run:
+        return dedup_existing(days=days, dry_run=True)
+
+    def _go():
+        try:
+            r = dedup_existing(days=days, dry_run=False)
+            logger.info("dedup-incidents: %s", {k: v for k, v in r.items() if k != "sample"})
+        except Exception as e:
+            logger.error("dedup-incidents failed: %s", e)
+
+    background_tasks.add_task(_go)
+    return {"status": "queued", "days": days}
+
+
+# ---------------------------------------------------------------------------
 # Keep-warm — no work, just touches the Space
 # ---------------------------------------------------------------------------
 @router.get("/keep-warm")

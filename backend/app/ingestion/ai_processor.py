@@ -842,6 +842,81 @@ def _event_signature(extracted: dict) -> str:
     return f"{cat}:{loc}:{d}"
 
 
+# Stopwords stripped before title-similarity so common filler doesn't inflate
+# the overlap score. Includes place/party words that appear in most titles.
+_TITLE_STOP = {
+    "the", "a", "an", "of", "in", "on", "at", "to", "and", "or", "for", "with",
+    "is", "was", "are", "were", "after", "over", "near", "by", "from", "into",
+    "tamil", "nadu", "tn", "tvk", "case", "video", "watch", "news", "update",
+    "justnow", "breaking", "report", "alleged", "allegedly",
+}
+
+
+def _title_tokens(s: str) -> set[str]:
+    """Tokenise a headline for similarity. Keeps Latin + Tamil word chars so
+    Tamil-script duplicates can match too."""
+    return {
+        w for w in re.findall(r"[a-z0-9஀-௿]+", (s or "").lower())
+        if len(w) > 2 and w not in _TITLE_STOP
+    }
+
+
+def _title_jaccard(a: str, b: str) -> float:
+    """Token Jaccard similarity of two headlines (0..1)."""
+    ta, tb = _title_tokens(a), _title_tokens(b)
+    if not ta or not tb:
+        return 0.0
+    return len(ta & tb) / len(ta | tb)
+
+
+def _find_fuzzy_duplicate(db, extracted: dict, cutoff_iso: str):
+    """Catch the same event when the exact signature missed it because the
+    LOCATION was written differently (e.g. 'Gummidipoondi' vs 'Thiruvallur'
+    vs blank for one Tiruvallur event → 3 incidents).
+
+    Looks at incidents of the SAME category within ±1 day, then merges ONLY
+    when the headlines are genuinely similar — so two *different* crimes in the
+    same district on the same day are never wrongly merged (over-merging would
+    HIDE a real incident, which is worse than a duplicate). The title check is
+    the guard; same-district just relaxes the threshold slightly.
+    """
+    cat = extracted.get("category")
+    title = extracted.get("title") or ""
+    idate = (extracted.get("incident_date") or "")[:10]
+    if not (cat and title and idate):
+        return None
+    district = None
+    try:
+        from app.ingestion.district_mapper import map_location_to_district
+        district = map_location_to_district(extracted.get("location"))
+    except Exception:
+        district = None
+    try:
+        d = date.fromisoformat(idate)
+    except Exception:
+        return None
+    lo, hi = (d - timedelta(days=1)).isoformat(), (d + timedelta(days=1)).isoformat()
+    try:
+        cands = (db.table("incidents")
+                 .select("id, title, district, source_urls, source_count, "
+                         "verification_status, ai_confidence")
+                 .eq("category", cat)
+                 .gte("incident_date", lo).lte("incident_date", hi)
+                 .gte("created_at", cutoff_iso)
+                 .limit(60).execute().data or [])
+    except Exception:
+        return None
+    best, best_score = None, 0.0
+    for c in cands:
+        sim = _title_jaccard(title, c.get("title") or "")
+        same_dist = bool(district) and (c.get("district") == district)
+        # Same district → 0.45 is enough; different/blank district → demand 0.65.
+        threshold = 0.45 if same_dist else 0.65
+        if sim >= threshold and sim > best_score:
+            best, best_score = c, sim
+    return best
+
+
 def _strip_code_fences(s: str) -> str:
     s = s.strip()
     if s.startswith("```"):
@@ -1016,9 +1091,15 @@ async def process_article(item: ApifyWebhookItem) -> None:
 
     confidence = extracted.get("confidence", 0.5)
 
-    if similar.data:
+    # Exact-signature match first; if none, try the fuzzy fallback that catches
+    # the same event written with a different location string (the Gummidipoondi
+    # / Thiruvallur / blank → 3 incidents bug). The title guard inside keeps
+    # distinct same-district events apart.
+    target = similar.data[0] if similar.data else \
+        _find_fuzzy_duplicate(db, extracted, cutoff)
+
+    if target:
         # Found an existing incident matching this event → add this source
-        target = similar.data[0]
         new_sources = list(set((target.get("source_urls") or []) + [item.url]))
         new_count = len(new_sources)
 
