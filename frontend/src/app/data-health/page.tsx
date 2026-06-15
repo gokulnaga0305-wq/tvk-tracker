@@ -9,13 +9,12 @@
  *
  * Source: /api/diagnostics/data-health (public, zero provider/key info).
  */
-import { useEffect, useState } from 'react';
 import {
-  Activity, Rss, Newspaper, ShieldCheck, CheckCircle2, XCircle, Clock,
+  Activity, Rss, Newspaper, ShieldCheck, CheckCircle2, XCircle, Clock, RefreshCw,
 } from 'lucide-react';
 import clsx from 'clsx';
-
-const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+import { useApi } from '@/lib/useApi';
+import { AsyncBoundary } from '@/components/AsyncBoundary';
 
 interface Feed {
   label: string;
@@ -51,27 +50,24 @@ function ago(h: number | null): string {
 }
 
 export default function DataHealthPage() {
-  const [d, setD] = useState<Health | null>(null);
-  const [err, setErr] = useState(false);
-
-  useEffect(() => {
-    fetch(`${API}/api/diagnostics/data-health`, { cache: 'no-store' })
-      .then(r => (r.ok ? r.json() : Promise.reject()))
-      .then(setD)
-      .catch(() => setErr(true));
-  }, []);
-
-  if (err) return <div className="max-w-5xl mx-auto px-4 py-6 text-gray-500">Data health unavailable right now.</div>;
-  if (!d) return <div className="max-w-5xl mx-auto px-4 py-6 text-gray-500">Loading…</div>;
-
-  const mix = d.verification_mix || {};
-  const total = d.incidents_total || 0;
+  const health = useApi<Health>('/api/diagnostics/data-health');
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-6">
-      <div className="flex items-center gap-2 mb-1">
-        <Activity size={20} className="text-cyan-400" />
-        <h1 className="text-xl font-bold text-white">Data Health</h1>
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-2">
+          <Activity size={20} className="text-cyan-400" />
+          <h1 className="text-xl font-bold text-white">Data Health</h1>
+        </div>
+        <button
+          type="button"
+          onClick={health.refetch}
+          disabled={health.loading || health.refetching}
+          aria-label="Refresh data health"
+          className="text-gray-500 hover:text-white disabled:opacity-40 p-1 rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500"
+        >
+          <RefreshCw size={15} className={health.refetching ? 'animate-spin' : ''} aria-hidden="true" />
+        </button>
       </div>
       <p className="text-gray-500 text-sm mb-6 max-w-3xl">
         Live state of this tracker&rsquo;s own pipeline — which feeds are fetching, how fresh each
@@ -79,6 +75,12 @@ export default function DataHealthPage() {
         plumbing on purpose: judge the data by how it&rsquo;s collected.
       </p>
 
+      <AsyncBoundary result={health} label="data health">
+        {d => {
+          const mix = d.verification_mix || {};
+          const total = d.incidents_total || 0;
+          return (
+          <>
       {/* Headline stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         <div className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-4">
@@ -176,9 +178,13 @@ export default function DataHealthPage() {
       </div>
 
       <p className="text-[11px] text-gray-600 mt-4">
-        Checked {new Date(d.checked_at).toLocaleString('en-IN')} · refreshes on every page load ·
+        Checked {new Date(d.checked_at).toLocaleString('en-IN')} · use ↻ to refresh ·
         endpoint: /api/diagnostics/data-health (public)
       </p>
+          </>
+          );
+        }}
+      </AsyncBoundary>
     </div>
   );
 }
