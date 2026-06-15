@@ -133,21 +133,25 @@ Telegram stall-alert watchdog.)
 | Headers | `x-admin-secret: <YOUR_ADMIN_SECRET>` |
 | Timeout | 60s |
 
-### Job 7 — Press / Reddit / Google-News RSS ingestion (NEW)
+### Job 7 — Press / Reddit / Google-News RSS ingestion — ⛔ DISABLE THIS
 
-The free-tier replacement for most Apify Twitter scraping. Pulls Tamil
-press + Reddit + Google-News keyword feeds and runs each item through
-the cheap relevance gate → full extraction. Cheap because the gate
-filters ~70% of junk before the expensive call.
+**Status (2026-06): RETIRED. Disable / delete this cron-job.org job.**
+
+RSS ingestion is now owned solely by the GitHub Actions workflow
+`rss-ingest.yml` (every 30 min, full rotating loop on a real runner with a
+~16-min soft time budget). The cron-job.org version triggered the same
+ingestion inside an HF FastAPI BackgroundTask that gets killed partway —
+so it added little but **doubled the free-tier AI spend** (every item was
+gated+extracted twice). Running both is what kept exhausting the Groq/Gemini
+daily pools. **Turn this job OFF in cron-job.org** and let GitHub Actions be
+the single owner.
 
 | Field | Value |
 |---|---|
 | Title | `TVK · press RSS ingest` |
 | URL | `https://goknaga-tvk-tracker-backend.hf.space/api/cron/scrape-press-rss?max_items_per_source=25` |
-| Schedule | Every 30 minutes |
-| HTTP method | POST |
-| Headers | `x-admin-secret: <YOUR_ADMIN_SECRET>` |
-| Timeout | 60s |
+| Schedule | ~~Every 30 minutes~~ → **disabled** |
+| Owner now | GitHub Actions `rss-ingest.yml` |
 
 ### Job 8 — Ingestion watchdog → Telegram alert (NEW)
 

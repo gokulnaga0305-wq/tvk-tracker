@@ -48,12 +48,14 @@ if _env.exists():
             os.environ.setdefault(_k.strip(), _v.strip().strip('"').strip("'"))
 
 
-async def _main(per_source: int) -> int:
+async def _main(per_source: int, max_seconds: float) -> int:
     from app.ingestion.rss_ingest import ingest_all_sources, SOURCES_RSS
 
     print(f"RSS ingest starting — {len(SOURCES_RSS)} sources, "
-          f"{per_source} items/source max (FULL loop, runs to completion)")
-    results = await ingest_all_sources(max_items_per_source=per_source)
+          f"{per_source} items/source max, soft budget {max_seconds:.0f}s "
+          f"(rotating start covers any sources skipped this run)")
+    results = await ingest_all_sources(
+        max_items_per_source=per_source, max_seconds=max_seconds)
 
     total_disc = sum((r.get("discovered") or 0) for r in results)
     total_proc = sum((r.get("processed") or 0) for r in results)
@@ -62,13 +64,19 @@ async def _main(per_source: int) -> int:
           f"{total_disc} items discovered | {total_proc} processed through AI.")
     # Per-source line so GH Actions logs show exactly what ran (proves no
     # source was skipped by a dying task).
+    skipped = [r for r in results if r.get("skipped")]
     for r in results:
         name = r.get("source", "?")
         if r.get("error"):
             print(f"  [ERR ] {name}: {str(r['error'])[:80]}")
+        elif r.get("skipped"):
+            print(f"  [skip] {name}: {r['skipped']}")
         else:
             print(f"  [ok  ] {name}: discovered={r.get('discovered',0)} "
                   f"processed={r.get('processed',0)}")
+    if skipped:
+        print(f"::notice::{len(skipped)} source(s) deferred to next run (time budget) — "
+              f"rotation guarantees they lead the next sweep.")
     return 0
 
 
@@ -76,8 +84,11 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--per-source", type=int, default=25,
                     help="Max items pulled per RSS source per run")
+    ap.add_argument("--max-seconds", type=float, default=1000.0,
+                    help="Soft time budget; stop starting new sources after this "
+                         "(default 1000s ≈ 16.7 min, under the 20-min CI timeout)")
     args = ap.parse_args()
-    return asyncio.run(_main(args.per_source))
+    return asyncio.run(_main(args.per_source, args.max_seconds))
 
 
 if __name__ == "__main__":

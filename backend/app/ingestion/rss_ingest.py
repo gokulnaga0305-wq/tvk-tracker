@@ -35,6 +35,7 @@ Cost: $0/month for this scraper. AI extraction via Groq is free.
 from __future__ import annotations
 import logging
 import re
+import time
 import urllib.error
 import urllib.request
 from datetime import datetime, timezone
@@ -425,12 +426,26 @@ def _rotated_sources(sources: list[dict[str, str]]) -> list[dict[str, str]]:
     return sources[off:] + sources[:off]
 
 
-async def ingest_all_sources(*, max_items_per_source: int = 25) -> list[dict[str, Any]]:
+async def ingest_all_sources(
+    *, max_items_per_source: int = 25, max_seconds: float | None = None
+) -> list[dict[str, Any]]:
     """Sweep every registered RSS source, with a ROTATING start point so HF
     background-task death never permanently starves the sources lower in the
-    static list (Sun News, News18, etc. were chronically skipped)."""
+    static list (Sun News, News18, etc. were chronically skipped).
+
+    `max_seconds` is a soft time budget: once exceeded we stop STARTING new
+    sources and return cleanly (the rotating start point means the next run
+    picks up where this one left off). This lets the GitHub Actions job finish
+    as a SUCCESS instead of being killed at the 20-min hard timeout (which
+    showed as 'cancelled' on every run) — and it bounds the free-tier AI spend
+    per run now that GH Actions is the single owner of this lane.
+    """
     results: list[dict[str, Any]] = []
+    start = time.monotonic()
     for src in _rotated_sources(SOURCES_RSS):
+        if max_seconds is not None and (time.monotonic() - start) > max_seconds:
+            results.append({"source": src["name"], "skipped": "time budget reached"})
+            continue
         try:
             r = await ingest_one_source(src, max_items=max_items_per_source)
             results.append(r)
