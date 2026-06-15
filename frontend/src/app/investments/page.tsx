@@ -27,6 +27,12 @@ interface Scorecard {
   lost_cr: number;
   lost_jobs: number;
   at_risk_cr: number;
+  operational_count: number;
+  operational_cr: number;
+  in_progress_count: number;
+  in_progress_cr: number;
+  committed_count: number;
+  committed_cr: number;
 }
 
 const STATUS: Record<string, { label: string; cls: string }> = {
@@ -91,6 +97,43 @@ export default function InvestmentsPage() {
         </div>
       )}
 
+      {/* Built vs promised — the honest "MoU ≠ money delivered" split */}
+      {sc && sc.total_committed_cr > 0 && typeof sc.committed_cr === 'number' && (() => {
+        const segs = [
+          { label: 'Operational (live)', cr: sc.operational_cr, c: '#1d9e75' },
+          { label: 'Under construction', cr: sc.in_progress_cr, c: '#3aa6c0' },
+          { label: 'MoU only (signed, not built)', cr: sc.committed_cr, c: '#5a7fd0' },
+          { label: 'At risk', cr: sc.at_risk_cr, c: '#d99a3a' },
+        ];
+        const opPct = Math.round((sc.operational_cr / sc.total_committed_cr) * 100);
+        return (
+          <div className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-4 mb-6">
+            <div className="text-[12px] text-gray-400 mb-2">
+              Built vs promised — of the <span className="text-gray-200 font-semibold">{crore(sc.total_committed_cr)}</span> pipeline,
+              how much is actually on the ground?
+            </div>
+            <div className="flex h-4 rounded overflow-hidden bg-[#111] mb-2">
+              {segs.map((s, i) => s.cr > 0 ? (
+                <div key={i} className="h-full" style={{ width: `${(s.cr / sc.total_committed_cr) * 100}%`, background: s.c }} />
+              ) : null)}
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-gray-400">
+              {segs.map((s, i) => s.cr > 0 ? (
+                <span key={i} className="flex items-center gap-1.5">
+                  <span className="w-2.5 h-2.5 rounded-sm inline-block" style={{ background: s.c }} />
+                  {s.label}: <span className="text-gray-300">{crore(s.cr)}</span>
+                </span>
+              ) : null)}
+            </div>
+            <p className="text-[11.5px] text-gray-500 mt-2.5 leading-relaxed">
+              Only <span className="text-emerald-300 font-medium">{crore(sc.operational_cr)} (~{opPct}%)</span> is
+              operational on the ground today. Most of the headline is <span className="text-gray-300">signed MoUs not yet built</span> —
+              an MoU is a commitment, not delivered money.
+            </p>
+          </div>
+        );
+      })()}
+
       <div className="rounded-lg border border-[#2a2a2a] overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-[#161616] text-gray-500 text-[11px] uppercase tracking-wider">
@@ -111,7 +154,15 @@ export default function InvestmentsPage() {
                   <td className="px-4 py-3">
                     <div className="text-white font-medium">{r.company}</div>
                     {r.status_note && <div className="text-[11px] text-gray-500 mt-0.5">{r.status_note}</div>}
-                    {r.source_event && <div className="text-[10px] text-gray-600">{r.source_event}</div>}
+                    <div className="flex items-center gap-2 mt-0.5">
+                      {r.source_event && <span className="text-[10px] text-gray-600">{r.source_event}</span>}
+                      {r.source_url && (
+                        <a href={r.source_url} target="_blank" rel="noopener noreferrer"
+                          className="text-[10px] text-orange-400 hover:text-orange-300 flex items-center gap-0.5">
+                          source <ExternalLink size={9} />
+                        </a>
+                      )}
+                    </div>
                   </td>
                   <td className="px-4 py-3 text-gray-400 hidden sm:table-cell">{r.sector}</td>
                   <td className="px-4 py-3 text-right text-gray-200 font-semibold whitespace-nowrap">{crore(r.amount_cr)}</td>
@@ -133,8 +184,10 @@ export default function InvestmentsPage() {
       </div>
 
       <p className="text-[11px] text-gray-600 mt-3">
-        Scope: flagship commitments by value (GIM 2024 + major project MoUs) — not every one of
-        the 631 MoUs. The weekly watcher flags any tracked company that appears in a
+        Scope: flagship commitments by value — a subset of GIM 2024&apos;s full
+        <span className="text-gray-500"> ₹6.64 lakh cr / 631 MoUs</span>, plus a few major later project MoUs. Every
+        row links its source. An MoU is a signed commitment, <span className="text-gray-500">not money delivered</span> —
+        see the built-vs-MoU split above. The weekly watcher flags any tracked company that appears in a
         shift/stall/cancel story for review before its status changes.
       </p>
     </div>
