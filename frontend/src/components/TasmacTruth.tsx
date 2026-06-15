@@ -135,6 +135,32 @@ export default function TasmacTruth() {
         </p>
       </section>
 
+      {/* ── At a glance — summary card ─────────────────────────────── */}
+      <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
+        <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-3">At a glance — the whole story in four numbers</div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+          {[
+            { v: '₹48,344 cr', t: 'TASMAC turnover (FY25) — sales value, not government income', c: 'text-gray-200' },
+            { v: '~25%', t: 'of own-tax revenue — the state’s real liquor take', c: 'text-amber-300' },
+            { v: '~11%', t: 'of the total state budget', c: 'text-amber-300' },
+            { v: '~1.5%', t: 'of Tamil Nadu’s whole economy (GSDP)', c: 'text-emerald-300' },
+          ].map(m => (
+            <div key={m.v + m.t} className="rounded-md bg-[#141414] border border-[#262626] px-3 py-3">
+              <div className={`text-xl font-bold ${m.c}`}>{m.v}</div>
+              <div className="text-[10.5px] text-gray-500 mt-1 leading-snug">{m.t}</div>
+            </div>
+          ))}
+        </div>
+        <div className="flex gap-2 text-[12.5px] text-gray-300 leading-relaxed mt-3 border-t border-[#262626] pt-3">
+          <CheckCircle2 size={15} className="text-emerald-400 shrink-0 mt-0.5" />
+          <span>
+            <span className="text-white font-semibold">Bottom line:</span> liquor is a meaningful slice — the single largest
+            individual revenue stream — but Tamil Nadu <span className="text-white">does not &ldquo;run on&rdquo; it</span>, and it&rsquo;s
+            <span className="text-white"> mid-pack vs other states</span> (UP &amp; Karnataka lean on liquor more). The detail, with sources, is below.
+          </span>
+        </div>
+      </section>
+
       {/* ── The 3-number trick ─────────────────────────────────────── */}
       <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
         <div className="flex items-center gap-2 text-sm font-semibold text-white mb-1">
