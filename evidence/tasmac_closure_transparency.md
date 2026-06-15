@@ -32,18 +32,45 @@ Example granularity — Chennai (N): shop nos. 101, 132, 138, 164, 182, 206, 215
 248, 255, 273, 3, 30, 104, 107, 143, 221, 245, 283, 286, 296 (20 shops).
 → Anyone can go to a listed shop number and confirm it is shut. **Auditable.**
 
-## TVK — 717 shops (2026): announced, not itemised ❌
+## TVK — 717 shops (2026): announced, partially detailed ⚠️ (updated 2026-06-15)
 
-- **What exists:** CM order + a **DIPR (Directorate of Information & Public
-  Relations) press release.**
-- **Category split only:** 276 near temples / 186 near schools / 255 near bus stands.
+- **What exists:** CM order + a **DIPR press release** + (now) a **zone/district-wise
+  breakdown** released ~15 Jun 2026.
+- **Category split:** 276 near temples / 186 near schools / 255 near bus stands.
 - **Employees:** 3,474 affected, stated as redeployed.
-- **What is missing:** No published shop-by-shop list (none found as of 2026-06-10).
-- **Press framing:** The Federal — *"Vijay orders closure of 717 Tasmac outlets:
-  Stern action or sheer optics?"*
-  (https://thefederal.com/category/states/south/tamil-nadu/cm-vijay-orders-closure-717-tasmac-liquor-shops-242804)
-- **Unverified ground claim (user):** private bars reportedly opened near the
-  closed outlets. Not confirmed in news; needs photo/location evidence to document.
+- **Closure stated PERMANENT:** MD K. Nanthakumar said the POS devices of all 717
+  outlets are disabled and they "cannot be reopened without a fresh government policy
+  decision." (DT Next, 13 Jun 2026.)
+
+### 2026-06-15 UPDATE — "details/list released"
+- **What happened:** multiple Tamil outlets (Daily Thanthi, Dinamalar, Rockfort Times,
+  News18 Tamil, Indian Express Tamil, News7 Tamil) dated **15 Jun 2026** report the
+  government released **details of the 717 closed shops, zone/district-wise**
+  (e.g. Thoothukudi 63, Trichy zone 84).
+- **Granularity — the key point:** this is a **zone/district-wise aggregate + the
+  category split**, NOT a **shop-by-shop itemised list** with individual shop numbers,
+  names and addresses (DMK's 2023 gold standard). As of 11 Jun, BJP TN chief Nainar
+  Nagendran was still demanding a **"white paper" with district-wise details and
+  addresses** of all 717 — implying the address-level list was not public.
+- **No GO number / DIPR reference number** for an itemised list located.
+- **Honest verdict on "they published THE list":** PARTLY TRUE. Real progress — a
+  zone/district breakdown is now public, more than the bare category split of 10 Jun —
+  but it still falls short of the full itemised, address-level list the public asked
+  for. Credit the disclosure; don't overstate it as the DMK-2023-grade list.
+
+### FL2 / FL3 bar allegation ("closed 717 shops, but opening FL2/FL3 bars") — MISLEADING
+- **What FL2/FL3 are:** FL2 = bars **attached to TASMAC shops** (run by private
+  contractors who win them at auction) + recreation clubs; FL3 = **star-hotel bars**.
+- **No evidence of NEW FL2/FL3 bars** being opened to offset the 717 closures.
+- **What is actually real:** (a) the contract for the **~2,000 existing attached FL2
+  bars** expires **30 Jun 2026**, so TASMAC is **re-tendering** them with new fee slabs
+  — a routine renewal of EXISTING bars, not new ones (Tamiljanam/Athiban, 5 Jun 2026);
+  (b) **existing** FL2 bars near the closed shops are **profiting** as drinkers
+  redirect (Vikatan, Coimbatore, 21 May 2026).
+- **Honest verdict:** MISLEADING. "Opening new FL2/FL3 bars" is unsupported. The
+  defensible point is narrower: while 717 retail points shut, the **~2,000 attached-bar
+  ecosystem continues and is being re-auctioned**, so the "dry" optics are partly
+  undercut — but that is *continuation/renewal*, not *new bars*.
 
 ## Related — 67 quarries (May 2026): temporary, not permanent
 

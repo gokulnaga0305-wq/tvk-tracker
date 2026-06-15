@@ -18,7 +18,7 @@
  */
 import {
   Wine, TrendingUp, AlertTriangle, CheckCircle2, Info, Scale,
-  Banknote, Skull, Receipt, PieChart,
+  Banknote, Skull, Receipt, PieChart, ClipboardCheck, XCircle, Store,
 } from 'lucide-react';
 
 // TASMAC reported revenue, ₹ crore. FY16–FY21 = gross retail turnover;
@@ -60,6 +60,18 @@ const HOOCH = [
   { place: 'Bihar (dry since 2016)', toll: '150+', detail: "govt-admitted illicit-liquor deaths; Chhapra/Siwan Oct 2024 alone ~32" },
   { place: 'Gujarat (decades dry)', toll: '42 + ~150', detail: 'Botad 2022 (42) and Ahmedabad 2009 (~150) hooch tragedies' },
   { place: 'Tamil Nadu', toll: '~59', detail: 'Kallakurichi methanol arrack, June 2024 — even WITH legal TASMAC liquor' },
+];
+
+// The 717-closure accountability scorecard (June 2026).
+const CLOSURE_DONE = [
+  '717 shops shut near sensitive spots — 276 near temples, 186 near schools, 255 near bus stands.',
+  'Closure stated permanent — the billing (POS) machines of all 717 outlets were disabled; "cannot reopen without a fresh policy decision" (TASMAC MD, 13 Jun 2026).',
+  'Zone/district-wise details released (15 Jun 2026) — e.g. Thoothukudi 63, Trichy zone 84.',
+];
+const CLOSURE_GAP = [
+  'No full shop-by-shop list with names and addresses yet — DMK published exactly that (named, by shop number) for its 2023 closures.',
+  'Opposition (BJP’s Nainar Nagendran) was still demanding a "white paper" with district details + addresses on 11 Jun 2026.',
+  'No Government Order (GO) number located for an itemised public list.',
 ];
 
 // ---- 10-year chart geometry ----
@@ -310,6 +322,81 @@ export default function TasmacTruth() {
             </p>
           </div>
         </div>
+      </section>
+
+      {/* ── The 717 closures — accountability (June 2026) ──────────── */}
+      <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
+        <div className="flex items-center gap-2 text-sm font-semibold text-white mb-1">
+          <ClipboardCheck size={15} className="text-sky-400" /> The 717 shop closures — what&rsquo;s real (June 2026)
+        </div>
+        <p className="text-[12px] text-gray-500 mb-4">
+          The TVK government closed 717 TASMAC shops near schools, temples and bus stands. Here&rsquo;s the honest
+          scorecard — the step that was taken, and the gap that remains.
+        </p>
+
+        <div className="grid md:grid-cols-2 gap-3 mb-4">
+          <div className="rounded-md border border-emerald-800/40 bg-emerald-950/15 px-3 py-3">
+            <div className="text-[11px] font-semibold text-emerald-300 mb-2">What&rsquo;s actually done</div>
+            <ul className="space-y-1.5">
+              {CLOSURE_DONE.map((t, i) => (
+                <li key={i} className="flex gap-1.5 text-[12px] text-gray-400 leading-relaxed">
+                  <CheckCircle2 size={13} className="text-emerald-400/80 shrink-0 mt-0.5" /><span>{t}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="rounded-md border border-amber-900/40 bg-amber-950/15 px-3 py-3">
+            <div className="text-[11px] font-semibold text-amber-300 mb-2">What&rsquo;s still missing</div>
+            <ul className="space-y-1.5">
+              {CLOSURE_GAP.map((t, i) => (
+                <li key={i} className="flex gap-1.5 text-[12px] text-gray-400 leading-relaxed">
+                  <XCircle size={13} className="text-amber-400/80 shrink-0 mt-0.5" /><span>{t}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div className="rounded-md border border-sky-800/40 bg-sky-950/20 px-3 py-2.5 mb-4">
+          <div className="flex gap-2 text-[12.5px] text-gray-200 leading-relaxed">
+            <Info size={15} className="text-sky-400 shrink-0 mt-0.5" />
+            <span>
+              <span className="text-sky-300 font-medium">Verdict on &ldquo;they published the list&rdquo;:</span> a real step —
+              a zone/district breakdown is now public, more than the bare category-split of a week earlier — but it is
+              <span className="text-white"> not yet the full address-level, shop-by-shop list</span> the public asked for.
+              Credit the disclosure; don&rsquo;t overstate it as the complete list.
+            </span>
+          </div>
+        </div>
+
+        {/* The FL2/FL3 bars allegation */}
+        <div className="rounded-md border border-[#262626] bg-[#141414] px-3 py-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Store size={13} className="text-gray-400" />
+            <span className="text-[11.5px] font-semibold text-gray-300">The allegation: &ldquo;closed 717 shops, but opening FL2/FL3 bars&rdquo;</span>
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-600 text-amber-50 ml-auto">MISLEADING</span>
+          </div>
+          <p className="text-[12px] text-gray-400 leading-relaxed mb-2">
+            <span className="text-gray-300">FL2</span> = bars attached to TASMAC shops (run by private contractors who win them at auction);
+            <span className="text-gray-300"> FL3</span> = star-hotel bars. There is <span className="text-gray-300">no evidence of NEW FL2/FL3 bars</span> being
+            opened to offset the closures.
+          </p>
+          <p className="text-[12px] text-gray-400 leading-relaxed">
+            <span className="text-gray-300">What&rsquo;s actually true:</span> the contract for the
+            <span className="text-gray-300"> ~2,000 existing attached bars</span> expires 30 Jun 2026, so TASMAC is
+            <span className="text-gray-300"> re-tendering</span> them — a routine renewal of <span className="text-gray-300">existing</span> bars, not new ones —
+            and existing bars near the closed shops are profiting as drinkers redirect. The fair point is narrower than the
+            allegation: the attached-bar ecosystem <span className="text-gray-300">continues</span>, so the &ldquo;dry&rdquo; optics are
+            partly undercut — but that is <span className="text-white">continuation, not new bars.</span>
+          </p>
+        </div>
+
+        <p className="text-[10px] text-gray-600 mt-2">
+          Sources: closure confirmation & permanence — DT Next (13 Jun 2026), Daily Thanthi/Maalaimalar (5 Jun) ·
+          zone/district list — Dinamalar, Daily Thanthi, News18 Tamil, Indian Express Tamil (15 Jun 2026) ·
+          white-paper demand — Daily Thanthi/Maalaimalar (Nagendran, 11 Jun) · bar re-tender — Tamiljanam/Athiban (5 Jun) ·
+          existing bars profiting — Vikatan, Coimbatore (21 May 2026). Largely Tamil-press; granularity read from headlines + the standing demand for an itemised list.
+        </p>
       </section>
 
       {/* ── The honest steelman ────────────────────────────────────── */}
