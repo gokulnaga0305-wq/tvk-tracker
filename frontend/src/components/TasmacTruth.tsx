@@ -18,7 +18,7 @@
  */
 import {
   Wine, TrendingUp, AlertTriangle, CheckCircle2, Info, Scale,
-  Banknote, Skull, Receipt, PieChart, ClipboardCheck, XCircle, Store,
+  Banknote, Skull, Receipt, PieChart, ClipboardCheck, XCircle, Store, MapPinned,
 } from 'lucide-react';
 
 // TASMAC reported revenue, ₹ crore. FY16–FY21 = gross retail turnover;
@@ -72,6 +72,31 @@ const CLOSURE_GAP = [
   'No full shop-by-shop list with names and addresses yet — DMK published exactly that (named, by shop number) for its 2023 closures.',
   'Opposition (BJP’s Nainar Nagendran) was still demanding a "white paper" with district details + addresses on 11 Jun 2026.',
   'No Government Order (GO) number located for an itemised public list.',
+];
+
+// State-wise liquor revenue (₹ cr, ~FY2023-24; mixed vintages). IMPORTANT:
+// most states collect liquor money as EXCISE; TN/Telangana route most of it
+// through VAT, so a fair total adds both. Absolute size mostly tracks how big
+// and populous a state is — the dependence bands below are the fair metric.
+const STATE_REV = [
+  { s: 'Uttar Pradesh', v: 47600, note: 'mostly excise' },
+  { s: 'Tamil Nadu',    v: 45856, note: 'VAT + excise', hi: true },
+  { s: 'Maharashtra',   v: 37000, note: 'mostly excise' },
+  { s: 'Telangana',     v: 36493, note: 'VAT + excise' },
+  { s: 'Karnataka',     v: 36000, note: 'mostly excise' },
+  { s: 'West Bengal',   v: 18851, note: 'mostly excise' },
+  { s: 'Madhya Pradesh',v: 13914, note: 'mostly excise' },
+  { s: 'Punjab',        v: 10000, note: 'mostly excise' },
+  { s: 'Rajasthan',     v: 9100,  note: 'mostly excise' },
+  { s: 'Kerala',        v: 7800,  note: 'excise only (understates)' },
+];
+
+// Dependence = liquor as a share of the state's OWN TAX REVENUE (RBI bands).
+// This controls for state size — the honest "how hooked is this state" metric.
+const DEP_TIERS = [
+  { band: 'MORE dependent than TN  (>20%)', states: 'Uttar Pradesh · Karnataka · Uttarakhand', c: '#e0524f' },
+  { band: 'Around TN  (15–20%)', states: 'Tamil Nadu ~15% · Punjab · Chhattisgarh · West Bengal · Telangana · Himachal', c: '#d99a3a', hi: true },
+  { band: 'Most other states  (10–15%)', states: 'the majority of Indian states', c: '#1d9e75' },
 ];
 
 // ---- 10-year chart geometry ----
@@ -258,6 +283,75 @@ export default function TasmacTruth() {
         <p className="text-[10px] text-gray-600 mt-2">
           Denominators: own-tax revenue ~₹1.9 lakh cr; total budget (2025-26 expenditure) ₹4,39,293 cr;
           GSDP 2024-25 ~₹31.2 lakh cr. Sources: PRS Legislative Research (TN Budget 2025-26), RBI / TN Economic Survey.
+        </p>
+      </section>
+
+      {/* ── State-wise comparison: TN isn't special ────────────────── */}
+      <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
+        <div className="flex items-center gap-2 text-sm font-semibold text-white mb-1">
+          <MapPinned size={15} className="text-violet-400" /> Tamil Nadu isn&rsquo;t special — liquor money across the states
+        </div>
+        <p className="text-[12px] text-gray-500 mb-4">
+          Nearly every big Indian state leans on liquor revenue. The fair way to compare isn&rsquo;t the raw rupees
+          (bigger states naturally collect more) — it&rsquo;s <span className="text-gray-300">how much of each state&rsquo;s own
+          tax money comes from liquor.</span>
+        </p>
+
+        {/* Dependence bands — the fair metric */}
+        <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-2">Liquor as a share of the state&rsquo;s own tax revenue</div>
+        <div className="space-y-2 mb-4">
+          {DEP_TIERS.map(t => (
+            <div key={t.band} className={`rounded-md border px-3 py-2 ${t.hi ? 'border-amber-700/50 bg-amber-950/15' : 'border-[#262626] bg-[#141414]'}`}>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-sm inline-block shrink-0" style={{ background: t.c }} />
+                <span className={`text-[12px] font-semibold ${t.hi ? 'text-amber-200' : 'text-gray-300'}`}>{t.band}</span>
+              </div>
+              <div className="text-[11.5px] text-gray-500 mt-0.5 ml-[18px]">{t.states}</div>
+            </div>
+          ))}
+        </div>
+        <div className="rounded-md border border-violet-800/40 bg-violet-950/20 px-3 py-2.5 mb-5">
+          <div className="flex gap-2 text-[13px] text-gray-200 leading-relaxed">
+            <CheckCircle2 size={15} className="text-violet-400 shrink-0 mt-0.5" />
+            <span>
+              At <span className="text-white font-semibold">~15%</span>, Tamil Nadu is <span className="text-white">mid-pack</span> —
+              the upper edge of normal, not a class of its own. <span className="text-white">UP, Karnataka and Uttarakhand lean on
+              liquor MORE.</span> &ldquo;TN runs on liquor&rdquo; would have to be said about most of India first.
+            </span>
+          </div>
+        </div>
+
+        {/* Absolute revenue bars — secondary, with the comparability caveat */}
+        <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-2">Total liquor revenue, by state (₹ crore, ~FY24)</div>
+        <div className="space-y-1.5">
+          {STATE_REV.map(r => {
+            const w = Math.round((r.v / STATE_REV[0].v) * 100);
+            return (
+              <div key={r.s} className="flex items-center gap-2">
+                <span className={`w-28 shrink-0 text-[11px] ${r.hi ? 'text-amber-300 font-semibold' : 'text-gray-400'}`}>{r.s}</span>
+                <div className="flex-1 bg-[#111] rounded h-4 overflow-hidden">
+                  <div className="h-full rounded" style={{ width: `${w}%`, background: r.hi ? '#e0a23a' : '#5a4fa0' }} />
+                </div>
+                <span className="w-32 shrink-0 text-[10.5px] text-gray-500 text-right">
+                  ₹{r.v.toLocaleString('en-IN')} <span className="text-gray-600">· {r.note}</span>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="flex gap-2 text-[11px] text-gray-500 leading-relaxed mt-3 border-t border-[#262626] pt-2">
+          <AlertTriangle size={12} className="text-amber-500/70 shrink-0 mt-0.5" />
+          <span>
+            <span className="text-gray-400">Read with care:</span> these totals mix vintages and aren&rsquo;t perfectly like-for-like —
+            most states&rsquo; figures are <span className="text-gray-400">excise-led</span>, while TN/Telangana add their large
+            <span className="text-gray-400"> VAT</span> share. TN&rsquo;s number looks big mainly because TN is a big, populous, high-consumption
+            state — which is exactly why the <span className="text-gray-400">% of own-tax</span> measure above is the honest comparison.
+          </span>
+        </div>
+        <p className="text-[10px] text-gray-600 mt-2">
+          Sources: per-state liquor revenue — state excise depts / Economic Survey 2023-24, The Print (UP), Deccan Herald (Karnataka),
+          PRS (West Bengal), The Commune (TN VAT+excise split) · dependence bands — RBI &ldquo;State Finances: A Study of Budgets&rdquo;,
+          CRISIL (2020). Ranges exist; figures are best-available, directional.
         </p>
       </section>
 
