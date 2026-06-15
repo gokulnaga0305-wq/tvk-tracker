@@ -18,7 +18,7 @@
  */
 import {
   Wine, TrendingUp, AlertTriangle, CheckCircle2, Info, Scale,
-  Banknote, Skull, Gavel, Receipt,
+  Banknote, Skull, Receipt, PieChart,
 } from 'lucide-react';
 
 // TASMAC reported revenue, ₹ crore. FY16–FY21 = gross retail turnover;
@@ -44,6 +44,15 @@ const OWNTAX = [
   { label: 'Petrol/diesel VAT',             v: 30000, c: '#d99a3a' },
   { label: 'Stamp duty & registration',     v: 25567, c: '#1d9e75' },
   { label: 'Other (motor vehicle, etc.)',   v: 22000, c: '#7a7a7a' },
+];
+
+// Liquor's share at widening lenses — the "zoom out" debunk. The share
+// shrinks from ~a quarter of what TN raises itself, to ~11% of the whole
+// budget, to ~1.5% of the state's economy.
+const ZOOMOUT = [
+  { lens: 'of own-tax revenue', sub: 'money TN raises itself (~₹1.9 lakh cr)', pct: 25, color: '#e0524f' },
+  { lens: 'of the total state budget', sub: 'all govt spending (₹4.39 lakh cr, 2025-26)', pct: 11, color: '#d99a3a' },
+  { lens: "of Tamil Nadu's whole economy", sub: 'state GDP / GSDP (~₹31 lakh cr)', pct: 1.5, color: '#1d9e75' },
 ];
 
 // Prohibition → illegal-liquor evidence.
@@ -198,6 +207,48 @@ export default function TasmacTruth() {
         </div>
       </section>
 
+      {/* ── Zoom out: share of the whole budget & economy ─────────── */}
+      <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
+        <div className="flex items-center gap-2 text-sm font-semibold text-white mb-1">
+          <PieChart size={15} className="text-sky-400" /> So what % of the whole budget &amp; economy is it really?
+        </div>
+        <p className="text-[12px] text-gray-500 mb-4">
+          The honest test: zoom out from &ldquo;money TN raises itself&rdquo; to the full budget to the whole
+          economy. The liquor share <span className="text-gray-300">shrinks fast</span> — which is the whole point.
+        </p>
+        <div className="space-y-3.5">
+          {ZOOMOUT.map(z => (
+            <div key={z.lens}>
+              <div className="flex justify-between items-baseline mb-1">
+                <span className="text-[12.5px] text-gray-300">
+                  <span className="text-white font-semibold">{z.pct}%</span> {z.lens}
+                </span>
+                <span className="text-[10.5px] text-gray-600">{z.sub}</span>
+              </div>
+              <div className="bg-[#111] rounded h-4 overflow-hidden">
+                <div className="h-full rounded flex items-center"
+                     style={{ width: `${Math.max(z.pct, 1.2)}%`, background: z.color }}>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="rounded-md border border-sky-800/40 bg-sky-950/20 px-3 py-2.5 mt-4">
+          <div className="flex gap-2 text-[13px] text-gray-200 leading-relaxed">
+            <CheckCircle2 size={15} className="text-sky-400 shrink-0 mt-0.5" />
+            <span>
+              TASMAC is about <span className="text-white font-semibold">11% of the total state budget</span>
+              {' '}(₹4.39 lakh cr of spending) and just <span className="text-white font-semibold">~1.5% of Tamil Nadu&rsquo;s
+              ₹31 lakh-crore economy</span>. A meaningful slice — <span className="text-white">not the thing the state &ldquo;runs on.&rdquo;</span>
+            </span>
+          </div>
+        </div>
+        <p className="text-[10px] text-gray-600 mt-2">
+          Denominators: own-tax revenue ~₹1.9 lakh cr; total budget (2025-26 expenditure) ₹4,39,293 cr;
+          GSDP 2024-25 ~₹31.2 lakh cr. Sources: PRS Legislative Research (TN Budget 2025-26), RBI / TN Economic Survey.
+        </p>
+      </section>
+
       {/* ── Choice + shutdown risk ─────────────────────────────────── */}
       <div className="grid md:grid-cols-2 gap-5">
         <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
@@ -261,20 +312,6 @@ export default function TasmacTruth() {
         </div>
       </section>
 
-      {/* ── 2025 ED case ───────────────────────────────────────────── */}
-      <section className="rounded-lg border border-[#2a2a2a] bg-[#141414] p-4">
-        <div className="flex items-center gap-2 text-[12px] font-semibold text-gray-300 mb-1.5">
-          <Gavel size={13} className="text-gray-400" /> For balance: the 2025 ED case (alleged, stayed, unproven)
-        </div>
-        <p className="text-[12px] text-gray-500 leading-relaxed">
-          The Enforcement Directorate raided TASMAC&rsquo;s HQ (6 Mar 2025) and alleged over <span className="text-gray-400">₹1,000 crore</span> was
-          siphoned via tender, transport and bar-licence manipulation across <span className="text-gray-400">2017–2023</span> (spanning both
-          AIADMK and DMK terms). The Madras High Court backed the probe; the <span className="text-gray-400">Supreme Court stayed it (23 May 2025)</span>
-          citing federal overreach. <span className="text-gray-400">Status: unproven and stayed</span> — included here because an honest page shows the
-          uncomfortable parts too.
-        </p>
-      </section>
-
       {/* ── The honest steelman ────────────────────────────────────── */}
       <section className="rounded-lg border border-amber-900/40 bg-amber-950/15 p-5">
         <div className="flex items-center gap-1.5 text-[12px] font-semibold text-amber-300/90 mb-2">
@@ -298,7 +335,7 @@ export default function TasmacTruth() {
         Sources: TASMAC revenue & FY25 VAT/excise split — The Federal, dtnext, spiritz.in (2023–2025) ·
         TN own-tax composition & denominators — PRS Legislative Research (TN Budget analyses), CAG provisional accounts ·
         VAT-vs-excise routing — RBI &ldquo;State Finances: A Study of Budgets&rdquo; · ₹10 overcharge & 9,319 cases — The News Minute, dtnext ·
-        2025 ED case / Madras HC / Supreme Court stay — Verdictum, The South First (2025) ·
+        budget size & GSDP — PRS Legislative Research (TN Budget 2025-26), RBI / TN Economic Survey ·
         hooch tragedies — Wikipedia, ETV Bharat, The Quint, The News Minute. Figures are best-available;
         the FY24 own-tax breakdown uses approximate liquor-VAT/fuel-VAT splits (the budget reports them on one line).
       </p>
