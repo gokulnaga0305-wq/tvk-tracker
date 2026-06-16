@@ -3,12 +3,27 @@ import { useState, useEffect } from 'react';
 import IncidentCard from '@/components/IncidentCard';
 import ShareCardModal from '@/components/ShareCardModal';
 import { Incident } from '@/lib/api';
-import { Copy, AlertCircle, ShieldCheck, Download, Sun } from 'lucide-react';
+import { Copy, AlertCircle, ShieldCheck, Download, Sun, Megaphone, ExternalLink, BadgeCheck } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
+interface PropSteal {
+  id: string;
+  title: string;
+  description: string | null;
+  propaganda_type: string;
+  favoring: string | null;
+  status: string;
+  debunk_source: string | null;
+  debunk_url: string | null;
+  source_urls: string[] | null;
+  tags: string[] | null;
+  incident_date: string | null;
+}
+
 export default function CreditStealsPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
+  const [propSteals, setPropSteals] = useState<PropSteal[]>([]);
   const [loading, setLoading] = useState(true);
   const [counterFor, setCounterFor] = useState<Incident | null>(null);
 
@@ -18,6 +33,15 @@ export default function CreditStealsPage() {
       .then(setIncidents)
       .catch(() => setIncidents([]))
       .finally(() => setLoading(false));
+    // Propaganda misattributions = credit-steals by fan/page cards (a card
+    // crediting TVK for something DMK or the Centre actually did). They live
+    // in propaganda_events; pull the ones tagged credit_steal / misattributed.
+    fetch(`${API}/api/propaganda/?limit=200`)
+      .then(r => r.json())
+      .then((rows: PropSteal[]) => setPropSteals(
+        (Array.isArray(rows) ? rows : []).filter(p =>
+          p.tags?.includes('credit_steal') || p.propaganda_type === 'misattributed_event')))
+      .catch(() => setPropSteals([]));
   }, []);
 
   // Sort: verified credit-steals first (they're bulletproof for sharing),
@@ -48,8 +72,9 @@ export default function CreditStealsPage() {
           Credit Steals
         </h1>
         <p className="text-gray-500 text-sm mt-1">
-          Incidents where TVK government claimed credit for schemes, projects, or achievements
-          initiated or completed by the previous DMK government.
+          Two kinds, one place: <span className="text-gray-400">(1) the TVK government</span> claiming credit for DMK-era
+          schemes/projects, and <span className="text-gray-400">(2) fan/page propaganda cards</span> misattributing
+          DMK or Central actions to CM Vijay. Each carries its receipt.
         </p>
       </div>
 
@@ -81,8 +106,8 @@ export default function CreditStealsPage() {
       {/* Stats row */}
       <div className="grid grid-cols-3 gap-3 mb-6">
         <div className="bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg px-4 py-3">
-          <div className="text-3xl font-bold text-blue-400">{loading ? '…' : incidents.length}</div>
-          <div className="text-xs text-gray-500 uppercase tracking-wider mt-1">Documented</div>
+          <div className="text-3xl font-bold text-blue-400">{loading ? '…' : incidents.length + propSteals.length}</div>
+          <div className="text-xs text-gray-500 uppercase tracking-wider mt-1">Documented ({incidents.length} govt · {propSteals.length} propaganda)</div>
         </div>
         <div className="bg-[#1a1a1a] border border-emerald-900/40 rounded-lg px-4 py-3">
           <div className="text-3xl font-bold text-emerald-400 flex items-baseline gap-1.5">
@@ -107,6 +132,11 @@ export default function CreditStealsPage() {
         </div>
       )}
 
+      {sorted.length > 0 && (
+        <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-3 flex items-center gap-1.5">
+          <Copy size={12} className="text-blue-400" /> Government credit-grabs ({sorted.length})
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {sorted.map(i => (
           <div key={i.id} className="relative">
@@ -124,6 +154,51 @@ export default function CreditStealsPage() {
           </div>
         ))}
       </div>
+
+      {/* Propaganda misattributions — credit-steals by fan/page cards */}
+      {propSteals.length > 0 && (
+        <div className="mt-8">
+          <div className="text-[11px] uppercase tracking-wider text-gray-500 mb-1 flex items-center gap-1.5">
+            <Megaphone size={12} className="text-rose-400" /> Propaganda misattributions ({propSteals.length})
+          </div>
+          <p className="text-[12px] text-gray-600 mb-3">
+            Cards/reels crediting CM Vijay for something the DMK government or the Centre actually did.
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {propSteals.map(p => {
+              const debunked = p.status === 'debunked';
+              const links = (p.source_urls || []).filter(u => /^https?:\/\//.test(u));
+              return (
+                <div key={p.id} className="rounded-lg border border-rose-900/40 bg-[#1a1a1a] p-4">
+                  <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${debunked ? 'bg-emerald-700 text-emerald-50' : 'bg-amber-600 text-amber-50'}`}>
+                      {debunked ? 'DEBUNKED' : 'UNDER REVIEW'}
+                    </span>
+                    <span className="text-[10px] text-gray-500 uppercase tracking-wide">{p.propaganda_type.replace(/_/g, ' ')}</span>
+                    {p.favoring && <span className="text-[10px] text-rose-300/80 ml-auto">favours {p.favoring}</span>}
+                  </div>
+                  <h3 className="text-white text-sm font-medium leading-snug mb-1">{p.title}</h3>
+                  {p.description && <p className="text-gray-400 text-[12.5px] leading-relaxed">{p.description}</p>}
+                  {(p.debunk_source || links.length > 0) && (
+                    <div className="flex items-start gap-1.5 mt-2.5 pt-2.5 border-t border-[#262626]">
+                      <BadgeCheck size={13} className="text-emerald-400 shrink-0 mt-0.5" />
+                      <div className="text-[11px] text-gray-500">
+                        {p.debunk_source && <span>Debunked by {p.debunk_source}. </span>}
+                        {links.map((u, idx) => (
+                          <a key={idx} href={u} target="_blank" rel="noopener noreferrer"
+                            className="text-orange-400 hover:text-orange-300 inline-flex items-center gap-0.5 mr-2">
+                            source{links.length > 1 ? ` ${idx + 1}` : ''} <ExternalLink size={9} />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
