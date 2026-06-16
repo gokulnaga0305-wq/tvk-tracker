@@ -35,7 +35,13 @@ receipts**, with citations.
 - $0: the free NotebookLM tier is enough for this.
 
 ## Source packs available
-- `tasmac-truth-briefing.md` — Does Tamil Nadu "run on" TASMAC/liquor money? (built)
-- _(ask and I'll generate:)_ Power/EB & the tariff-revision truth · Credit-steals &
-  propaganda debunks (Adani smart-meter, farmer-waiver U-turn, Yogi Babu) ·
-  Investments honest scorecard (MoU ≠ delivered) · DMK 2021-26 achievements baseline.
+- `tasmac-truth-briefing.md` — Does Tamil Nadu "run on" TASMAC/liquor money?
+- `power-eb-briefing.md` — EB bills under DMK: who really decides the annual hike?
+- `credit-steals-briefing.md` — Credit-steals & propaganda misattributions (Adani
+  smart-meter, farmer-waiver U-turn, Yogi Babu).
+- `investments-briefing.md` — Investment scorecard: MoU ≠ money delivered.
+- _(ask and I'll generate:)_ DMK 2021-26 achievements baseline.
+
+These also power the **Share Studio** (`/studio`) in the dashboard — pick a topic to
+download a branded, sourced image + a ready caption, with a link back to the matching
+pack here for the audio/video route.
