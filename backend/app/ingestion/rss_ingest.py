@@ -218,6 +218,24 @@ SOURCES_RSS: list[dict[str, str]] = [
         "rss_url":      "https://news.google.com/rss/search?q=Tamil+Nadu+%28ganja+OR+drugs+OR+narcotics+OR+NDPS%29+%28seizure+OR+arrest+OR+smuggling%29&hl=en-IN&gl=IN&ceid=IN:en",
         "name":         "Google News (TN Drugs)",
     },
+    # Chennai-suburb crime — the TN-wide law&order feed ranked these too low to
+    # surface (a whole TOI "12 assaults in 24 hours" roundup across Manimangalam/
+    # Mangadu/Ambattur/Koyambedu/Porur/Perambur slipped past). City-scoped query
+    # catches the locality-level POCSO/assault cases.
+    {
+        "source_label": "rss_gnews_chennai_crime_en",
+        "tier":         "established_press",
+        "rss_url":      "https://news.google.com/rss/search?q=Chennai+%28POCSO+OR+rape+OR+molest+OR+%22sexual+assault%22+OR+%22minor+girl%22+OR+harassment%29+-cricket+-film&hl=en-IN&gl=IN&ceid=IN:en",
+        "name":         "Google News (Chennai Crime)",
+    },
+    # Direct Times of India — Chennai city feed (print/online exposés the GNews
+    # search misses, e.g. the children-safety investigation).
+    {
+        "source_label": "rss_toi_chennai",
+        "tier":         "established_press",
+        "rss_url":      "https://timesofindia.indiatimes.com/rssfeeds/-2128833038.cms",
+        "name":         "Times of India (Chennai)",
+    },
 ]
 
 
