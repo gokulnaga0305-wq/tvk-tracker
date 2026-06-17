@@ -17,7 +17,7 @@
 import { useState } from 'react';
 import {
   Landmark, GraduationCap, HeartPulse, Scale, Factory, Users, HandHeart,
-  TrendingUp, TrendingDown, Info, CheckCircle2, History, ArrowRight,
+  TrendingUp, TrendingDown, Info, CheckCircle2, History, ArrowRight, Briefcase,
 } from 'lucide-react';
 
 // "Since independence" — TN's own transformation per sector. Where clean 1947
@@ -31,6 +31,7 @@ const THEN_NOW: Record<string, { era: string; was: string; now: string }> = {
   health: { era: '1971', was: 'infant mortality ~113 per 1,000', now: 'IMR ~19 · life expectancy 72 (vs ~50 mid-century)' },
   women: { era: '1951', was: 'female literacy in single digits', now: '42% of India’s women factory workers · most in non-farm work' },
   industry: { era: '1950s', was: 'mostly farming and small trade', now: '#1 in factories · 48% urban — most urbanised large state' },
+  labour: { era: '1960-61', was: 'rural wages among the lowest — TN was POORER than Bihar', now: '3rd-highest rural wages in India; pioneer of unorganised-worker welfare boards' },
 };
 
 type Bar = { state: string; value: number; hi?: boolean };
@@ -163,6 +164,28 @@ const SECTORS: Sector[] = [
     ],
     caveat: 'Maharashtra and Gujarat have larger single industrial hubs; TN’s edge is spread — industrial clusters across many districts (Coimbatore, Hosur, Tiruppur, Sriperumbudur), not one corridor.',
     src: 'TN Economic Survey 2024-25; Census 2011; ASI',
+  },
+  {
+    id: 'labour', label: 'Labour & wages', icon: Briefcase,
+    myth: '“Welfare made workers lazy and killed jobs.”',
+    reality: 'TN workers earn among India’s highest wages, the state pioneered social security for unorganised workers, and it puts more women on factory floors than anywhere else.',
+    metric: 'Rural wage — construction (men)', unit: '₹/day · RBI 2024-25',
+    bars: [
+      { state: 'Kerala', value: 923 },
+      { state: 'Tamil Nadu', value: 583, hi: true },
+      { state: 'Himachal', value: 558 },
+      { state: 'Haryana', value: 535 },
+      { state: 'India', value: 441 },
+      { state: 'Maharashtra', value: 408 },
+      { state: 'Gujarat', value: 355 },
+      { state: 'Madhya Pradesh', value: 308 },
+    ],
+    stats: [
+      { k: 'Regular salaried work', v: 'TN 35.7% — 3rd-highest (after Goa, Kerala)' },
+      { k: 'Unorganised-worker welfare', v: 'Forerunner: 1982 Act, boards across 124 job categories' },
+    ],
+    caveat: 'Kerala pays more, and TN still has a high share of casual/informal labour (~30%) — wages are high but job security is uneven. The real win is the high wage FLOOR and the social-security net under informal workers.',
+    src: 'RBI rural wages 2024-25; PLFS; CEDA; TN Labour Dept',
   },
 ];
 
