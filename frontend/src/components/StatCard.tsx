@@ -61,17 +61,28 @@ export default function StatCard({ label, value, sub, icon: Icon, color = 'text-
   // category drilldown. We render the same shell but wrap it in a Link.
   // The CardShell below is identical for both modes — keeping styling
   // co-located so the visual stays consistent.
+  // Stretched-link pattern: the whole card is a relatively-positioned <div>;
+  // when href is set we drop an absolutely-positioned <Link> OVERLAY inside it
+  // (covering the card) rather than wrapping the children in the link. That
+  // keeps the card clickable WITHOUT nesting the source-chip <a>s inside a
+  // card <a> (which is invalid HTML and caused hydration errors). The chips are
+  // lifted above the overlay (relative z-10) so they stay individually clickable.
   const CardShell = ({ children }: { children: React.ReactNode }) => {
     const cls = clsx(
-      'bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 flex flex-col gap-2 transition-colors h-full',
+      'relative bg-[#1a1a1a] border border-[#2a2a2a] rounded-lg p-5 flex flex-col gap-2 transition-colors h-full',
       href ? 'hover:border-orange-700/40 cursor-pointer group/card' : 'hover:border-[#333]'
     );
-    return href ? (
-      <Link href={`/category/${href}`} className={cls} aria-label={`View all ${label} incidents`}>
+    return (
+      <div className={cls}>
+        {href && (
+          <Link
+            href={`/category/${href}`}
+            aria-label={`View all ${label} incidents`}
+            className="absolute inset-0 z-0 rounded-lg"
+          />
+        )}
         {children}
-      </Link>
-    ) : (
-      <div className={cls}>{children}</div>
+      </div>
     );
   };
 
@@ -128,7 +139,7 @@ export default function StatCard({ label, value, sub, icon: Icon, color = 'text-
           just trust the headline number. e.stopPropagation() prevents
           the outer card-link from intercepting clicks on the chip. */}
       {hasSources && (
-        <div className="mt-2 pt-2 border-t border-white/5 flex flex-col gap-1">
+        <div className="relative z-10 mt-2 pt-2 border-t border-white/5 flex flex-col gap-1">
           {sources.map((s) => (
             <a
               key={s.incident_id}
