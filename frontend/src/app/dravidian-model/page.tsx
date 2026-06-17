@@ -1,6 +1,7 @@
 'use client';
 import { HandHeart } from 'lucide-react';
 import DravidianModel from '@/components/DravidianModel';
+import EducationDeepDive from '@/components/EducationDeepDive';
 
 export default function DravidianModelPage() {
   return (
@@ -15,6 +16,7 @@ export default function DravidianModelPage() {
         sources only; where another state leads, we say so.
       </p>
       <DravidianModel />
+      <EducationDeepDive />
     </div>
   );
 }
