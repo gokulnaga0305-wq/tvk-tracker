@@ -45,6 +45,16 @@ const MISLEADING = [
   ['“Corruption in tax departments”', 'Asserted with zero evidence.'],
 ];
 
+// The other half of the story the white paper omits: the Union gives TN back
+// far less than it contributes. Verified — TN FM (Thennarasu), The Hindu, PRS,
+// 15th/16th Finance Commission.
+const FEDERALISM = [
+  { k: 'TN’s share of the central tax pool', v: '5.31% → 4.08%', n: 'Fell from the 12th to the 15th Finance Commission; the 16th FC nudged it to just 4.10%. TN’s slice keeps shrinking even as its economy grows.' },
+  { k: 'Economic weight vs what it gets back', v: '~9% of GDP → ~4%', n: 'TN produces ~9% of India’s GDP and is ~6% of its population — but receives only ~4% of tax devolution. Roughly half its economic weight.' },
+  { k: 'Return per rupee contributed', v: '≈ 29 paise', n: 'For every ₹1 TN sends to the Centre it gets back only about 29 paise — a net DONOR that subsidises poorer states (all industrial states get back well under ₹1).' },
+  { k: 'Cesses & surcharges kept by the Centre', v: '10.4% → 20.3%', n: 'The Union’s cess/surcharge take rose from 10.4% (2011-12) to 20.3% (2022-23) of gross taxes — money kept ENTIRELY by the Centre, outside the pool that’s shared with states.' },
+];
+
 export default function WhitePaperDebunk() {
   const maxSD = Math.max(...STATE_DEBT.map(s => s.v));
   return (
@@ -188,6 +198,44 @@ export default function WhitePaperDebunk() {
         </p>
       </section>
 
+      {/* The Union's raw deal — the half the white paper hides */}
+      <section className="rounded-lg border border-rose-900/40 bg-rose-950/12 p-5">
+        <div className="flex items-center gap-2 text-sm font-semibold text-white mb-1">
+          <Landmark size={15} className="text-rose-400" /> The other half: the Union’s raw deal
+        </div>
+        <p className="text-[12px] text-gray-500 mb-4">
+          The white paper blames the DMK for the debt — and stays <span className="text-gray-300">completely silent</span> on why a rich,
+          high-revenue state is fiscally stretched in the first place: the Centre gives TN back far less than it puts in.
+        </p>
+        <div className="space-y-2">
+          {FEDERALISM.map((r) => (
+            <div key={r.k} className="rounded-md border border-[#262626] bg-[#141414] px-3 py-2.5">
+              <div className="flex items-baseline justify-between gap-3 flex-wrap">
+                <span className="text-[12.5px] font-medium text-gray-200">{r.k}</span>
+                <span className="text-[15px] font-bold text-rose-300">{r.v}</span>
+              </div>
+              <p className="text-[12px] text-gray-400 leading-relaxed mt-1">{r.n}</p>
+            </div>
+          ))}
+        </div>
+        <div className="rounded-md border border-amber-900/40 bg-amber-950/15 px-3 py-2.5 mt-3">
+          <div className="flex gap-2 text-[12.5px] text-gray-300 leading-relaxed">
+            <Info size={14} className="text-amber-400 shrink-0 mt-0.5" />
+            <span>
+              <span className="text-amber-300 font-medium">The cruel twist: </span>
+              the devolution formula <span className="text-white">penalises TN for succeeding</span> — it rewards low per-capita income and
+              high population, so TN loses share for being richer AND for controlling its population through decades of family-planning and
+              women’s education. Good governance is taxed; under-development is subsidised.
+            </span>
+          </div>
+        </div>
+        <p className="text-[12.5px] text-gray-300 leading-relaxed mt-3">
+          Add GST (a destination tax that drains a manufacturing state, with compensation ended in 2022) and delayed central funds (Metro
+          Phase II, withheld education grants), and the picture flips: <span className="text-white">if TN borrows, a major structural cause
+          is the Union shortchanging it</span> — not DMK “mismanagement.” The white paper needs that silence to land its story.
+        </p>
+      </section>
+
       {/* Bottom line */}
       <section className="rounded-lg border border-sky-800/40 bg-sky-950/15 p-5">
         <div className="flex gap-2 text-[13px] text-gray-200 leading-relaxed">
@@ -207,7 +255,9 @@ export default function WhitePaperDebunk() {
         Authoritative fiscal data — PRS Legislative Research (TN Budget 2025-26: fiscal deficit 3.0%, revenue deficit 1.2%, debt ~26% GSDP),
         16th Finance Commission TN study (CAG-based), RBI &ldquo;State Finances&rdquo;, NITI Fiscal Health Index 2025 · UDAY under AIADMK — PIB (Jan 2017) ·
         DMK rebuttal — DT Next, ThePrint (16 Jun 2026) · Chennai Metro Phase II delay — PIB (Oct 2024), ThePrint, Deccan Herald ·
-        GST &ldquo;borrow to manage&rdquo; (41st GST Council) — PIB (Oct 2020) · GST destination-tax — CBIC, IIM-A · TN devolution ~4.1% vs ~9% of GDP — PRS (15th FC).
+        GST &ldquo;borrow to manage&rdquo; (41st GST Council) — PIB (Oct 2020) · GST destination-tax — CBIC, IIM-A ·
+        Fiscal federalism — TN share 5.305%→4.079% (12th→15th FC) &amp; 4.097% (16th FC), TN FM Thennarasu &amp; The Hindu (2024-26);
+        cesses/surcharges 10.4%→20.3% of gross taxes — The Hindu/PRS; ~29 paise returned per ₹1 (net-donor), The Hindu (Feb 2024).
         Debt-to-GSDP varies ~26–28% by definition; the directional finding (within limits, flat-to-declining, inherited) is robust.
       </p>
     </div>
