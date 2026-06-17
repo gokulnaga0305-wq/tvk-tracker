@@ -9,8 +9,19 @@
  */
 import {
   GraduationCap, Utensils, Home, BookOpen, Wrench, Sparkles, BookMarked,
-  TrendingUp,
+  TrendingUp, School, Laptop, Bike, Stethoscope, Plane, Ticket,
 } from 'lucide-react';
+
+// Access & infrastructure — the rails the schemes run on, with the freebies
+// reframed as access tools (the CM's own framing: "not freebies, instruments").
+const ACCESS = [
+  { icon: School, k: '57,935 schools', v: '1.3 cr students, 5.5 lakh teachers. 97% graduate-qualified (India 87%); 55% formally trained (India 38%).' },
+  { icon: Laptop, k: 'Free laptops', v: 'Anna Laptop Scheme (2011) gave crores of laptops to govt-school pass-outs; “Ulagam Ungal Kaiyil” (2026) adds 20 lakh college laptops (₹2,172 cr).' },
+  { icon: Bike, k: 'Free bicycles', v: 'Bicycles for Class 9–12 govt/aided students — cutting rural dropouts caused by distance to school.' },
+  { icon: Stethoscope, k: 'Free NEET coaching', v: 'State-run coaching for govt-school medical aspirants — to fight the coaching-class advantage NEET created.' },
+  { icon: Ticket, k: '7.5% reservation', v: 'Horizontal reservation for govt-school students in professional courses — ₹1,512 cr, 54,301 students supported.' },
+  { icon: Plane, k: 'Overseas scholarship', v: 'SC/ST students funded up to ₹36 lakh/yr to study abroad — placements in QS top-100 universities.' },
+];
 
 const ARC = [
   { yr: '1956', who: 'Kamaraj', what: 'Free, fee-less schooling; thousands of new schools; the first mid-day meal — so no child stays out of school for hunger or money.' },
@@ -123,6 +134,29 @@ export default function EducationDeepDive() {
                       {im}
                     </span>
                   ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* Access & infrastructure */}
+      <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
+        <div className="text-sm font-semibold text-white mb-1">Access &amp; infrastructure</div>
+        <p className="text-[12px] text-gray-500 mb-4">
+          The “freebies” the critics mock are access tools — a laptop, a bicycle, a coaching seat, a reservation — each one
+          removing a barrier between a poor child and a degree.
+        </p>
+        <div className="grid sm:grid-cols-2 gap-3">
+          {ACCESS.map((a) => {
+            const Icon = a.icon;
+            return (
+              <div key={a.k} className="rounded-md border border-[#262626] bg-[#141414] p-3 flex gap-3">
+                <Icon size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                <div>
+                  <div className="text-[13px] font-semibold text-white">{a.k}</div>
+                  <div className="text-[12px] text-gray-400 leading-relaxed">{a.v}</div>
                 </div>
               </div>
             );

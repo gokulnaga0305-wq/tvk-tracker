@@ -2,6 +2,7 @@
 import { HandHeart } from 'lucide-react';
 import DravidianModel from '@/components/DravidianModel';
 import EducationDeepDive from '@/components/EducationDeepDive';
+import HealthDeepDive from '@/components/HealthDeepDive';
 
 export default function DravidianModelPage() {
   return (
@@ -17,6 +18,7 @@ export default function DravidianModelPage() {
       </p>
       <DravidianModel />
       <EducationDeepDive />
+      <HealthDeepDive />
     </div>
   );
 }
