@@ -1,0 +1,142 @@
+/**
+ * Findings from the literature — one key finding distilled from each work in
+ * the bibliography of "The Dravidian Model" (Kalaiyarasan & Vijayabaskar,
+ * Cambridge 2021), researched source-by-source. Each is the source's own
+ * argument/empirical result, relevant to Tamil Nadu's political economy.
+ * t = theme, r = source (author year), f = finding.
+ */
+export type Finding = { t: string; r: string; f: string };
+
+export const THEMES = ['Health', 'Education', 'CasteJustice', 'Welfare', 'Industry', 'Comparative', 'Theory'] as const;
+export const THEME_LABEL: Record<string, string> = {
+  Health: 'Health', Education: 'Education', CasteJustice: 'Caste & justice',
+  Welfare: 'Welfare', Industry: 'Industry & labour', Comparative: 'TN vs other states', Theory: 'Politics & theory',
+};
+
+export const FINDINGS: Finding[] = [
+  // ---- Health ----
+  { t: 'Health', r: 'Das Gupta et al. (2010)', f: 'TN spends LESS per capita on health than peers yet gets better outcomes — its edge is a dedicated public-health cadre/directorate and stronger management.' },
+  { t: 'Health', r: 'Acharya et al. (2011)', f: "TN's public health spending became markedly pro-poor by 2004 — unlike Orissa, where inpatient/maternity spending stayed pro-rich." },
+  { t: 'Health', r: 'Lalitha (2008); Selvaraj et al. (2014)', f: "TN's autonomous drug agency (TNMSC) secured quality essential medicines at low prices via central tendering — a model India is urged to copy." },
+  { t: 'Health', r: 'Kumar et al. (2011), The Lancet', f: 'India needs tax-funded universal health coverage; cites the Tamil Nadu drug-procurement model as a replicable public-provisioning success.' },
+  { t: 'Health', r: 'Alexander (2018)', f: "TN's health success rests on replicable administrative accountability and delivery — easier to copy than Kerala's century-long literacy/social movement." },
+  { t: 'Health', r: 'Sinha, Dipa (2016)', f: 'Comparing UP and TN: women’s agency, state capacity and public accountability — not income — drive TN’s superior health outcomes.' },
+  { t: 'Health', r: 'Vaidyanathan (2014)', f: "TN's strong pre-existing health infrastructure let it use national NRHM funds effectively, sustaining sharp falls in maternal and infant mortality." },
+  { t: 'Health', r: 'Balagopal & Vijayabaskar (2019)', f: 'Warns that TN’s drift toward insurance-based healthcare weakens the direct public provisioning that built its health gains.' },
+  { t: 'Health', r: 'Das Gupta (2005)', f: 'Indian policy over-invested in curative care while neglecting public-health prevention — leaving capacity to treat but not prevent outbreaks.' },
+  { t: 'Health', r: 'Kalaiyarasan (2017), EPW', f: "NEET threatens TN's public-health gains by undermining the reservation and rural-doctor pipeline built through social mobilisation." },
+  { t: 'Health', r: 'Balarajan, Selvaraj & Subramanian (2011), The Lancet', f: 'Out-of-pocket health spending pushes ~39 million Indians into poverty every year — the case for TN-style public provisioning.' },
+  { t: 'Health', r: 'Rao et al. (2011), The Lancet', f: 'India’s health-worker shortage is concentrated in cities; rural populations rely on unqualified providers — the gap TN’s PHC network closed.' },
+  { t: 'Health', r: 'Drèze (2006); Drèze & Khera (2012)', f: 'On child deprivation (immunisation, nutrition, antenatal care) TN ranks among India’s top performers; cited as a model for universal ICDS.' },
+  { t: 'Health', r: 'Kailash & Rasaratnam (2015)', f: 'State politics shapes health-insurance design — TN’s and Kerala’s political settlements produced more inclusive schemes than elsewhere.' },
+  { t: 'Health', r: 'Muraleedharan (1992)', f: 'The colonial state professionalised Western medicine in Madras Presidency, shaping South India’s unusually strong modern medical profession.' },
+
+  // ---- Education ----
+  { t: 'Education', r: 'Government of India, AISHE (2017-18)', f: 'Tamil Nadu recorded India’s highest higher-education Gross Enrolment Ratio (≈48.6%) — far above the national average.' },
+  { t: 'Education', r: 'Kumaradoss (2004)', f: "Kamaraj's 1950s–60s reforms — free schooling, the mid-day meal, mass school expansion — laid the foundation of TN's later educational advance." },
+  { t: 'Education', r: 'Adiseshiah (1972)', f: "TN's Perspective Plan reframed development as building a 'learning society' — mass education, science and technology as the growth engine." },
+  { t: 'Education', r: 'Anandhi (2018)', f: 'A shared Dravidian “common sense” treating education as equal opportunity is what made anti-caste schooling protests succeed in TN.' },
+  { t: 'Education', r: 'Fuller & Narasimhan (2006)', f: "Caveat: TN's engineering colleges and English 'exposure' still channel mostly upper-caste students into IT — caste advantage persists." },
+  { t: 'Education', r: 'Choudhury (2016)', f: 'Private medical colleges grew 405% (1990–2014) vs 72% for government — concentrating doctors in already-rich states and worsening access inequality.' },
+  { t: 'Education', r: 'Goyal & Singh (2014)', f: 'OBC students in universities performed adequately — reservation caused no academic decline.' },
+  { t: 'Education', r: 'Weiner (1990)', f: 'India’s failure to enforce compulsory schooling stems from beliefs about social hierarchy, not poverty — the mindset TN’s movements overturned.' },
+  { t: 'Education', r: 'Bhatnagar (2011)', f: 'Caveat: TN’s own government found over half its engineering colleges to be poor quality — quantity outran quality.' },
+  { t: 'Education', r: 'Kapur & Mehta (2007); Kapur (2010)', f: 'Indian higher education is throttled by over-regulation, underfunding and rent-seeking — the national backdrop to TN’s expansion.' },
+  { t: 'Education', r: 'Alcott & Rose (2017)', f: 'Wealth and parental schooling drive learning gaps that widen across primary grades — so early disadvantage must be tackled early.' },
+
+  // ---- Caste & justice ----
+  { t: 'CasteJustice', r: 'Iyer, Khanna & Varshney (2013)', f: 'Economic Census data show big caste gaps in enterprise ownership nationally — SCs/STs are badly under-represented as owners (TN is the exception).' },
+  { t: 'CasteJustice', r: 'Naig (2015)', f: 'MSME-census data: Tamil Nadu has the highest number of Dalit (SC) entrepreneurs of any Indian state.' },
+  { t: 'CasteJustice', r: 'Hardgrave (1969)', f: 'The Nadar caste rose from stigmatised toddy-tappers to an organised community winning uplift and power through collective self-mobilisation.' },
+  { t: 'CasteJustice', r: 'Mehrotra (2006)', f: 'Despite similar lower-caste mobilisation, UP’s caste politics yielded only symbolic gains while TN turned it into real health/education improvement.' },
+  { t: 'CasteJustice', r: 'Sattanathan (2007)', f: 'The author chaired TN’s first Backward Classes Commission (1969) — shaping the state’s enduring reservation and affirmative-action policy.' },
+  { t: 'CasteJustice', r: 'Galanter (1984)', f: 'India’s caste reservations are a justified, judicially-contested tool for integrating backward classes — the legal frame under TN’s quotas.' },
+  { t: 'CasteJustice', r: 'Jaffrelot & Kalaiyarasan (2019)', f: 'Arunthathiyars are TN’s most marginalised Dalits (“Dalits among Dalits”) — justifying the state’s 3% internal SC sub-quota.' },
+  { t: 'CasteJustice', r: 'Harriss-White et al. (2013)', f: 'Dalits/Adivasis are severely under-represented as firm-owners and face patterned market and state discrimination — India’s economy stays embedded in caste.' },
+  { t: 'CasteJustice', r: 'Irschick (1969)', f: 'The Madras non-Brahmin/Justice movement arose against Brahmin dominance of office and education, and legislated to uplift non-Brahmins.' },
+  { t: 'CasteJustice', r: 'Geetha & Rajadurai (2008)', f: 'TN’s anti-Brahmin movement, from Iyothee Thass to Periyar, forged the non-Brahmin/Dalit Self-Respect bloc grounding social-justice politics.' },
+  { t: 'CasteJustice', r: 'Anandhi (1991)', f: 'Women’s emancipation was central — not peripheral — to Periyar’s Self-Respect Movement (1925–48).' },
+  { t: 'CasteJustice', r: 'Mencher (1975)', f: 'Caveat: TN’s land-ceiling reforms were largely evaded via benami transfers — little land actually reached the landless.' },
+  { t: 'CasteJustice', r: 'Asher, Novosad & Rafkin (2020)', f: 'Indian intergenerational mobility is low — but affirmative action raised Scheduled-Caste mobility by 7–8 rank points.' },
+  { t: 'CasteJustice', r: 'Manoharan (2020)', f: 'Counters the claim that Periyar neglected Dalits: shows he centred Dalit liberation and attacked graded caste hierarchy.' },
+  { t: 'CasteJustice', r: 'Upadhya (2007)', f: "India's IT workforce is socially homogeneous (urban, upper-caste); 'merit' discourse masks caste/class exclusion via cultural capital." },
+  { t: 'CasteJustice', r: 'Subramanian (1999)', f: 'TN’s Dravidian populist mobilisation empowered intermediate/lower-status groups while reinforcing — not undermining — democracy and tolerance.' },
+  { t: 'CasteJustice', r: 'Swamy (1998)', f: 'Encompassing Dravidian identities + competitive populism channelled caste conflict into elections — explaining TN’s relative absence of mass political violence.' },
+  { t: 'CasteJustice', r: 'Venkatachalapathy (1995)', f: 'The Self-Respect agenda was broadly anti-religious and anti-patriarchal — not merely a Saiva-Vellalar sectarian project.' },
+  { t: 'CasteJustice', r: 'Banerjee & Iyer (2005)', f: 'Colonial landlord-tenure areas show lower post-independence productivity and health/education investment than cultivator-based areas — institutions cast long shadows.' },
+
+  // ---- Welfare ----
+  { t: 'Welfare', r: 'Khera (2011, 2011b)', f: 'PDS grain diversion fell sharply in “reviving” states; TN’s leakage was under 10% — among India’s lowest — evidencing a near-universal, working PDS.' },
+  { t: 'Welfare', r: 'Drèze & Khera (2013)', f: 'TN’s near-universal, well-functioning Public Distribution System sharply cut rural poverty — among India’s best for grain delivery and low leakage.' },
+  { t: 'Welfare', r: 'Venkatasubramanian (2006)', f: 'TN’s universal (non-targeted) PDS endures because competitive populism makes subsidised rice politically indispensable — every government must sustain it.' },
+  { t: 'Welfare', r: 'Singh, Prerna (2015)', f: 'Strong subnational solidarity drives social development — a cohesive Tamil identity made parties compete on welfare (meals, schooling), lifting health and education.' },
+  { t: 'Welfare', r: 'Vijayabaskar & Balagopal (2019)', f: 'TN’s universalist, rights-based provisioning reflects political mobilisation, not just growth — and reduces poverty more effectively than targeted approaches.' },
+  { t: 'Welfare', r: 'Agarwala (2013)', f: 'TN informal workers use their votes (competitive populism) to win state welfare — housing, education, healthcare — rather than employer-based protection.' },
+  { t: 'Welfare', r: 'Carswell & De Neve (2014)', f: 'Ethnography finds TN’s MGNREGA genuinely benefits the poorest — Dalits, women, the landless — chiefly as a wage safety net.' },
+  { t: 'Welfare', r: 'Narayan (2018)', f: 'Dravidian parties since 1967 turned a casteist province into a social-justice welfare state, later fusing capitalist development with populist welfare.' },
+  { t: 'Welfare', r: 'Doval (2017)', f: 'TN’s subsidised Amma Canteens (meals at ₹1–₹5, run by women’s self-help groups) are being copied by other Indian states.' },
+  { t: 'Welfare', r: 'Dholakia & Dholakia (2004)', f: 'Social-service spending yields higher welfare returns than other government expenditure — the economic case for TN’s social-sector tilt.' },
+  { t: 'Welfare', r: 'Lakshman (2011)', f: 'Comparing TN and Karnataka: caste-dominance patterns plus competitive populism explain why TN adopts stronger pro-poor policies.' },
+  { t: 'Welfare', r: 'Wyatt (2013a)', f: 'TN combines clientelist vote-buying with universal programmatic welfare — and electoral competition diluted clientelism rather than intensifying it.' },
+  { t: 'Welfare', r: 'Srinivasan (2010); Vivek (2014)', f: 'TN’s superior public-service delivery rests on incessant grassroots collective action pressuring street-level bureaucrats — a habit built since the 1970s.' },
+  { t: 'Welfare', r: 'Jeyaranjan (2011)', f: 'Well-implemented NREGA alleviates rural poverty and empowers women in TN — though it cannot alone transform the low-growth rural economy.' },
+  { t: 'Welfare', r: 'Barrientos & Hulme (2009)', f: 'A global “quiet revolution” now treats social protection as core development strategy — TN was an early mover.' },
+  { t: 'Welfare', r: 'Prabhu (2007)', f: 'Caveat: post-1991 reforms cut social-sector spending shares nationally, and village studies show patchy government service quality.' },
+  { t: 'Welfare', r: 'Vijayabaskar (2017)', f: 'Honest limit: TN’s welfare cushions market-led growth but can’t substitute for industry failing to absorb agrarian labour — the agrarian question is unresolved.' },
+
+  // ---- Industry & labour ----
+  { t: 'Industry', r: 'Government of India, ASI (2014)', f: 'Tamil Nadu leads India in the number of registered factories and ranks top in manufacturing employment.' },
+  { t: 'Industry', r: 'Damodaran (2008)', f: "India's capitalist class has caste roots — in TN, intermediate/lower castes (Gounders, Naidus) drove decentralised provincial industrialisation beyond mercantile communities." },
+  { t: 'Industry', r: 'Chari (2004)', f: 'Tiruppur’s knitwear export cluster grew as Gounder peasant-workers turned agrarian “toil” and caste-based labour into self-made industrial capitalism.' },
+  { t: 'Industry', r: 'Vijayabaskar & Kalaiyarasan (2014)', f: 'In Tiruppur, dominant-caste Gounder networks channelled capital and markets (≈56% of firms), while excluded Dalit entrepreneurs faced high failure rates.' },
+  { t: 'Industry', r: 'Damodaran (2016)', f: 'TN’s cluster-driven rural industrialisation absorbs rural labour and buffers against farm distress and unrest.' },
+  { t: 'Industry', r: 'Heyer (2016)', f: 'Coimbatore/Tiruppur households shifted from farming to non-farm work (1981–2009) via rising education, as villages industrialised.' },
+  { t: 'Industry', r: 'Hasan, Lamba & Sen Gupta (2013)', f: 'Moving workers from low- to high-productivity sectors is the key channel turning productivity growth into poverty reduction.' },
+  { t: 'Industry', r: 'Shyam Sundar (2009)', f: 'TN has relatively institutionalised, less-conflictual industrial relations — alongside rising informal and contract labour.' },
+  { t: 'Industry', r: 'Dubbudu (2017)', f: 'Karnataka, TN and Telangana together produce over 60% of India’s IT exports — TN is a leading software hub.' },
+  { t: 'Industry', r: 'Babu (2020)', f: 'TN, India’s “Detroit,” anchors roughly a third of national auto and auto-component output and keeps courting fresh investment.' },
+  { t: 'Industry', r: 'Cullen (2019)', f: 'TN’s renewable-energy boom was driven by securing reliable industrial power and state-private coordination — not mainly environmental concern.' },
+  { t: 'Industry', r: 'Rothboeck, Vijayabaskar & Gayathri (2001)', f: 'India’s software labour market is segmented by caste and gender — forward castes and men dominate export firms; women cluster in low-end ITeS.' },
+  { t: 'Industry', r: 'Swaminathan (1994)', f: 'Caveat: an earlier reading found TN entrepreneurial growth driven by existing trading-caste capital more than broad new entrepreneurship from below.' },
+  { t: 'Industry', r: 'Tyabji (1988)', f: 'Madras’s 1923 State Aid to Industries Act largely failed — eligibility rules reflected colonial-vs-Indian-capitalist conflict.' },
+  { t: 'Industry', r: 'Mahadevan (1978)', f: 'Nattukottai Chettiars financed colonial Burma’s rice/credit economy (1880–1930) — an early example of TN mercantile-caste capital accumulation.' },
+  { t: 'Industry', r: 'Kochhar et al. (2006)', f: 'India idiosyncratically skipped labour-intensive manufacturing for skill-intensive services — leaving few jobs for low-skilled workers (a gap TN’s clusters partly filled).' },
+  { t: 'Industry', r: 'Ghani, Goswami & Kerr (2012)', f: 'Formal manufacturing is shifting from cities to rural areas — the pattern behind TN’s dispersed, district-led industrialisation.' },
+  { t: 'Industry', r: 'NCEUS (2009)', f: 'India’s unorganised sector employs ~92% of workers and produces over 45% of GDP — yet workers lack social security (TN’s welfare boards respond to this).' },
+
+  // ---- TN vs other states ----
+  { t: 'Comparative', r: 'Kalaiyarasan (2014), EPW', f: 'From equal 1990s baselines TN overtook Gujarat on nearly every development indicator AND rate of change — despite Gujarat’s slightly higher growth.' },
+  { t: 'Comparative', r: 'Joshi & McGrath (2015)', f: 'From equal 1970s baselines, TN outpaced Gujarat on human development — driven by egalitarian ideology and higher-quality public administration.' },
+  { t: 'Comparative', r: 'Drèze & Sen (2013), An Uncertain Glory', f: 'India’s growth coexists with neglected health and schooling; Tamil Nadu and Kerala outperform via stronger public services.' },
+  { t: 'Comparative', r: 'Mundle, Chowdhury & Sikdar (2016)', f: 'Ranking 19 states’ governance quality (2001 & 2011), TN was a top performer in both years.' },
+  { t: 'Comparative', r: 'Indo Asian News Service (2018)', f: 'The Public Affairs Index 2018 ranked TN the 2nd best-governed large state (after Kerala) on social and economic indicators.' },
+  { t: 'Comparative', r: 'Nagaraj & Pandey (2013)', f: 'A statistical note finds Gujarat’s and Bihar’s touted growth did not significantly outperform the rest of India once data are examined.' },
+  { t: 'Comparative', r: 'Heller (1999)', f: 'Kerala shows class-based mobilisation pushing the state toward redistributive development — a parallel to TN’s mobilisation-driven provisioning.' },
+  { t: 'Comparative', r: 'Bardhan (2008)', f: 'Poverty reduction in China and India is driven mainly by domestic factors — and democratic India is hampered by accountability failures.' },
+  { t: 'Comparative', r: 'Kar & Sakthivel (2007); Ghosh (2012)', f: 'Regional inequality across Indian states rose sharply after 1991 — high-infrastructure states like TN pulled ahead of laggards.' },
+  { t: 'Comparative', r: 'Rukmani (1994)', f: 'TN led major states in dispersed urbanisation by 1981 — dense small towns serving rural areas, driven by agricultural modernisation and non-farm work.' },
+  { t: 'Comparative', r: 'Government of Tamil Nadu (2017), HDR', f: 'TN’s HDI (~0.71) reflects strong literacy/health gains — but wide inter-district income disparity remains.' },
+  { t: 'Comparative', r: 'Bhagwati & Panagariya (2013)', f: 'The “grow the pie first” case (market-led growth cuts poverty) — the very thesis TN’s growth-WITH-development record complicates.' },
+  { t: 'Comparative', r: 'Slater (1918); MIDS (1988)', f: 'A century of TN village and economy surveys provides the longitudinal baseline that makes TN’s transformation measurable.' },
+
+  // ---- Politics & theory (the mechanism) ----
+  { t: 'Theory', r: 'Harriss (1999)', f: 'State-level political regimes shape development: public provisioning is stronger where the poor are collectively mobilised — as by TN’s Dravidian parties.' },
+  { t: 'Theory', r: 'Harriss & Wyatt (2019)', f: 'The “TN puzzle”: high growth + human development achieved despite (not because of) politicians — populist rule institutionalised pro-poor growth.' },
+  { t: 'Theory', r: 'Sinha, Aseema (2003, 2006)', f: 'India is a “divided leviathan”: development varies subnationally through central–regional interaction and regional elites’ strategic choices.' },
+  { t: 'Theory', r: 'Evans (1995)', f: '“Embedded autonomy” — a coherent bureaucracy plus dense industry ties — drives developmental success, explaining TN’s state–business coordination.' },
+  { t: 'Theory', r: 'Evans & Heller (2015)', f: 'Developmental states must shift from capital accumulation to human development, building ties with disadvantaged groups — the TN move.' },
+  { t: 'Theory', r: 'Laclau (2005); Laclau & Mouffe (2014)', f: 'Hegemony is built by linking diverse demands through “chains of equivalence” — how the Dravidian movement forged a broad non-Brahmin/Tamil bloc.' },
+  { t: 'Theory', r: 'Chatterjee (2004, 2008)', f: 'Postcolonial democracy works through “political society” — poor populations bargaining welfare from the state — the frame for TN’s welfarist mobilisation.' },
+  { t: 'Theory', r: 'Wade (1990); Amsden (1989)', f: 'East Asian “governed markets” show states steering investment via strategic industrial policy — the developmental-state template TN echoes.' },
+  { t: 'Theory', r: 'Kohli (2012)', f: 'India’s post-1980 growth came from a pro-business state–capital alliance that concentrated gains — the inequality TN’s model pushes against.' },
+  { t: 'Theory', r: 'Anaimuthu (1974); Periyar (1926)', f: 'The foundational Self-Respect texts: caste denies the inalienable birthright of dignity, so rationalism must replace Brahminical hierarchy.' },
+  { t: 'Theory', r: 'Pandian (2007)', f: '“Brahmin/non-Brahmin” are colonial-era constructs made into powerful Tamil political identities once caste became publicly “speakable.”' },
+  { t: 'Theory', r: 'Chhibber & Verma (2018)', f: 'Indian party competition runs on two ideological axes — statism and recognition — explaining the Dravidian politics of recognition, not mere patronage.' },
+  { t: 'Theory', r: 'Wyatt (2013b)', f: 'TN politics has been strongly populist since the 1960s — DMK and AIADMK appealing to an undivided “people” of the state.' },
+  { t: 'Theory', r: 'Munshi (2014)', f: 'Community/caste networks mitigate market failures and drive group mobility — how TN caste networks shaped business and labour access.' },
+  { t: 'Theory', r: 'Tilly (1998)', f: '“Opportunity hoarding”: in-groups monopolise resources along categorical (caste) lines, producing durable inequality — the mechanism reservation attacks.' },
+  { t: 'Theory', r: 'Balakrishnan (2008)', f: 'The Nehru-era policy regime (1950–64) transformed a stagnant colonial economy into one with foundations for sustained growth.' },
+  { t: 'Theory', r: 'Sanyal (2007)', f: 'Postcolonial capitalism splits into an accumulation economy and a governed “need economy” sustained by welfare — TN’s growth-plus-welfare coexistence.' },
+  { t: 'Theory', r: 'Trautmann (2006); Suntharalingam (1980)', f: 'The colonial-era “Dravidian proof” of a distinct South Indian language family furnished the intellectual foundation for later Dravidian identity politics.' },
+  { t: 'Theory', r: 'Witsoe (2013)', f: 'Contrast case: lower-caste empowerment in Bihar destabilised the upper-caste state but produced no governance alternative — unlike TN’s constructive model.' },
+];

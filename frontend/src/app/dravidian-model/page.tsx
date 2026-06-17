@@ -7,6 +7,7 @@ import TrendLines from '@/components/TrendLines';
 import EducationDeepDive from '@/components/EducationDeepDive';
 import HealthDeepDive from '@/components/HealthDeepDive';
 import WelfareTimeline from '@/components/WelfareTimeline';
+import LiteratureFindings from '@/components/LiteratureFindings';
 import Bibliography from '@/components/Bibliography';
 
 export default function DravidianModelPage() {
@@ -28,6 +29,7 @@ export default function DravidianModelPage() {
       <EducationDeepDive />
       <HealthDeepDive />
       <WelfareTimeline />
+      <LiteratureFindings />
       <Bibliography />
     </div>
   );
