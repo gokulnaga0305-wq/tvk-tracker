@@ -72,6 +72,20 @@ const TOPICS: Topic[] = [
     tab: '/credit-steals', pack: 'credit-steals-briefing.md',
   },
   {
+    key: 'whitepaper', label: 'White Paper', badge: 'FACT CHECK', accent: '#d99a3a',
+    headline: 'TVK white paper: did DMK “empty the treasury”?',
+    verdict: 'MISLEADING — debt doubled, but so did the economy; the ratio actually fell.',
+    points: [
+      'AIADMK left ~₹5 lakh cr debt on ₹17 lakh cr GSDP = 29%. DMK: ~₹10 lakh cr on ₹36 lakh cr = 28%.',
+      'Debt-to-GSDP is ~26% (PRS) and within the ~30% limit — better than Punjab (46%), WB (37%), Kerala (36%).',
+      'Real concerns conceded: interest ~22% of revenue, a revenue deficit. But the deficits are at the FRBM target, not “record”.',
+      'Much debt was inherited (AIADMK 2016-17, UDAY 2017, COVID 2020-21). “Emptied the treasury” has no audited basis.',
+    ],
+    caption: 'TVK’s white paper says DMK “emptied the treasury.” Reality: debt doubled (₹5L→₹10L cr) — but the economy doubled too (₹17L→₹36L cr), so debt-to-GSDP actually FELL (29%→28%) and stays within the ~30% limit — better than Punjab/WB/Kerala. Real concerns exist (interest burden), but “emptied the treasury” ignores inherited debt.\n\nFull fact-check 👇\nhttps://tvkfiles.vercel.app/white-paper\n#TamilNadu #WhitePaper #FactCheck',
+    sourceLine: 'Sources: PRS · 16th Finance Commission (CAG) · RBI · ThePrint, The Federal (16 Jun 2026)',
+    tab: '/white-paper', pack: 'white-paper-briefing.md',
+  },
+  {
     key: 'investments', label: 'Investments', badge: 'READ THE FINE PRINT', accent: '#1d9e75',
     headline: '₹3 lakh crore “invested” in Tamil Nadu?',
     verdict: 'MoU ≠ money delivered — only ~9% is operational on the ground.',

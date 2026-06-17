@@ -21,6 +21,7 @@ const NAV: { href: string; key: StringKey; icon: any }[] = [
   { href: '/investments',   key: 'nav.investments',   icon: Factory },
   { href: '/power',         key: 'nav.power',         icon: Zap },
   { href: '/tasmac',        key: 'nav.tasmac',        icon: Wine },
+  { href: '/white-paper',   key: 'nav.white_paper',   icon: ScrollText },
   { href: '/studio',        key: 'nav.studio',        icon: Megaphone },
   { href: '/promises',      key: 'nav.promises',      icon: CheckSquare },
   { href: '/methodology',   key: 'nav.methodology',   icon: ShieldCheck },

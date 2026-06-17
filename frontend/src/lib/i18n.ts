@@ -23,6 +23,7 @@ export const STRINGS = {
   "nav.investments":  { en: "Investments",      ta: "முதலீடுகள்" },
   "nav.power":        { en: "Power / EB",       ta: "மின்சாரம்" },
   "nav.tasmac":       { en: "TASMAC Truth",     ta: "டாஸ்மாக் உண்மை" },
+  "nav.white_paper":  { en: "White Paper Debunk", ta: "வெள்ளை அறிக்கை மறுப்பு" },
   "nav.studio":       { en: "Share Studio",     ta: "பகிர் ஸ்டுடியோ" },
   "nav.receipts":     { en: "Receipts",          ta: "ஆதாரங்கள்" },
   "nav.promises":     { en: "Promises",         ta: "வாக்குறுதிகள்" },
