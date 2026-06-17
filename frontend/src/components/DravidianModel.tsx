@@ -17,8 +17,21 @@
 import { useState } from 'react';
 import {
   Landmark, GraduationCap, HeartPulse, Scale, Factory, Users, HandHeart,
-  TrendingUp, TrendingDown, Info, CheckCircle2,
+  TrendingUp, TrendingDown, Info, CheckCircle2, History, ArrowRight,
 } from 'lucide-react';
+
+// "Since independence" — TN's own transformation per sector. Where clean 1947
+// state-level data doesn't exist, we use the earliest reliable year and label
+// it honestly (Madras Presidency / SRS / Census). This is TN-then vs TN-now;
+// the current cross-state ranking is the bar chart above.
+const THEN_NOW: Record<string, { era: string; was: string; now: string }> = {
+  income: { era: '1950s', was: 'a largely agrarian, low-income Presidency', now: '2nd-largest state economy · per-capita ~1.7× the national average' },
+  education: { era: '1951', was: 'literacy ~20%', now: 'literacy 80% (2011) · higher-ed GER 47% — #1 large state' },
+  social: { era: '1921', was: 'TN pioneered reservation (the Communal G.O.) before independence', now: 'SC higher-ed GER 39.4% — above India’s overall average' },
+  health: { era: '1971', was: 'infant mortality ~113 per 1,000', now: 'IMR ~19 · life expectancy 72 (vs ~50 mid-century)' },
+  women: { era: '1951', was: 'female literacy in single digits', now: '42% of India’s women factory workers · most in non-farm work' },
+  industry: { era: '1950s', was: 'mostly farming and small trade', now: '#1 in factories · 48% urban — most urbanised large state' },
+};
 
 type Bar = { state: string; value: number; hi?: boolean };
 type Sector = {
@@ -232,6 +245,24 @@ export default function DravidianModel() {
             <p className="text-[13px] text-gray-200">{s.reality}</p>
           </div>
         </div>
+
+        {/* Since-independence transformation strip */}
+        {THEN_NOW[s.id] && (
+          <div className="rounded-md border border-[#262626] bg-[#141414] px-3 py-2.5 mb-5">
+            <div className="flex items-center gap-1.5 text-[10.5px] font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+              <History size={12} /> Since independence
+            </div>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-3 text-[12.5px]">
+              <span className="text-gray-400">
+                <span className="text-gray-600">{THEN_NOW[s.id].era}: </span>{THEN_NOW[s.id].was}
+              </span>
+              <ArrowRight size={14} className="text-orange-500 shrink-0 hidden sm:block" />
+              <span className="text-gray-200">
+                <span className="text-orange-400 font-medium">Now: </span>{THEN_NOW[s.id].now}
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* bar chart */}
         <div className="flex items-center justify-between mb-2">
