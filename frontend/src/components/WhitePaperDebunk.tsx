@@ -152,18 +152,39 @@ export default function WhitePaperDebunk() {
         </div>
       </section>
 
-      {/* Inherited + central cut */}
-      <section className="rounded-lg border border-[#2a2a2a] bg-[#141414] p-4">
-        <div className="flex items-center gap-2 text-[12px] font-semibold text-gray-300 mb-1.5">
-          <Landmark size={13} className="text-gray-400" /> The context the white paper leaves out
+      {/* The %-of-GSDP trick */}
+      <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
+        <div className="flex items-center gap-2 text-sm font-semibold text-white mb-1">
+          <Info size={15} className="text-rose-400" /> The “revenue fell as % of GSDP” trick
         </div>
-        <p className="text-[12px] text-gray-500 leading-relaxed">
-          The Centre cut Tamil Nadu’s share of central taxes (the state’s long-standing grievance about devolution), and delayed dues —
-          <span className="text-gray-400"> on-time central funds would have meant less state borrowing.</span> Much of the debt stack and the
-          interest burden was <span className="text-gray-400">inherited</span> (the 20% line crossed under AIADMK in 2016-17; UDAY power-debt
-          signed by AIADMK in Jan 2017; the steepest jump in COVID 2020-21). DMK’s rebuttal — ex-FM Thangam Thennarasu called it
-          <span className="text-gray-400"> “an empty paper, not a white paper”</span>; spokesperson A. Saravanan: <span className="text-gray-400">“judge by the GSDP
-          ratio — it’s within Finance Commission limits.”</span>
+        <p className="text-[12px] text-gray-500 mb-3">
+          The white paper says own-tax revenue “fell to 5.45% of GSDP” — implying revenue dropped. It’s a
+          <span className="text-gray-300"> mathematical artifact</span>, and the paper even contradicts itself (it says revenue <span className="text-gray-300">rose</span> elsewhere).
+        </p>
+        <div className="rounded-md border border-[#262626] bg-[#141414] px-3 py-3 text-[12.5px] text-gray-400 leading-relaxed">
+          If revenue is <span className="text-gray-300">₹20</span> on a GSDP of <span className="text-gray-300">₹100</span> = <span className="text-gray-300">20%</span>.
+          Now the economy grows: revenue <span className="text-emerald-300">rises to ₹25</span> but GSDP rises faster to <span className="text-gray-300">₹150</span> →
+          that’s <span className="text-amber-300">16%</span>. Revenue <span className="text-white">went up</span>, yet the % “fell.” When GSDP grows faster than
+          revenue, the ratio drops <span className="text-white">even though collections rose.</span> A class-8 student can see this — the white paper missed it.
+        </div>
+      </section>
+
+      {/* Why the debt grew — verified context the white paper omits */}
+      <section className="rounded-lg border border-[#2a2a2a] bg-[#141414] p-4">
+        <div className="flex items-center gap-2 text-[12px] font-semibold text-gray-300 mb-2">
+          <Landmark size={13} className="text-gray-400" /> Why the debt grew — context the white paper omits (and capex ≠ waste)
+        </div>
+        <ul className="space-y-1.5 text-[12px] text-gray-400 leading-relaxed">
+          <li className="flex gap-1.5"><span className="text-gray-600">·</span><span><span className="text-gray-300">Chennai Metro Phase II:</span> the Centre delayed approval from 2019 to Oct 2024 — TN built it meanwhile, spending ~₹11,762 cr of <span className="text-gray-300">state funds</span> (of ₹18,564 cr) before the Centre released a single rupee.</span></li>
+          <li className="flex gap-1.5"><span className="text-gray-600">·</span><span><span className="text-gray-300">GST shortfall (2020):</span> the Union FM told states to BORROW to cover delayed GST dues (the “Act of God” 41st GST Council) — debt pushed onto states.</span></li>
+          <li className="flex gap-1.5"><span className="text-gray-600">·</span><span><span className="text-gray-300">GST is a destination/consumption tax:</span> a high-manufacturing state like TN loses revenue to consuming states — and the 5-year compensation guarantee <span className="text-gray-300">expired in 2022</span>, so it bites harder now.</span></li>
+          <li className="flex gap-1.5"><span className="text-gray-600">·</span><span><span className="text-gray-300">Devolution:</span> TN gets ~4.1% of central tax devolution (15th Finance Commission) despite being <span className="text-gray-300">~9% of India’s GDP</span> — about half its economic weight.</span></li>
+          <li className="flex gap-1.5"><span className="text-gray-600">·</span><span><span className="text-gray-300">COVID + health:</span> lockdowns cut revenue and health costs spiked — both in the DMK years.</span></li>
+          <li className="flex gap-1.5"><span className="text-gray-600">·</span><span><span className="text-gray-300">Capital expenditure</span> (metro, modern buses, schools, infrastructure) is <span className="text-gray-300">investment with a return</span> — not “wasteful” borrowing. Judging capex as pure debt ignores the ROI.</span></li>
+        </ul>
+        <p className="text-[11.5px] text-gray-500 mt-2.5 leading-relaxed border-t border-[#262626] pt-2">
+          Much of the debt was also <span className="text-gray-400">inherited</span> (20% line crossed under AIADMK in 2016-17; UDAY power-debt signed by AIADMK Jan 2017; steepest jump in COVID 2020-21).
+          DMK’s rebuttal — Thennarasu: <span className="text-gray-400">“an empty paper, not a white paper”</span>; Saravanan: <span className="text-gray-400">“judge by the GSDP ratio — within Finance Commission limits.”</span>
         </p>
       </section>
 
@@ -185,8 +206,9 @@ export default function WhitePaperDebunk() {
         Sources: White paper coverage — ThePrint/PTI, The Federal, The South First, India TV, Deccan Herald (16 Jun 2026) ·
         Authoritative fiscal data — PRS Legislative Research (TN Budget 2025-26: fiscal deficit 3.0%, revenue deficit 1.2%, debt ~26% GSDP),
         16th Finance Commission TN study (CAG-based), RBI &ldquo;State Finances&rdquo;, NITI Fiscal Health Index 2025 · UDAY under AIADMK — PIB (Jan 2017) ·
-        DMK rebuttal — DT Next, ThePrint (16 Jun 2026). Debt-to-GSDP varies ~26–28% by definition; the directional finding (within limits,
-        flat-to-declining, inherited) is robust.
+        DMK rebuttal — DT Next, ThePrint (16 Jun 2026) · Chennai Metro Phase II delay — PIB (Oct 2024), ThePrint, Deccan Herald ·
+        GST &ldquo;borrow to manage&rdquo; (41st GST Council) — PIB (Oct 2020) · GST destination-tax — CBIC, IIM-A · TN devolution ~4.1% vs ~9% of GDP — PRS (15th FC).
+        Debt-to-GSDP varies ~26–28% by definition; the directional finding (within limits, flat-to-declining, inherited) is robust.
       </p>
     </div>
   );
