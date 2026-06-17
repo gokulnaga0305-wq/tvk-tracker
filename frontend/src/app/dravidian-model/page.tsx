@@ -1,6 +1,7 @@
 'use client';
 import { HandHeart } from 'lucide-react';
 import DravidianModel from '@/components/DravidianModel';
+import ResearchInsights from '@/components/ResearchInsights';
 import EconomicDemocracy from '@/components/EconomicDemocracy';
 import TrendLines from '@/components/TrendLines';
 import EducationDeepDive from '@/components/EducationDeepDive';
@@ -21,6 +22,7 @@ export default function DravidianModelPage() {
         sources only; where another state leads, we say so.
       </p>
       <DravidianModel />
+      <ResearchInsights />
       <EconomicDemocracy />
       <TrendLines />
       <EducationDeepDive />
