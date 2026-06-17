@@ -55,6 +55,29 @@ const FEDERALISM = [
   { k: 'Cesses & surcharges kept by the Centre', v: '10.4% → 20.3%', n: 'The Union’s cess/surcharge take rose from 10.4% (2011-12) to 20.3% (2022-23) of gross taxes — money kept ENTIRELY by the Centre, outside the pool that’s shared with states.' },
 ];
 
+// The receipts — specific Union dues withheld/deducted/forced in FY26 alone,
+// itemised by ex-FM Thennarasu (TN Interim Budget, 17 Feb 2026 + white-paper
+// rebuttal, 16-17 Jun 2026). These sum to ~₹40,000+ cr — the "~₹41,000 cr".
+const CENTRE_WITHHELD = [
+  ['GST rate-recast revenue loss (FY26)', '₹9,600 cr'],
+  ['Chennai Metro Ph-II — Union’s share, still on TN’s debt books', '₹9,500 cr'],
+  ['Samagra Shiksha (school education) — withheld', '₹3,548 cr'],
+  ['Jal Jeevan Mission — denied', '₹3,112 cr'],
+  ['Guarantee Redemption Fund — sudden 5% mandate', '₹3,087 cr'],
+  ['Finance Commission grants — not released', '₹2,246 cr'],
+  ['IGST deducted from TN’s RBI account (no consultation)', '₹1,709 cr'],
+  ['Central tax share cut in Revised Estimates', '₹1,202 cr'],
+];
+
+// The ex-FM's substantive rebuttal points (16-17 Jun 2026).
+const FM_POINTS = [
+  ['Revenue deficit was WORSE under AIADMK', 'It was ₹62,325 cr (3.48% of GSDP) in 2020-21 and DMK cut the ratio to 1.47% by 2024-25. The white paper hides that improvement and only shows the latest spike.'],
+  ['The debt was half-inherited', 'TN’s debt was ~₹4.85 lakh cr at the end of the AIADMK term (2021) — so going to ~₹10 lakh cr isn’t doubling “from a clean slate.”'],
+  ['TVK’s OWN promises are revenue spending', '“Can ₹2,500 for women, 200 free units, six LPG cylinders, unemployment aid or the Breakfast Scheme be called capital expenditure?” You can’t damn DMK for revenue-heavy spending while planning the same.'],
+  ['The Gujarat comparison is unfair', 'Gujarat’s lower interest/deficit is because it does NOT run welfare — no free bus, no breakfast scheme, no Magalir Urimai, no old pension. Different choices, not better management.'],
+  ['The challenge', 'Thennarasu bet his MLA seat: if TVK borrows LESS per year than DMK did while keeping the welfare schemes, he’ll quit — and predicted TVK will itself hit ₹20 lakh cr debt by 2031.'],
+];
+
 export default function WhitePaperDebunk() {
   const maxSD = Math.max(...STATE_DEBT.map(s => s.v));
   return (
@@ -234,6 +257,44 @@ export default function WhitePaperDebunk() {
           Phase II, withheld education grants), and the picture flips: <span className="text-white">if TN borrows, a major structural cause
           is the Union shortchanging it</span> — not DMK “mismanagement.” The white paper needs that silence to land its story.
         </p>
+      </section>
+
+      {/* The receipts — Union dues withheld in one year */}
+      <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
+        <div className="flex items-center gap-2 text-sm font-semibold text-white mb-1">
+          <Landmark size={15} className="text-rose-400" /> The receipts — what the Centre withheld in ONE year (FY26)
+        </div>
+        <p className="text-[12px] text-gray-500 mb-4">
+          Itemised by ex-FM Thennarasu in the Interim Budget (Feb 2026) and his white-paper rebuttal (Jun 2026). These add up
+          to the <span className="text-rose-300">~₹41,000 crore</span> he says the Union cost the state in a single year.
+        </p>
+        <div className="rounded-md border border-[#262626] bg-[#141414] overflow-hidden">
+          {CENTRE_WITHHELD.map(([k, v], i) => (
+            <div key={i} className="flex items-center justify-between gap-3 px-3 py-2 border-b border-[#1f1f1f] last:border-0">
+              <span className="text-[12px] text-gray-300">{k}</span>
+              <span className="text-[13px] font-bold text-rose-300 shrink-0">{v}</span>
+            </div>
+          ))}
+          <div className="flex items-center justify-between gap-3 px-3 py-2.5 bg-rose-950/20">
+            <span className="text-[12.5px] font-semibold text-white">+ a forced ₹15,877 cr TNPDCL loss-funding mandate (vs ₹413 cr actual loss)</span>
+          </div>
+        </div>
+        <p className="text-[11px] text-gray-600 mt-2">Plus the structural ₹9,500 cr Metro share that should sit in the <span className="text-gray-500">Union’s</span> books, not TN’s — inflating TN’s debt-to-GSDP and shrinking its borrowing room.</p>
+      </section>
+
+      {/* What the ex-FM laid out */}
+      <section className="rounded-lg border border-emerald-800/40 bg-emerald-950/12 p-5">
+        <div className="flex items-center gap-2 text-sm font-semibold text-white mb-3">
+          <CheckCircle2 size={15} className="text-emerald-400" /> What the ex-FM laid out (16–17 Jun 2026)
+        </div>
+        <div className="space-y-2.5">
+          {FM_POINTS.map(([h, b], i) => (
+            <div key={i} className="rounded-md border border-[#262626] bg-[#141414] px-3 py-2.5">
+              <div className="text-[12.5px] font-semibold text-emerald-200/90 mb-0.5">{h}</div>
+              <div className="text-[12px] text-gray-400 leading-relaxed">{b}</div>
+            </div>
+          ))}
+        </div>
       </section>
 
       {/* Bottom line */}
