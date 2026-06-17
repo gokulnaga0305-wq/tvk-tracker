@@ -20,16 +20,26 @@ function DeltaCard({ row }: { row: BaselineRow }) {
   const sources = row.top_sources || [];
   const hasSources = sources.length > 0;
 
+  // Stretched-link pattern (same as StatCard): the card shell is a relatively
+  // positioned <div> with an absolutely-positioned <Link> OVERLAY inside it,
+  // rather than wrapping the children in the link. This keeps the whole card
+  // clickable WITHOUT nesting the source-chip <a>s inside a card <a> (invalid
+  // HTML that caused "<a> cannot be a descendant of <a>" hydration errors).
+  // The chips are lifted above the overlay (relative z-10) so they stay
+  // individually clickable.
   return (
-    <Link
-      href={`/category/${row.category}`}
-      aria-label={`View all ${row.label} incidents`}
+    <div
       className={clsx(
-        'group/card rounded-lg border p-4 flex flex-col transition-all',
+        'relative group/card rounded-lg border p-4 flex flex-col transition-all cursor-pointer',
         'hover:border-orange-700/40 hover:shadow-[0_0_0_1px_rgba(234,88,12,0.2)]',
         colorClass
       )}
     >
+      <Link
+        href={`/category/${row.category}`}
+        aria-label={`View all ${row.label} incidents`}
+        className="absolute inset-0 z-0 rounded-lg"
+      />
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="text-xs text-gray-400 uppercase tracking-wider font-medium flex items-center gap-1">
           {row.label}
@@ -61,7 +71,7 @@ function DeltaCard({ row }: { row: BaselineRow }) {
           article so the user can verify rather than trust. Empty when
           tvk_count=0 (nothing to source yet). */}
       {hasSources && (
-        <div className="mt-3 pt-2 border-t border-white/5">
+        <div className="relative z-10 mt-3 pt-2 border-t border-white/5">
           <div className="text-[10px] text-gray-500 uppercase tracking-wider mb-1.5">
             Sources
           </div>
@@ -88,7 +98,7 @@ function DeltaCard({ row }: { row: BaselineRow }) {
           </div>
         </div>
       )}
-    </Link>
+    </div>
   );
 }
 

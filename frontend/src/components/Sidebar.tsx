@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, AlertTriangle, CheckSquare,
   Info, Copy, ShieldCheck, Menu, X, Database, ScrollText,
-  MapPin, Factory, Zap, Activity, Wine, Megaphone,
+  MapPin, Factory, Zap, Activity, Wine, Megaphone, Scale,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useLocale } from './LocaleProvider';
@@ -22,6 +22,7 @@ const NAV: { href: string; key: StringKey; icon: any }[] = [
   { href: '/power',         key: 'nav.power',         icon: Zap },
   { href: '/tasmac',        key: 'nav.tasmac',        icon: Wine },
   { href: '/white-paper',   key: 'nav.white_paper',   icon: ScrollText },
+  { href: '/finance-scorecard', key: 'nav.finance_scorecard', icon: Scale },
   { href: '/studio',        key: 'nav.studio',        icon: Megaphone },
   { href: '/promises',      key: 'nav.promises',      icon: CheckSquare },
   { href: '/methodology',   key: 'nav.methodology',   icon: ShieldCheck },
