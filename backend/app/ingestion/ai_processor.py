@@ -857,6 +857,35 @@ _TITLE_STOP = {
 # (they still dedup via the exact category+location+date signature).
 _GENERIC_TITLE_CATS = {"power_cut", "eb_failure", "civic_failure", "water_shortage"}
 
+# Deterministic safety net for the rule the LLM applies unreliably on bare
+# headlines: a pre-announced TANGEDCO maintenance shutdown is ROUTINE utility
+# ops, not an accountability failure. The prompt already says so, but "Power Cut
+# in Chennai" excerpts still slip through, so we re-check post-extraction.
+_MAINT_SIG = re.compile(
+    r"schedul|planned|pre-?announced|announce[ds]?\b|maintenance|"
+    r"routine|upkeep|shutdown for|repair work|will be implemented|"
+    r"to take place|check (?:the )?list|charge (?:your )?phones",
+    re.I,
+)
+# If ANY of these appear, something went WRONG (unplanned) -> keep as an incident.
+_GRIEVANCE_SIG = re.compile(
+    r"protest|rally|rallies|besieg|sieg|detain|confront|anger|abuse|outrage|"
+    r"unannounced|unplanned|dies|died|death|elderly|oxygen|ventilat|unconscious|"
+    r"hospital|crisis|dangerous|sabotage|vip|unrespons|frequent|repeated|"
+    r"continued|overnight|night-?time|wartime|complaint|helpline|alleg|"
+    r"acknowledg|raise[sd]? question|infrastructure|fluctuat",
+    re.I,
+)
+
+
+def _is_routine_power_maintenance(category: str, title: str, summary: str) -> bool:
+    """True only for a routine, pre-announced power-maintenance notice with no
+    grievance/failure element — these do NOT belong in the power-cut section."""
+    if category not in {"power_cut", "eb_failure"}:
+        return False
+    blob = f"{title or ''} {summary or ''}"
+    return bool(_MAINT_SIG.search(blob)) and not _GRIEVANCE_SIG.search(blob)
+
 
 def _title_tokens(s: str) -> set[str]:
     """Tokenise a headline for similarity. Keeps Latin + Tamil word chars so
@@ -1194,6 +1223,17 @@ async def process_article(item: ApifyWebhookItem) -> None:
         # Social_media / citizen / low-confidence -> waits for press
         verification_status = "pending_verification"
         publish_status = "pending_review"  # held back from public view
+
+    # ROUTINE-MAINTENANCE GUARD: a pre-announced TANGEDCO scheduled/maintenance
+    # shutdown is utility upkeep, not a power-supply failure or grievance. The
+    # prompt says so, but bare "Power Cut in <place>" headlines still slip past
+    # the LLM — so reject deterministically here. Grievance markers (protest,
+    # unplanned, death, hospital, repeated/continued cuts) exempt it.
+    if _is_routine_power_maintenance(
+        extracted.get("category") or "", extracted.get("title") or "", extracted.get("summary") or ""
+    ):
+        publish_status = "rejected"
+        verification_status = "rejected"
 
     # DMK-LINEAGE GUARD: a TVK "first-ever" / investment / scheme-launch claim
     # must be checked against the 2021-26 DMK record before it's published as a

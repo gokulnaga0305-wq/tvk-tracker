@@ -8,7 +8,7 @@
  * Sources cited in the footer.
  */
 import {
-  ScrollText, AlertTriangle, CheckCircle2, Info, Scale, Landmark, TrendingUp,
+  ScrollText, AlertTriangle, CheckCircle2, Info, Scale, Landmark, TrendingUp, GraduationCap,
 } from 'lucide-react';
 
 // The honest debt comparison (the infographic's centrepiece): absolute debt
@@ -53,6 +53,17 @@ const FEDERALISM = [
   { k: 'Economic weight vs what it gets back', v: '~9% of GDP → ~4%', n: 'TN produces ~9% of India’s GDP and is ~6% of its population — but receives only ~4% of tax devolution. Roughly half its economic weight.' },
   { k: 'Return per rupee contributed', v: '≈ 29 paise', n: 'For every ₹1 TN sends to the Centre it gets back only about 29 paise — a net DONOR that subsidises poorer states (all industrial states get back well under ₹1).' },
   { k: 'Cesses & surcharges kept by the Centre', v: '10.4% → 20.3%', n: 'The Union’s cess/surcharge take rose from 10.4% (2011-12) to 20.3% (2022-23) of gross taxes — money kept ENTIRELY by the Centre, outside the pool that’s shared with states.' },
+];
+
+// Federalism isn't only fiscal. The Union is also quietly eroding the state's
+// REGULATORY control over schools. Verified: CBSE Circular 04/2025 (20 Feb 2025)
+// amended Affiliation Bye-Law 2.3.5 to "with or without NOC" (deemed-NOC if the
+// state is silent ~30+15 days), from session 2026-27. Roots: DMK's Samacheer
+// Kalvi (2009-10) + the TN Schools (Regulation of Collection of Fee) Act 2009.
+const EDU_FEDERALISM = [
+  { k: 'The state NOC — TN’s gate over private schools', v: 'since 2009', n: 'A private school wanting to leave the state board for CBSE needed a No-Objection Certificate from the TN government — the lever the state used to enforce its norms: the Samacheer Kalvi common syllabus (DMK, 2009-10) and the TN Schools (Regulation of Collection of Fee) Act 2009.' },
+  { k: 'CBSE’s 2025 amendment', v: '“with or without NOC”', n: 'CBSE Circular 04/2025 (20 Feb 2025) amended Affiliation Bye-Law 2.3.5: from session 2026-27 a school may apply WITHOUT the state NOC. If TN stays silent ~30 days (plus a 15-day reminder), it’s treated as a “deemed NOC” and CBSE proceeds anyway.' },
+  { k: 'What it does to state control', v: 'veto → formality', n: 'School education is on the Concurrent List, so the Centre CAN act — but converting a mandatory state veto into deemed-consent shrinks TN’s say over which private schools operate on its soil. MDMK’s Vaiko called the move “anti-federal… education monopolised by the Centre” (24 Feb 2025).' },
 ];
 
 // The receipts — specific Union dues withheld/deducted/forced in FY26 alone,
@@ -259,6 +270,41 @@ export default function WhitePaperDebunk() {
         </p>
       </section>
 
+      {/* Federalism beyond money — the Union diluting state control over schools */}
+      <section className="rounded-lg border border-violet-900/40 bg-violet-950/12 p-5">
+        <div className="flex items-center gap-2 text-sm font-semibold text-white mb-1">
+          <GraduationCap size={15} className="text-violet-400" /> Not just money: the Union is eroding TN’s control over its schools
+        </div>
+        <p className="text-[12px] text-gray-500 mb-4">
+          The same federalism squeeze runs through education. A private school used to need the <span className="text-gray-300">state’s
+          No-Objection Certificate</span> to switch to CBSE — the gate TN used to enforce its syllabus and fee rules. In 2025 the Centre
+          quietly weakened that gate.
+        </p>
+        <div className="space-y-2">
+          {EDU_FEDERALISM.map((r) => (
+            <div key={r.k} className="rounded-md border border-[#262626] bg-[#141414] px-3 py-2.5">
+              <div className="flex items-baseline justify-between gap-3 flex-wrap">
+                <span className="text-[12.5px] font-medium text-gray-200">{r.k}</span>
+                <span className="text-[15px] font-bold text-violet-300">{r.v}</span>
+              </div>
+              <p className="text-[12px] text-gray-400 leading-relaxed mt-1">{r.n}</p>
+            </div>
+          ))}
+        </div>
+        <div className="rounded-md border border-amber-900/40 bg-amber-950/15 px-3 py-2.5 mt-3">
+          <div className="flex gap-2 text-[12.5px] text-gray-300 leading-relaxed">
+            <Info size={14} className="text-amber-400 shrink-0 mt-0.5" />
+            <span>
+              <span className="text-amber-300 font-medium">In fairness: </span>
+              this is a <span className="text-white">dilution, not an abolition</span>. TN still holds a separate gate — a school it has
+              not granted a <span className="text-white">State Recognition Certificate</span> (Bye-Law 2.3.4, unchanged) still can’t get
+              CBSE affiliation. And the viral <span className="text-white">“1,000 schools”</span> figure doing the rounds is uncorroborated —
+              the verified story is the rule change, not that number.
+            </span>
+          </div>
+        </div>
+      </section>
+
       {/* The receipts — Union dues withheld in one year */}
       <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
         <div className="flex items-center gap-2 text-sm font-semibold text-white mb-1">
@@ -320,6 +366,10 @@ export default function WhitePaperDebunk() {
         Fiscal federalism — TN share 5.305%→4.079% (12th→15th FC) &amp; 4.097% (16th FC), TN FM Thennarasu &amp; The Hindu (2024-26);
         cesses/surcharges 10.4%→20.3% of gross taxes — The Hindu/PRS; ~29 paise returned per ₹1 (net-donor), The Hindu (Feb 2024).
         Debt-to-GSDP varies ~26–28% by definition; the directional finding (within limits, flat-to-declining, inherited) is robust.
+        Education federalism — CBSE Affiliation Bye-Law 2.3.5 amendment: CBSE Circular 04/2025 (20 Feb 2025) &amp; SARAS 6.0 Notification 6/2025;
+        Samacheer Kalvi — TN Uniform System of School Education Act 2010 (Act 8 of 2010) &amp; <i>State of TN v. K. Shyam Sunder</i> (SC, 9 Aug 2011);
+        TN Schools (Regulation of Collection of Fee) Act 2009 (Act 22 of 2009, PRS); &ldquo;anti-federal&rdquo; objection — Vaiko/MDMK, DT Next (24 Feb 2025).
+        Caveat: the state Recognition Certificate (Bye-Law 2.3.4) still applies, so state leverage is reduced not removed; the &ldquo;1,000 schools&rdquo; figure is unverified.
       </p>
     </div>
   );
