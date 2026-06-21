@@ -1,0 +1,58 @@
+name: YouTurn fact-checks
+
+# Pulls YouTurn's (youturn.in) GraphQL fact-check feed daily and inserts
+# TN-political debunks into propaganda_events. YouTurn is a pure SPA with no
+# RSS, so the RSS scraper misses it — this hits their backend GraphQL API
+# directly. Deterministic mapping, no AI key needed.
+
+on:
+  schedule:
+    - cron: '15 6 * * *'   # daily 06:15 UTC (11:45 IST)
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'How many days back to page (use 45-60 for a backfill)'
+        required: false
+        default: '7'
+      english:
+        description: 'Also pull the English feed (true/false)'
+        required: false
+        default: 'false'
+
+concurrency:
+  group: youturn-factchecks
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install backend deps
+        run: |
+          pip install --upgrade pip
+          pip install -r backend/requirements.txt
+
+      - name: Run YouTurn ingest
+        working-directory: backend
+        env:
+          PYTHONUNBUFFERED: '1'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -e
+          DAYS="${{ github.event.inputs.days || '7' }}"
+          EXTRA=""
+          if [ "${{ github.event.inputs.english }}" = "true" ]; then EXTRA="--english"; fi
+          python ../scripts/scrape_youturn.py --days "${DAYS}" ${EXTRA}

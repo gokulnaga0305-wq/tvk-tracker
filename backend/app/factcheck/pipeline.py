@@ -423,7 +423,7 @@ def run_factcheck(factcheck_id: str) -> dict[str, Any]:
             claims = ext["claims"]
             main_claim = next((c["text"] for c in claims if c.get("checkable")),
                               claims[0]["text"])
-        if not ext.get("in_scope", True):
+        if ext is not None and not ext.get("in_scope", True):
             _save({"status": "draft", "claims": claims, "claim_text": main_claim,
                    "verdict": "needs_context", "confidence": 0.0,
                    "rationale": "Out of scope: this tool checks Tamil Nadu "
