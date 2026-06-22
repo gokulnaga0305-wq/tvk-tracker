@@ -430,6 +430,13 @@ incident-eligible.
   - VCK/Congress joining TVK = alliance news, NOT incident
   - "AIADMK leader exits party" = party politics, NOT TVK incident
   - General investment summits, MoU signings without delivery problems
+  - OUT-OF-STATE events: a crime/event that physically occurred OUTSIDE Tamil
+    Nadu (a robbery in Bengaluru, a drug seizure in Telangana, anything in
+    Kerala/Karnataka/Mumbai/Delhi/abroad) is NOT a TN incident — set
+    is_relevant=FALSE. ONLY keep it if there is a direct Tamil-Nadu nexus: a TN
+    government/institution (TNEB, TASMAC, a TN dept), a TN-government action, or
+    a TN victim/official. If you find yourself writing "occurred in X, not Tamil
+    Nadu," that is your signal to set is_relevant=FALSE — do not ingest it.
 
 EXAMPLES (study these carefully):
   EX 1: "TVK Cabinet Expansion to 33 Ministers; Congress Joins"
@@ -887,6 +894,45 @@ def _is_routine_power_maintenance(category: str, title: str, summary: str) -> bo
     return bool(_MAINT_SIG.search(blob)) and not _GRIEVANCE_SIG.search(blob)
 
 
+# Out-of-state guard. The LLM sometimes ingests another state's crime news
+# (a Bengaluru robbery, a Telangana drug seizure) into this TN tracker — even
+# writing "the incident occurred in Karnataka, not Tamil Nadu" and approving it
+# anyway. High-precision deterministic catch, post-extraction.
+_OUT_ADMISSION = re.compile(r"(?:not|outside(?:\s+of)?)\s+tamil\s*nadu", re.I)
+_NON_TN_LOC = re.compile(
+    r"\b(bengaluru|bangalore|karnataka|telangana|hyderabad|kerala|kochi|kozhikode|"
+    r"thiruvananthapuram|trivandrum|mumbai|maharashtra|pune|new delhi|delhi|noida|"
+    r"gurugram|gurgaon|kolkata|west bengal|gujarat|ahmedabad|surat|uttar pradesh|"
+    r"lucknow|bihar|patna|rajasthan|jaipur|punjab|himachal|madhya pradesh|odisha|"
+    r"assam|jharkhand|chhattisgarh|goa|saudi|dubai|abu dhabi|qatar|kuwait)\b",
+    re.I,
+)
+# A Tamil-Nadu nexus (govt/institution/district) — its presence overrides the
+# location check (e.g. "hard disks stolen from TNEB HQ, arrested in Bengaluru").
+_TN_HOOK = re.compile(
+    r"\b(tamil\s*nadu|tamilnadu|tvk|vijay|dmk|stalin|udhayanidhi|annamalai|tneb|"
+    r"tangedco|tasmac|cmda|cmrl|chennai|madurai|coimbatore|trichy|tiruchirap|salem|"
+    r"tirunelveli|thoothukudi|tuticorin|erode|vellore|tiruppur|thanjavur|dindigul|"
+    r"kanchi|kancheepuram|tiruvannamalai|cuddalore|nagapattinam|krishnagiri|"
+    r"dharmapuri|namakkal|karur|theni|sivaganga|ramanathapuram|virudhunagar|tenkasi|"
+    r"villupuram|ranipet|kallakurichi|ariyalur|perambalur|pudukottai|mayiladuthurai|"
+    r"tirupathur|chengalpattu|tiruvallur|nilgiri|ooty|hosur|avadi|ambattur|tambaram)\b",
+    re.I,
+)
+
+
+def _is_out_of_state(location: str, title: str, summary: str) -> bool:
+    """True when the event clearly occurred outside Tamil Nadu with no TN nexus."""
+    blob = f"{location or ''} {title or ''} {summary or ''}".lower()
+    if _OUT_ADMISSION.search(blob):          # the model's own "not Tamil Nadu" confession
+        return True
+    if _TN_HOOK.search(blob):                # any TN govt/institution/district -> keep
+        return False
+    if location and _NON_TN_LOC.search(location.lower()):  # location pins it out of state
+        return True
+    return False
+
+
 def _title_tokens(s: str) -> set[str]:
     """Tokenise a headline for similarity. Keeps Latin + Tamil word chars so
     Tamil-script duplicates can match too."""
@@ -1231,6 +1277,16 @@ async def process_article(item: ApifyWebhookItem) -> None:
     # unplanned, death, hospital, repeated/continued cuts) exempt it.
     if _is_routine_power_maintenance(
         extracted.get("category") or "", extracted.get("title") or "", extracted.get("summary") or ""
+    ):
+        publish_status = "rejected"
+        verification_status = "rejected"
+
+    # OUT-OF-STATE GUARD: don't ingest another state's crime news into the TN
+    # tracker. The LLM occasionally does this even after noting "occurred in
+    # Karnataka, not Tamil Nadu" — reject deterministically (a TN govt/institution/
+    # district nexus exempts it, e.g. a TNEB matter with an arrest in Bengaluru).
+    if _is_out_of_state(
+        extracted.get("location") or "", extracted.get("title") or "", extracted.get("summary") or ""
     ):
         publish_status = "rejected"
         verification_status = "rejected"
