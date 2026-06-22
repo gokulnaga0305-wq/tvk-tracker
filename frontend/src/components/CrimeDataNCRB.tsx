@@ -23,11 +23,20 @@ const TN = {
   rate:      { '2021': '989.5',    '2022': '617.2',    '2023': '701.4' },
   caw:       { '2021': '8,501',    '2022': '9,207',    '2023': '8,943' },
   cawRate:   { '2021': 22.2,       '2022': 24.0,       '2023': 23.2 },
-  chargeSheet:{ '2021': '78.8%',   '2022': '—',        '2023': '85.7%' },
-  conviction:{ '2021': '73.3%',    '2022': '—',        '2023': '58.5%' },
+  chargeSheet:{ '2021': '63.0%',   '2022': '70.7%',    '2023': '85.7%' },  // IPC basis
+  conviction:{ '2021': '73.3%',    '2022': '56.0%',    '2023': '58.5%' },  // IPC basis
   rank:      { '2021': '4th',      '2022': '5th',      '2023': '3rd' },
 };
 const INDIA_CAW_RATE = { '2021': 64.5, '2022': 66.4, '2023': 66.2 };
+
+// Serious-crime rates per lakh population (2023, read from NCRB primary tables
+// 2A.1 / 1A.4 / 1C.1) — TN vs national. Rape & violent crime are well below the
+// national rate; murder is about average (honest — not overclaimed).
+const SERIOUS = [
+  { k: 'Murder', tn: 2.2, india: 2.0, count: '1,681', note: '≈ national average' },
+  { k: 'Rape', tn: 0.9, india: 4.4, count: '365', note: '≈ ⅕ the national rate' },
+  { k: 'Violent crime', tn: 14.7, india: 31.2, count: '11,302', note: '≈ half the national rate' },
+];
 
 export default function CrimeDataNCRB() {
   const maxRate = 70; // for the CAW-rate bars
@@ -82,7 +91,7 @@ export default function CrimeDataNCRB() {
               ['Total cognizable crimes', TN.total],
               ['Crime rate / lakh', TN.rate],
               ['Crimes against women', TN.caw],
-              ['Charge-sheeting rate', TN.chargeSheet],
+              ['Charge-sheeting rate (IPC)', TN.chargeSheet],
               ['Conviction rate (IPC)', TN.conviction],
               ['Rank by crime rate', TN.rank],
             ].map(([label, row]) => (
@@ -95,6 +104,20 @@ export default function CrimeDataNCRB() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Serious crime — TN vs national (2023, per lakh) */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4">
+        {SERIOUS.map((s) => (
+          <div key={s.k} className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-4">
+            <div className="text-[11px] text-gray-500 uppercase tracking-wide mb-1">{s.k} rate · 2023</div>
+            <div className="flex items-baseline gap-2">
+              <span className="text-xl font-bold text-gray-200 tabular-nums">{s.tn}</span>
+              <span className="text-[11px] text-gray-500">/ lakh · {s.count} cases</span>
+            </div>
+            <div className="text-[12px] text-gray-400 mt-1">National <span className="tabular-nums">{s.india}</span> — <span className="text-gray-300">{s.note}</span></div>
+          </div>
+        ))}
       </div>
 
       {/* CAW rate vs national — visual */}
@@ -131,8 +154,9 @@ export default function CrimeDataNCRB() {
               crime is comparatively low and its charge-sheeting is among the best.
             </p>
             <p>
-              <span className="text-gray-200">What we don&rsquo;t hide:</span> the falling IPC conviction rate (73.3%→58.5%) is a
-              genuine problem. <span className="text-gray-200">Two traps we avoid:</span> 2020 (rate ~1,809) was a COVID
+              <span className="text-gray-200">What we don&rsquo;t hide:</span> the IPC conviction rate fell sharply (73.3%→56.0% in
+              2022, partly recovering to 58.5%) — a genuine problem, even as charge-sheeting rose (63%→85.7%). And TN&rsquo;s
+              murder rate (2.2) sits ≈ the national average, so we don&rsquo;t claim TN is uniformly &ldquo;safe.&rdquo; <span className="text-gray-200">Two traps we avoid:</span> 2020 (rate ~1,809) was a COVID
               lockdown-violation anomaly — the clean trend starts 2021; and the &ldquo;86.1&rdquo; CAW figure some posts pin on TN
               is actually <span className="text-gray-300">Kerala&rsquo;s</span> — TN&rsquo;s is 23.2.
             </p>
@@ -141,10 +165,10 @@ export default function CrimeDataNCRB() {
       </div>
 
       <p className="text-[10px] text-gray-600 leading-relaxed mt-2">
-        Source: NCRB &ldquo;Crime in India&rdquo; 2021 / 2022 / 2023 (ncrb.gov.in) + Rajya Sabha annexure reproducing NCRB state
-        tables; registration caveat per Outlook India &amp; NCRB&rsquo;s own framing. NCRB 2024–2026 state tables are not yet
-        published — figures stop at 2023. Murder/rape per-lakh and 2022 charge-sheet/conviction omitted pending direct
-        extraction from the NCRB 2023 primary tables (not published here as unverified).
+        Source: NCRB &ldquo;Crime in India&rdquo; 2021 / 2022 / 2023 (ncrb.gov.in), read from primary state tables (2A.1, 1A.4,
+        1C.1, 17A.2, 18A.2) + a Rajya Sabha annexure reproducing NCRB; registration caveat per Outlook India &amp; NCRB&rsquo;s
+        own framing. Charge-sheeting &amp; conviction are on the IPC-crime basis; serious-crime rates are per lakh population
+        (2023). NCRB 2024–2026 state tables are not yet published — figures stop at 2023.
       </p>
     </div>
   );
