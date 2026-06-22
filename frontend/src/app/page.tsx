@@ -9,6 +9,7 @@ import PropagandaReach from '@/components/PropagandaReach';
 import SectoralCAGR from '@/components/SectoralCAGR';
 import GovScorecard from '@/components/GovScorecard';
 import CagFindings from '@/components/CagFindings';
+import CrimeDataNCRB from '@/components/CrimeDataNCRB';
 import { DashboardStats, Incident, BaselineRow } from '@/lib/api';
 import { CATEGORY_LABELS } from '@/lib/constants';
 import Link from 'next/link';
@@ -278,6 +279,12 @@ export default function DashboardPage() {
             the DMK tenure. Self-fetches /api/baselines/cag. Most defensible
             accountability data: quotable totals, no press-sample caveat. */}
         <CagFindings />
+
+        {/* NCRB crime census — the comprehensive law-and-order baseline for the
+            DMK term (2021-2023, latest published). Complements the press-sample
+            crime cards above with official, year-by-year figures + honest
+            registration-rate framing. Static verified data; no fetch. */}
+        <CrimeDataNCRB />
 
         {/* Credit steal highlight */}
         {stats.credit_steal_count > 0 && (
