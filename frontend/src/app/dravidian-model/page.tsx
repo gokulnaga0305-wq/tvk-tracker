@@ -3,6 +3,7 @@ import { HandHeart } from 'lucide-react';
 import DravidianModel from '@/components/DravidianModel';
 import ResearchInsights from '@/components/ResearchInsights';
 import EconomicDemocracy from '@/components/EconomicDemocracy';
+import InvestmentRecord from '@/components/InvestmentRecord';
 import TrendLines from '@/components/TrendLines';
 import EducationDeepDive from '@/components/EducationDeepDive';
 import HealthDeepDive from '@/components/HealthDeepDive';
@@ -23,6 +24,7 @@ export default function DravidianModelPage() {
       <DravidianModel />
       <ResearchInsights />
       <EconomicDemocracy />
+      <InvestmentRecord />
       <TrendLines />
       <EducationDeepDive />
       <HealthDeepDive />
