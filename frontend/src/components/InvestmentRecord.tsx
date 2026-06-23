@@ -11,7 +11,7 @@
  * Outlook/National Herald (Gujarat ~68% self-claimed, disputed). Fakes:
  * youturn.in. Every government figure is flagged self-reported / unaudited.
  */
-import { Building2, CheckCircle2, AlertTriangle, XCircle, ExternalLink, TrendingUp } from 'lucide-react';
+import { Building2, CheckCircle2, AlertTriangle, XCircle, ExternalLink, TrendingUp, Factory } from 'lucide-react';
 
 // Cross-state MoU conversion. NOTE: the bars are NOT a like-for-like ranking —
 // each state reports a different stage (TN 'operational' is a tougher bar than
@@ -47,6 +47,18 @@ const FAKES = [
     truth: 'False — no such cancellation by the TVK government; the claim misrepresents the tender.',
     reach: '162', url: 'https://youturn.in/falsely-spread-smart-meter-tender-to-adani-group-cancelled-by-tvk-regime-',
   },
+];
+
+// Marquee MoUs Guidance TN showcases. COMMITTED / MoU-stage values (often phased
+// over 5 years) — agency-reported, not realised spend. Source:
+// investingintamilnadu.com + official Guidance TN announcements.
+const MARQUEE = [
+  { co: 'L&T', sector: 'Data centre · electronics · shipyard', val: '₹18,600 cr', jobs: '8,200', loc: 'Kanchipuram / Coimbatore / Kattupalli' },
+  { co: 'Foxconn (Yuzhan)', sector: 'Electronics', val: '₹13,180 cr', jobs: '—', loc: 'Oragadam' },
+  { co: 'Tata Electronics', sector: 'Semiconductors', val: '₹12,082 cr', jobs: '40,500', loc: 'Krishnagiri' },
+  { co: 'VinFast', sector: 'EV manufacturing', val: '~₹16,000 cr', jobs: '3,000+', loc: 'Thoothukudi' },
+  { co: 'Bharat Biotech', sector: 'Life sciences', val: '₹5,000 cr', jobs: '5,000', loc: 'Tamil Nadu' },
+  { co: 'Saint-Gobain', sector: 'Building materials', val: '₹3,400 cr', jobs: '—', loc: 'Tamil Nadu' },
 ];
 
 export default function InvestmentRecord() {
@@ -114,12 +126,13 @@ export default function InvestmentRecord() {
             <CheckCircle2 size={15} className="text-emerald-400" /> Why the inflow is credible
           </div>
           <ul className="space-y-1.5 text-[12px] text-gray-300 leading-relaxed">
-            <li>· Most factories of any state in India</li>
-            <li>· 2nd-largest state economy (GSDP ~₹31 lakh cr)</li>
-            <li>· ~41% of India&rsquo;s electronics exports</li>
-            <li>· Manufacturing grew ~14.7% real in 2024-25 (vs ~4.5% all-India)</li>
+            <li>· <span className="text-gray-200">2,60,061 factories</span> — most of any state (15.42% of India)</li>
+            <li>· 2nd-largest state economy · 3rd-largest exporter</li>
+            <li>· <span className="text-gray-200">41% of India&rsquo;s electronics exports</span> ($14.65 bn, FY25)</li>
+            <li>· No.1 in auto exports · ~60% of India&rsquo;s electric 2-wheelers</li>
+            <li>· 276 SEZs (17.75% of India) · ~1.96 cr skilled workforce</li>
           </ul>
-          <p className="text-[11px] text-gray-500 mt-2">For a base this large, a big MoU pipeline is consistent with structure, not a fluke.</p>
+          <p className="text-[11px] text-gray-500 mt-2">For a base this large, a big MoU pipeline is consistent with structure, not a fluke. <span className="text-gray-600">(Guidance TN; export/factory shares verifiable, growth-rate superlatives are agency claims.)</span></p>
         </section>
         <section className="rounded-lg border border-amber-900/40 bg-amber-950/12 p-4">
           <div className="flex items-center gap-2 text-[13px] font-semibold text-amber-200 mb-2">
@@ -133,6 +146,30 @@ export default function InvestmentRecord() {
           </ul>
         </section>
       </div>
+
+      {/* Marquee MoUs — what's actually in the pipeline */}
+      <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
+        <div className="flex items-center gap-2 text-sm font-semibold text-white mb-1">
+          <Factory size={15} className="text-sky-400" /> Marquee MoUs in the pipeline (2021–26)
+        </div>
+        <p className="text-[12px] text-gray-500 mb-3">
+          A sample of the biggest signings Guidance Tamil Nadu showcases. <span className="text-amber-400/90">Committed,
+          MoU-stage values</span> (often phased over five years) — agency-reported, not realised spend.
+        </p>
+        <div className="rounded-md border border-[#262626] bg-[#141414] overflow-hidden">
+          {MARQUEE.map((m, i) => (
+            <div key={m.co} className={`flex items-center gap-3 px-3 py-2 ${i ? 'border-t border-[#1f1f1f]' : ''}`}>
+              <div className="flex-1 min-w-0">
+                <span className="text-[12.5px] font-medium text-gray-200">{m.co}</span>
+                <span className="text-[11px] text-gray-500"> · {m.sector}</span>
+                <div className="text-[10.5px] text-gray-600">{m.loc}{m.jobs !== '—' ? ` · ${m.jobs} jobs` : ''}</div>
+              </div>
+              <span className="text-[13px] font-bold text-sky-300 shrink-0 tabular-nums">{m.val}</span>
+            </div>
+          ))}
+        </div>
+        <p className="text-[10.5px] text-gray-600 mt-2">Source: investingintamilnadu.com (Guidance Tamil Nadu) + official MoU announcements.</p>
+      </section>
 
       {/* Contrast: the manufactured TVK investment-win fakes */}
       <section className="rounded-lg border border-rose-900/40 bg-rose-950/12 p-5">
@@ -170,8 +207,9 @@ export default function InvestmentRecord() {
         Sources: ANI &amp; DT Next (Conversion Conclave, 12 Feb 2026; 35.11% operational, 73.5%/82.5% converted, 1,179 MoUs /
         ₹12.37 lakh cr) · TN Interim Budget 2026-27 · ThePrint (Karnataka 31% implemented; UP ~⅓ on the ground) · Policy Circle
         (Rajasthan &lt;10%) · Outlook Business &amp; National Herald (Gujarat ~68% self-claimed, disputed) · jobs created 29.63
-        lakh per EPFO. Fakes debunked by youturn.in. All government conversion/jobs figures are self-reported and not
-        independently audited.
+        lakh per EPFO. Structural strengths &amp; marquee MoUs from Guidance Tamil Nadu (investingintamilnadu.com). Fakes
+        debunked by youturn.in. All government conversion/jobs figures and the agency&rsquo;s structural superlatives are
+        self-reported and not independently audited; marquee values are committed MoU-stage, not realised.
       </p>
     </div>
   );
