@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { Factory, TrendingDown, ShieldCheck, AlertTriangle, ExternalLink } from 'lucide-react';
+import InvestmentRecord from '@/components/InvestmentRecord';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -73,15 +74,18 @@ export default function InvestmentsPage() {
     <div className="max-w-6xl mx-auto px-4 py-6">
       <div className="flex items-center gap-2 mb-1">
         <Factory size={20} className="text-orange-400" />
-        <h1 className="text-xl font-bold text-white">DMK Investment Scorecard</h1>
+        <h1 className="text-xl font-bold text-white">Investment — myths &amp; facts</h1>
       </div>
       <p className="text-gray-500 text-sm mb-5">
-        Flagship industrial commitments secured under the DMK government (2021–26).
-        We track each one&apos;s status — a &quot;loss&quot; is a commitment that
-        actually <span className="text-red-400">shifts away</span> or is{' '}
-        <span className="text-red-400">cancelled</span>, with a source. A stall is a
-        <span className="text-amber-400"> watch</span>, not a loss.
+        Everything on Tamil Nadu&rsquo;s investment record in one place: the live scorecard of flagship MoUs and their real
+        status, the honest conversion record vs other states, and the myths — manufactured &ldquo;TVK wins&rdquo; and the
+        &ldquo;companies fled TN&rdquo; claim — fact-checked. Government figures are flagged self-reported; where another side
+        has a point, we say so.
       </p>
+
+      <h2 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+        <ShieldCheck size={15} className="text-emerald-400" /> DMK Investment Scorecard — tracked flagships &amp; their status
+      </h2>
 
       {sc && (
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 mb-6">
@@ -190,6 +194,12 @@ export default function InvestmentsPage() {
         see the built-vs-MoU split above. The weekly watcher flags any tracked company that appears in a
         shift/stall/cancel story for review before its status changes.
       </p>
+
+      {/* The myths & facts narrative — Conversion Conclave record, cross-state
+          conversion, structural strengths, marquee MoUs, the "25 companies fled"
+          myth-check, and the manufactured "TVK win" fakes. Moved here from the
+          Dravidian Model tab so all investment content lives in one place. */}
+      <InvestmentRecord />
     </div>
   );
 }

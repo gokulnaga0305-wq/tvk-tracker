@@ -11,7 +11,7 @@
  * Outlook/National Herald (Gujarat ~68% self-claimed, disputed). Fakes:
  * youturn.in. Every government figure is flagged self-reported / unaudited.
  */
-import { Building2, CheckCircle2, AlertTriangle, XCircle, ExternalLink, TrendingUp, Factory } from 'lucide-react';
+import { Building2, CheckCircle2, AlertTriangle, XCircle, ExternalLink, TrendingUp, Factory, Scale } from 'lucide-react';
 
 // Cross-state MoU conversion. NOTE: the bars are NOT a like-for-like ranking —
 // each state reports a different stage (TN 'operational' is a tougher bar than
@@ -169,6 +169,37 @@ export default function InvestmentRecord() {
           ))}
         </div>
         <p className="text-[10.5px] text-gray-600 mt-2">Source: investingintamilnadu.com (Guidance Tamil Nadu) + official MoU announcements.</p>
+      </section>
+
+      {/* Myth-check: "25 companies fled Tamil Nadu under DMK" */}
+      <section className="rounded-lg border border-violet-900/40 bg-violet-950/12 p-5">
+        <div className="flex items-center gap-2 text-sm font-semibold text-white mb-1">
+          <Scale size={15} className="text-violet-400" /> Myth-check: &ldquo;25 companies fled Tamil Nadu under DMK&rdquo;
+        </div>
+        <p className="text-[12px] text-gray-500 mb-3">
+          TVK Industries Minister S. Keerthana claimed (Assembly, 22 Jun 2026) that <span className="text-gray-300">25 projects
+          worth ₹3.3 lakh cr / ~2 lakh jobs</span> left TN under DMK — naming Tata semiconductor &amp; Micron &amp; Suzuki → Gujarat,
+          Toyota → Maharashtra, JSW → Odisha.
+        </p>
+        <div className="space-y-2">
+          <div className="rounded-md border border-[#262626] bg-[#141414] px-3 py-2.5">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-violet-900/60 text-violet-200">THE CLAIM</span>
+            <span className="text-[12.5px] text-gray-300 ml-2">25 projects / ₹3.3 L cr / ~2 L jobs &ldquo;left&rdquo; TN because of the DMK government.</span>
+          </div>
+          <div className="rounded-md border border-emerald-900/40 bg-emerald-950/12 px-3 py-2.5">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-900/60 text-emerald-200">THE FACT</span>
+            <span className="text-[12.5px] text-gray-300 ml-2">Most were <span className="text-gray-200">central / other-state decisions, not TN failures.</span> Tata&rsquo;s fab went to Dholera on the <span className="text-gray-200">Union Semiconductor Mission</span> (Centre funds 50%) + Gujarat&rsquo;s policy — cleared by the Union Cabinet Feb 2024, TN never the frontrunner. Micron &amp; Suzuki were the same central-PLI / existing-Gujarat-cluster choices, committed years before any TN govt change.</span>
+          </div>
+          <div className="rounded-md border border-amber-900/40 bg-amber-950/12 px-3 py-2.5">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-900/60 text-amber-200">HONEST CAVEAT</span>
+            <span className="text-[12.5px] text-gray-300 ml-2">Not zero TN responsibility — a <span className="text-gray-200">~₹15–18k cr shipbuilding/DRDO project went to Andhra</span> after TN land-allocation delays. The blanket &ldquo;all 25 fled because of DMK&rdquo; is unsubstantiated; a few individual cases raise fair questions about TN execution.</span>
+          </div>
+          <div className="rounded-md border border-sky-900/40 bg-sky-950/12 px-3 py-2.5">
+            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-sky-900/60 text-sky-200">MEANWHILE</span>
+            <span className="text-[12.5px] text-gray-300 ml-2">TN is still landing investment in 2026 — Lubrizol/Polyhose medical-tubing (Chennai), Vingroup, HD Hyundai&rsquo;s ₹38,000 cr shipyard interest, and a top-3 FDI rank.</span>
+          </div>
+        </div>
+        <p className="text-[10px] text-gray-600 mt-2">Sources: TN Assembly coverage (22 Jun 2026); Tata / PIB (Dholera fab, Union Cabinet Feb 2024); The Federal (TN-exodus timeline check); Business Standard (HD Hyundai).</p>
       </section>
 
       {/* Contrast: the manufactured TVK investment-win fakes */}

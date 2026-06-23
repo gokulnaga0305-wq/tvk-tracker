@@ -20,7 +20,7 @@ export const STRINGS = {
   "nav.credit_steals":{ en: "Credit Steals",    ta: "திருட்டு சாதனைகள்" },
   "nav.districts":    { en: "District Mood",    ta: "மாவட்ட மனநிலை" },
   "nav.dmk_timeline": { en: "DMK 2021-2026",    ta: "திமுக 2021-2026" },
-  "nav.investments":  { en: "Investments",      ta: "முதலீடுகள்" },
+  "nav.investments":  { en: "Investment Myths & Facts", ta: "முதலீடு: உண்மை & பொய்" },
   "nav.power":        { en: "Power / EB",       ta: "மின்சாரம்" },
   "nav.tasmac":       { en: "TASMAC Truth",     ta: "டாஸ்மாக் உண்மை" },
   "nav.white_paper":  { en: "White Paper Debunk", ta: "வெள்ளை அறிக்கை மறுப்பு" },
