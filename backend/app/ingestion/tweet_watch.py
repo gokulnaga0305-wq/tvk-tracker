@@ -38,7 +38,7 @@ NITTER_INSTANCES = [
 ]
 
 # Handles to watch. Keep tight — these are high-signal DMK-defense / fact accounts.
-WATCHLIST = ["saysatheesh", "dstock_insights"]
+WATCHLIST = ["saysatheesh", "dstock_insights", "ImPrinze"]
 
 # Credit-steal / fact-check signals (Tamil + English). Substring match, case-
 # insensitive. Over-flagging is fine — a human reviews; missing one is worse.
@@ -46,6 +46,8 @@ _SIGNALS = [
     # credit-steal framing
     "சாதனை", "கடந்த ஆட்சி", "முந்தைய அரசு", "புதிய ஆட்சி", "முடிந்து", "முடிஞ்ச",
     "sticker", "ஸ்டிக்கர்", "திருட்", "credit", "கிரெடிட்", "முதல்முதலா", "முதன்முதலா",
+    # DMK-scheme credit-steal / debunk signals (old scheme falsely claimed as new)
+    "கலைஞர்", "தொடங்கப்பட்ட", "தொடங்கிய", "பொய்", "ஏற்கனவே", "கலைஞரின்",
     # fact-check framing
     "உண்மை", "வதந்தி", "தவறான", "தவறாக", "fake", "false", "fact", "debunk", "actually",
     # investment / MoU / infra
