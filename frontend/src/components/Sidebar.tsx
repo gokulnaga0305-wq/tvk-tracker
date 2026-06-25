@@ -11,25 +11,35 @@ import clsx from 'clsx';
 import { useLocale } from './LocaleProvider';
 import { StringKey } from '@/lib/i18n';
 
-const NAV: { href: string; key: StringKey; icon: any }[] = [
-  { href: '/',              key: 'nav.dashboard',     icon: LayoutDashboard },
-  { href: '/incidents',     key: 'nav.incidents',     icon: AlertTriangle },
-  { href: '/credit-steals', key: 'nav.credit_steals', icon: Copy },
-  { href: '/districts',     key: 'nav.districts',     icon: MapPin },
-  { href: '/receipts',      key: 'nav.receipts',      icon: ScrollText },
-  { href: '/dmk-timeline',  key: 'nav.dmk_timeline',  icon: Database },
-  { href: '/investments',   key: 'nav.investments',   icon: Factory },
-  { href: '/power',         key: 'nav.power',         icon: Zap },
-  { href: '/tasmac',        key: 'nav.tasmac',        icon: Wine },
-  { href: '/white-paper',   key: 'nav.white_paper',   icon: ScrollText },
-  { href: '/finance-scorecard', key: 'nav.finance_scorecard', icon: Scale },
-  { href: '/dravidian-model', key: 'nav.dravidian_model', icon: HandHeart },
-  { href: '/drug-myth',     key: 'nav.drug_myth',     icon: Pill },
-  { href: '/studio',        key: 'nav.studio',        icon: Megaphone },
-  { href: '/promises',      key: 'nav.promises',      icon: CheckSquare },
-  { href: '/methodology',   key: 'nav.methodology',   icon: ShieldCheck },
-  { href: '/data-health',   key: 'nav.data_health',   icon: Activity },
-  { href: '/about',         key: 'nav.about',         icon: Info },
+// Grouped into sections so a first-time visitor can orient instantly instead of
+// scanning 18 flat links. Order within groups = rough importance.
+const NAV: { section: StringKey; items: { href: string; key: StringKey; icon: any }[] }[] = [
+  { section: 'nav.sec.overview', items: [
+    { href: '/',              key: 'nav.dashboard',     icon: LayoutDashboard },
+  ]},
+  { section: 'nav.sec.govt', items: [
+    { href: '/incidents',     key: 'nav.incidents',     icon: AlertTriangle },
+    { href: '/credit-steals', key: 'nav.credit_steals', icon: Copy },
+    { href: '/promises',      key: 'nav.promises',      icon: CheckSquare },
+    { href: '/power',         key: 'nav.power',         icon: Zap },
+    { href: '/tasmac',        key: 'nav.tasmac',        icon: Wine },
+    { href: '/districts',     key: 'nav.districts',     icon: MapPin },
+  ]},
+  { section: 'nav.sec.myths', items: [
+    { href: '/dravidian-model', key: 'nav.dravidian_model', icon: HandHeart },
+    { href: '/investments',   key: 'nav.investments',   icon: Factory },
+    { href: '/drug-myth',     key: 'nav.drug_myth',     icon: Pill },
+    { href: '/white-paper',   key: 'nav.white_paper',   icon: ScrollText },
+    { href: '/finance-scorecard', key: 'nav.finance_scorecard', icon: Scale },
+    { href: '/dmk-timeline',  key: 'nav.dmk_timeline',  icon: Database },
+    { href: '/receipts',      key: 'nav.receipts',      icon: ScrollText },
+  ]},
+  { section: 'nav.sec.about', items: [
+    { href: '/studio',        key: 'nav.studio',        icon: Megaphone },
+    { href: '/methodology',   key: 'nav.methodology',   icon: ShieldCheck },
+    { href: '/data-health',   key: 'nav.data_health',   icon: Activity },
+    { href: '/about',         key: 'nav.about',         icon: Info },
+  ]},
 ];
 
 export default function Sidebar() {
@@ -64,25 +74,32 @@ export default function Sidebar() {
           <X size={18} />
         </button>
       </div>
-      <nav className="flex-1 py-3 overflow-y-auto">
-        {NAV.map(({ href, key, icon: Icon }) => {
-          const active = pathname === href || (href !== '/' && pathname.startsWith(href));
-          return (
-            <Link
-              key={href}
-              href={href}
-              className={clsx(
-                'flex items-center gap-3 px-4 py-2.5 text-sm transition-colors',
-                active
-                  ? 'bg-[#1e1e1e] text-white font-medium border-r-2 border-orange-500'
-                  : 'text-gray-400 hover:text-white hover:bg-[#1a1a1a]'
-              )}
-            >
-              <Icon size={16} />
-              {t(key)}
-            </Link>
-          );
-        })}
+      <nav className="flex-1 py-2 overflow-y-auto">
+        {NAV.map((group) => (
+          <div key={group.section} className="mb-1">
+            <div className="px-4 pt-3 pb-1 text-[10px] uppercase tracking-wider text-gray-600 font-semibold">
+              {t(group.section)}
+            </div>
+            {group.items.map(({ href, key, icon: Icon }) => {
+              const active = pathname === href || (href !== '/' && pathname.startsWith(href));
+              return (
+                <Link
+                  key={href}
+                  href={href}
+                  className={clsx(
+                    'flex items-center gap-3 px-4 py-2 text-sm transition-colors',
+                    active
+                      ? 'bg-[#1e1e1e] text-white font-medium border-r-2 border-orange-500'
+                      : 'text-gray-400 hover:text-white hover:bg-[#1a1a1a]'
+                  )}
+                >
+                  <Icon size={16} />
+                  {t(key)}
+                </Link>
+              );
+            })}
+          </div>
+        ))}
       </nav>
       <div className="px-4 py-3 border-t border-[#222] text-[11px] text-gray-600">
         {t('common.tracking_since')}
