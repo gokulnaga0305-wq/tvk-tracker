@@ -24,6 +24,18 @@ const USE_BARS = [
 ];
 const MAXV = 9;
 
+// Charas/ganja current use, % (Govt of India 2019 survey). Ganja is what the
+// "drug state" claim is really about — and TN is among the LOWEST.
+const GANJA_BARS = [
+  { s: 'Sikkim', v: 7.5 },
+  { s: 'Nagaland', v: 4.7 },
+  { s: 'Delhi', v: 3.8 },
+  { s: 'Uttar Pradesh', v: 3.2 },
+  { s: 'India (average)', v: 1.2, avg: true },
+  { s: 'Tamil Nadu', v: 0.1, tn: true },
+];
+const MAXG = 8;
+
 export default function DrugStateMyth() {
   return (
     <div className="max-w-4xl mx-auto px-4 py-6 space-y-5">
@@ -110,6 +122,29 @@ export default function DrugStateMyth() {
         <p className="text-[12.5px] text-gray-400 mt-3 leading-relaxed">
           Tamil Nadu (<span className="text-emerald-300 font-semibold">0.37%</span>) is <span className="text-white">far below</span> the
           national average (1.17%). The real high-use places are Delhi, the North-East and Punjab — <span className="text-white">not TN</span>.
+        </p>
+      </section>
+
+      {/* PROOF 1b — ganja, the drug the narrative is really about */}
+      <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
+        <h2 className="text-[14px] font-semibold text-white mb-1">And ganja — the drug the &ldquo;drug state&rdquo; claim is really about?</h2>
+        <p className="text-[12px] text-gray-500 mb-4">Charas/ganja current use, % (same Govt of India survey). Tamil Nadu is near the very bottom.</p>
+        <div className="space-y-2">
+          {GANJA_BARS.map((b) => (
+            <div key={b.s} className="flex items-center gap-2">
+              <div className={`w-32 sm:w-40 shrink-0 text-[12px] text-right ${b.tn ? 'text-emerald-300 font-semibold' : b.avg ? 'text-gray-300' : 'text-gray-400'}`}>{b.s}</div>
+              <div className="flex-1 h-5 rounded bg-[#111] overflow-hidden">
+                <div className={`h-full rounded ${b.tn ? 'bg-emerald-500' : b.avg ? 'bg-gray-500' : 'bg-rose-500/70'}`}
+                     style={{ width: `${Math.max((b.v / MAXG) * 100, 2)}%` }} />
+              </div>
+              <div className={`w-12 shrink-0 text-[12px] tabular-nums ${b.tn ? 'text-emerald-300 font-semibold' : 'text-gray-400'}`}>{b.v}%</div>
+            </div>
+          ))}
+        </div>
+        <p className="text-[12.5px] text-gray-400 mt-3 leading-relaxed">
+          Tamil Nadu&rsquo;s ganja use is <span className="text-emerald-300 font-semibold">0.1%</span> — about
+          <span className="text-white"> a twelfth</span> of the national average (1.2%) and tied for the lowest in India. Sikkim
+          (7.5%), Nagaland and Delhi are the real ganja states.
         </p>
       </section>
 
@@ -222,10 +257,11 @@ export default function DrugStateMyth() {
           <p className="text-[12.5px] text-gray-300 leading-relaxed">
             <span className="text-amber-200 font-semibold">Being honest — TN is not drug-free.</span> The synthetic-pill problem is
             real and rising: <span className="text-white">1 in 3</span> people caught peddling them in Chennai are <span className="text-white">under 25</span>,
-            and police even busted a <span className="text-white">student-run meth lab</span>. The point isn&rsquo;t that there&rsquo;s zero
-            problem — it&rsquo;s that TN <span className="text-white">uses less than most states</span>, the drugs mostly
-            <span className="text-white"> pass through</span> rather than grow here, and the government <span className="text-white">cracked
-            down hard</span>.
+            and police even busted a <span className="text-white">student-run meth lab</span>. And we&rsquo;re not cherry-picking:
+            on <span className="text-white">alcohol</span> TN sits around the national average (~28% vs India ~27%) — not low. The
+            point isn&rsquo;t that there&rsquo;s zero problem — it&rsquo;s that on <span className="text-white">narcotics</span> TN
+            uses less than most states, the drugs mostly <span className="text-white">pass through</span> rather than grow here,
+            and the government <span className="text-white">cracked down hard</span>.
           </p>
         </div>
       </section>
