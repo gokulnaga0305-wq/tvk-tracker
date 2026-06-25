@@ -146,6 +146,57 @@ export default function DrugStateMyth() {
         </p>
       </section>
 
+      {/* TN'S OWN NUMBERS — closer look */}
+      <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
+        <h2 className="text-[14px] font-semibold text-white mb-1">A closer look — Tamil Nadu&rsquo;s own numbers</h2>
+        <p className="text-[12px] text-gray-500 mb-4">Not just &ldquo;TN vs other states&rdquo; — here&rsquo;s what TN&rsquo;s own police data shows.</p>
+
+        {/* 1. shifting, not flooding */}
+        <div className="rounded-md border border-[#262626] bg-[#141414] p-4 mb-3">
+          <div className="text-[13px] font-semibold text-gray-200 mb-3">1. The problem is <span className="text-white">shifting</span>, not flooding</div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <div>
+              <div className="flex items-center gap-1.5 text-[12px] text-emerald-300 mb-2"><TrendingDown size={14} /> Old ganja — going DOWN</div>
+              <div className="flex items-end gap-3 h-20">
+                {[{ y: '2022', v: 28383 }, { y: '2023', v: 23364 }, { y: '2024', v: 21424 }].map((g) => (
+                  <div key={g.y} className="flex-1 flex flex-col items-center justify-end h-full">
+                    <span className="text-[10px] text-gray-400">{(g.v / 1000).toFixed(1)}k</span>
+                    <div className="w-full rounded-t bg-emerald-600/60" style={{ height: `${(g.v / 28383) * 100}%` }} />
+                    <span className="text-[10px] text-gray-600 mt-0.5">{g.y}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[10.5px] text-gray-600 mt-1">ganja seized (kg/year)</div>
+            </div>
+            <div className="flex flex-col justify-center">
+              <div className="flex items-center gap-1.5 text-[12px] text-rose-300 mb-1"><TrendingUp size={14} /> New synthetic pills — going UP</div>
+              <div className="text-3xl font-bold text-rose-300">+255%</div>
+              <div className="text-[11px] text-gray-500">narcotic tablets seized, jump in 2024</div>
+            </div>
+          </div>
+          <p className="text-[12px] text-gray-400 mt-3">Old-style ganja is <span className="text-emerald-300">falling</span>; new <span className="text-rose-300">synthetic &ldquo;party pills&rdquo;</span> among youth are the real, rising worry.</p>
+        </div>
+
+        {/* 2. doesn't grow it — transit */}
+        <div className="rounded-md border border-[#262626] bg-[#141414] p-4 mb-3">
+          <div className="text-[13px] font-semibold text-gray-200 mb-2">2. Tamil Nadu doesn&rsquo;t <span className="text-white">grow</span> it</div>
+          <div className="flex flex-wrap items-center gap-2 text-[12px]">
+            <span className="rounded bg-rose-950/40 border border-rose-900/40 text-rose-200 px-2 py-1">Grown in Andhra &amp; Odisha</span>
+            <ArrowRight size={14} className="text-gray-600" />
+            <span className="rounded bg-amber-950/40 border border-amber-900/40 text-amber-200 px-2 py-1">Passes THROUGH Tamil Nadu</span>
+            <ArrowRight size={14} className="text-gray-600" />
+            <span className="rounded bg-[#222] border border-[#333] text-gray-300 px-2 py-1">Coast → Sri Lanka</span>
+          </div>
+          <p className="text-[12px] text-gray-400 mt-2">TN&rsquo;s own ganja cultivation is <span className="text-white">zero</span> (state police). It&rsquo;s a <span className="text-white">transit route, not a source</span> — in one year Odisha seized ~1.7 lakh kg and Andhra ~1.4 lakh kg, vs TN&rsquo;s far smaller ~5,300 kg.</p>
+        </div>
+
+        {/* 3. concentrated */}
+        <div className="rounded-md border border-[#262626] bg-[#141414] p-4">
+          <div className="text-[13px] font-semibold text-gray-200 mb-1">3. It&rsquo;s <span className="text-white">concentrated</span>, not everywhere</div>
+          <p className="text-[12px] text-gray-400">Cases cluster at <span className="text-gray-200">coastal smuggling points</span> (Ramanathapuram → Sri Lanka) and a few <span className="text-gray-200">college belts</span> (Coimbatore, Chennai) — not spread evenly across the state. Seizures show where <span className="text-white">police focus</span>, not where everyone uses.</p>
+        </div>
+      </section>
+
       {/* WHAT DMK DID */}
       <section className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-5">
         <h2 className="text-[14px] font-semibold text-white mb-3">What the government actually did about drugs</h2>
@@ -169,10 +220,12 @@ export default function DrugStateMyth() {
         <div className="flex items-start gap-2">
           <AlertTriangle size={16} className="text-amber-400 shrink-0 mt-0.5" />
           <p className="text-[12.5px] text-gray-300 leading-relaxed">
-            <span className="text-amber-200 font-semibold">Being honest — TN is not drug-free.</span> Synthetic &ldquo;party&rdquo; pills
-            among youth are a real and rising worry, ganja still flows in from Andhra &amp; Odisha, and there have been genuine
-            tragedies. The point isn&rsquo;t that there&rsquo;s zero problem — it&rsquo;s that TN <span className="text-white">uses
-            less than most states</span> and the government <span className="text-white">cracked down hard</span>.
+            <span className="text-amber-200 font-semibold">Being honest — TN is not drug-free.</span> The synthetic-pill problem is
+            real and rising: <span className="text-white">1 in 3</span> people caught peddling them in Chennai are <span className="text-white">under 25</span>,
+            and police even busted a <span className="text-white">student-run meth lab</span>. The point isn&rsquo;t that there&rsquo;s zero
+            problem — it&rsquo;s that TN <span className="text-white">uses less than most states</span>, the drugs mostly
+            <span className="text-white"> pass through</span> rather than grow here, and the government <span className="text-white">cracked
+            down hard</span>.
           </p>
         </div>
       </section>
@@ -189,9 +242,11 @@ export default function DrugStateMyth() {
 
       <p className="text-[10px] text-gray-600 leading-relaxed">
         Sources: National Survey on Extent &amp; Pattern of Substance Use in India, 2019 — AIIMS-NDDTC / Ministry of Social Justice
-        &amp; Empowerment (use/prevalence figures) · NCRB &amp; Tamil Nadu police NDPS case/seizure data (enforcement) · The South
-        First. &ldquo;Use&rdquo; figures are the government&rsquo;s own survey; enforcement figures reflect policing, not prevalence.
-        TN is not drug-free — synthetic-drug use among youth is a genuine, rising concern.
+        &amp; Empowerment (use/prevalence figures) · Tamil Nadu Enforcement Bureau-CID / NIB-CID &amp; Greater Chennai Police
+        NDPS data, via The Federal, Outlook, The South First, DT Next (year-by-year cases/seizures, ANIU); YouTurn fact-check
+        (Odisha/Andhra vs TN ganja). &ldquo;Use&rdquo; figures are the government&rsquo;s own survey; all case/seizure figures are
+        ENFORCEMENT (policing), not prevalence, and TN&rsquo;s 2023–24 NCRB tables are unpublished, so recent state figures are
+        police briefings. TN is not drug-free — synthetic-drug use among youth is a genuine, rising concern.
       </p>
     </div>
   );
