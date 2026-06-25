@@ -99,6 +99,34 @@ const TOPICS: Topic[] = [
     sourceLine: 'Sources: company releases · PRS · GIM 2024 official list',
     tab: '/investments', pack: 'investments-briefing.md',
   },
+  {
+    key: 'drugstate', label: 'Drug-State Myth', badge: 'MYTH CHECK', accent: '#1d9e75',
+    headline: 'Is Tamil Nadu a “drug state”?',
+    verdict: 'NO — TN is HIGH on catching drugs, LOW on using them.',
+    points: [
+      'Catching drugs ≠ using drugs. More seizures means more policing, not more users.',
+      'Govt of India’s 2019 survey: TN child drug use 0.37% vs India 1.17% — among the LOWEST; not in the top-10 for injecting drugs.',
+      'Under DMK: arrests ROSE (14,394→17,903) while ganja seized FELL (28,383→21,424 kg) — the signature of more enforcement, not more drugs.',
+      'TN grows zero ganja — it’s a transit route from Andhra/Odisha. Honest bit: synthetic “party pills” among youth are a real, rising worry.',
+    ],
+    caption: 'Myth: “Tamil Nadu is a drug state.” The Govt of India’s OWN survey says the opposite — TN is among the LOWEST states for actual drug use (child use 0.37% vs India 1.17%; not in the top-10 for injecting drugs). TN ranks high only on ENFORCEMENT — and under DMK, arrests rose while drugs seized FELL = more policing, not more drugs.\n\nFull breakdown 👇\nhttps://tvkfiles.vercel.app/drug-myth\n#TamilNadu #FactCheck #DrugState',
+    sourceLine: 'Sources: National Survey on Substance Use 2019 (AIIMS / Min. of Social Justice) · NCRB · The South First',
+    tab: '/drug-myth', pack: 'drug-state-briefing.md',
+  },
+  {
+    key: 'dravidian', label: 'Dravidian Model', badge: 'MYTH CHECK', accent: '#e8833a',
+    headline: 'Did the “Dravidian model” ruin Tamil Nadu?',
+    verdict: 'NO — TN leads India on the outcomes that matter.',
+    points: [
+      '2nd-largest economy; per-capita income ~1.7× the national average; poverty ~2–4% vs India ~11%.',
+      'Lower infant mortality, higher literacy, lower crimes-against-women rate than the big northern states.',
+      'TN invested in PEOPLE first — schooling, mid-day meals, health, social justice — and that built the growth.',
+      'Honest: Kerala leads on some health metrics, Karnataka edges per-capita income. TN’s edge is BREADTH — not one mega-city.',
+    ],
+    caption: 'Myth: “Dravidian politics ruined Tamil Nadu — it’s all freebies.” The data says the opposite: TN is the 2nd-largest economy, per-capita income ~1.7× the national average, poverty among India’s lowest, and human-development indicators ahead of the big northern states. Welfare wasn’t the cost — it was the engine.\n\nTN vs other states 👇\nhttps://tvkfiles.vercel.app/dravidian-model\n#TamilNadu #DravidianModel',
+    sourceLine: 'Sources: RBI · NFHS · Census · NITI Aayog · AISHE',
+    tab: '/dravidian-model', pack: 'dravidian-model-briefing.md',
+  },
 ];
 
 /** The 1080×1080 card that gets rasterised. */

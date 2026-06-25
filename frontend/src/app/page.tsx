@@ -109,6 +109,29 @@ export default function DashboardPage() {
           )}
         </div>
 
+        {/* Start here — a 10-second orientation for a first-time visitor. */}
+        <div className="mb-5 rounded-lg border border-[#262833] bg-[#15161c] p-4">
+          <div className="text-[13px] font-semibold text-white mb-1.5">New here? Here&rsquo;s what this is.</div>
+          <p className="text-[12.5px] text-gray-400 leading-relaxed mb-3">
+            We track the Tamil Nadu government with <span className="text-gray-200">receipts</span> — and fact-check the myths
+            used to attack the previous one. Every figure is sourced; where the other side has a point, we say so. Three places to start:
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {[
+              { href: '/credit-steals', t: 'What the govt is doing', s: 'Credit-steals & incidents' },
+              { href: '/drug-myth', t: 'Bust the big myths', s: 'Drug-state · Investment · Dravidian' },
+              { href: '/methodology', t: 'How we verify', s: 'Sources & method' },
+            ].map((c, i) => (
+              <a key={c.href} href={c.href}
+                 className="rounded-md border border-[#2a2a2a] bg-[#1a1a1a] hover:border-orange-700/50 hover:bg-[#1d1d1d] transition-colors px-3 py-2.5">
+                <div className="text-[11px] text-gray-600">{i + 1}</div>
+                <div className="text-[12.5px] font-medium text-gray-200">{c.t}</div>
+                <div className="text-[11px] text-orange-400/90">{c.s} →</div>
+              </a>
+            ))}
+          </div>
+        </div>
+
         {/* Incumbency meter — realtime, evidence-weighted accountability gauge.
             Placed above the trust banner so it's the first visual the user
             sees after the header. Self-fetches + 5-min polls — never blocks

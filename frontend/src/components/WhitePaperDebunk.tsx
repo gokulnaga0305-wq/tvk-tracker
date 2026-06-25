@@ -93,6 +93,17 @@ export default function WhitePaperDebunk() {
   const maxSD = Math.max(...STATE_DEBT.map(s => s.v));
   return (
     <div className="space-y-5">
+      {/* TL;DR — plain-language, for anyone in a hurry */}
+      <section className="rounded-lg border border-sky-800/40 bg-sky-950/15 p-4">
+        <div className="text-[11px] uppercase tracking-wider text-sky-300/80 font-semibold mb-1">In one line</div>
+        <p className="text-[14px] text-gray-100 leading-relaxed">
+          Yes, TN&rsquo;s debt doubled to ~₹10 lakh crore — <span className="text-white font-semibold">but the economy doubled
+          too</span> (₹17 → ₹36 lakh cr), so the debt <span className="text-white">ratio actually held</span> (29% → 28%) and stays
+          within the legal limit. A bigger household with double the income can carry a bigger loan. The scary headline number hides
+          the steady ratio — and that much of the debt was <span className="text-white">inherited</span>.
+        </p>
+      </section>
+
       {/* Hero */}
       <section className="rounded-lg border border-amber-900/40 bg-amber-950/15 p-5">
         <div className="flex items-center gap-2 mb-2">
