@@ -38,7 +38,7 @@ NITTER_INSTANCES = [
 ]
 
 # Handles to watch. Keep tight — these are high-signal DMK-defense / fact accounts.
-WATCHLIST = ["saysatheesh", "dstock_insights", "ImPrinze"]
+WATCHLIST = ["saysatheesh", "dstock_insights", "ImPrinze", "rajeshk41"]
 
 # Credit-steal / fact-check signals (Tamil + English). Substring match, case-
 # insensitive. Over-flagging is fine — a human reviews; missing one is worse.
