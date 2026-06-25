@@ -26,6 +26,7 @@ export const STRINGS = {
   "nav.white_paper":  { en: "White Paper Debunk", ta: "வெள்ளை அறிக்கை மறுப்பு" },
   "nav.finance_scorecard": { en: "2021 vs 2026", ta: "2021 vs 2026" },
   "nav.dravidian_model": { en: "Dravidian Model", ta: "திராவிட மாடல்" },
+  "nav.drug_myth":    { en: "Drug-State Myth",  ta: "போதை மாநில பொய்" },
   "nav.studio":       { en: "Share Studio",     ta: "பகிர் ஸ்டுடியோ" },
   "nav.receipts":     { en: "Receipts",          ta: "ஆதாரங்கள்" },
   "nav.promises":     { en: "Promises",         ta: "வாக்குறுதிகள்" },
