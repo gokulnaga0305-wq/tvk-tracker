@@ -17,7 +17,7 @@ Deterministic mapping:
   - favoring        ← party_tags.name (Tamil/English) or tokens in the slug
   - propaganda_type ← keyword heuristic on the slug (best-effort; default 'other')
   - debunk_reach_estimate ← YouTurn article views (how far the correction travelled)
-  - status='debunked', debunk_source='YouTurn', debunk_url=https://youturn.in/<slug>
+  - status='debunked', debunk_source='YouTurn', debunk_url=https://youturn.in/factcheck/<slug>
 
 Scope: only items we can tie to a Tamil-Nadu party (TVK/DMK/AIADMK/…) are
 imported; generic/national fakes with no TN-party signal are skipped.
@@ -187,7 +187,10 @@ def ingest_youturn(days_back: int = 7, page_limit: int = 30,
             slug = it.get("perma_link") or ""
             if not slug:
                 continue
-            url = f"https://youturn.in/{slug}"
+            # YouTurn's SPA routes a fact-check at /factcheck/<perma_link>
+            # (SINGLE_FACT_CHECK route). A bare /<slug> falls through to the
+            # app's catch-all 404, so the prefix is required for the link to work.
+            url = f"https://youturn.in/factcheck/{slug}"
             if url in seen:
                 counts["dup"] += 1
                 continue

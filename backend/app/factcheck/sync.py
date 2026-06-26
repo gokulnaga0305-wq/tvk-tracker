@@ -70,7 +70,19 @@ def _conf_for_tier(tier: int, fallback) -> float:
 
 def _row_from_propaganda(pe: dict) -> dict:
     urls = pe.get("source_urls") or []
-    tier = _tier_for_source(pe.get("debunk_source") or "", urls)
+    src = pe.get("debunk_source") or ""
+    tier = _tier_for_source(src, urls)
+    # `notes` carries hand-written honest caveats for our curated rows, but for
+    # YouTurn auto-imports it is just ingestion metadata ("Auto-ingested from
+    # YouTurn GraphQL... Verdict=fake; views=524") — never surface that as a
+    # conceded point. These verdicts mirror YouTurn's published rating.
+    is_youturn = src.lower().startswith("youturn")
+    notes = pe.get("notes")
+    concedes = None if (is_youturn or (notes or "").startswith("Auto-ingested")) else notes
+    what_would_change = (
+        "Mirrors YouTurn's published fact-check; would change if YouTurn corrects "
+        "or retracts it." if is_youturn else None
+    )
     return {
         "claim": (pe.get("title") or "")[:500],
         "claim_summary": (pe.get("title") or "")[:200],
@@ -78,8 +90,8 @@ def _row_from_propaganda(pe: dict) -> dict:
         "evidence_tier": tier,
         "confidence": _conf_for_tier(tier, pe.get("reach_estimate") and None),
         "favoring": pe.get("favoring"),
-        "concedes": pe.get("notes"),
-        "what_would_change": None,
+        "concedes": concedes,
+        "what_would_change": what_would_change,
         "debunk_source": pe.get("debunk_source"),
         "debunk_url": pe.get("debunk_url"),
         "sources": urls,
