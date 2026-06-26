@@ -45,6 +45,17 @@ export default function EbWhitePaperDebunk() {
         nearly <span className="text-gray-200">wiped out</span> under the DMK — and the utility is now projected to turn a surplus.
       </p>
 
+      {/* The punch — the ₹24,087 cr improvement vs AIADMK (same 5-yr yardstick) */}
+      <div className="rounded-lg border border-emerald-800/50 bg-emerald-950/15 p-4 mb-3 text-center">
+        <div className="text-[12px] text-gray-400 mb-0.5">On the same 5-year yardstick, the DMK ran the power sector</div>
+        <div className="text-4xl sm:text-5xl font-black text-emerald-300 tracking-tight">₹24,087 cr</div>
+        <div className="text-[13px] text-gray-300 mt-1 max-w-xl mx-auto">
+          <span className="text-white font-semibold">less in the red</span> than the AIADMK term before it —
+          <span className="text-gray-200"> ₹34,447 cr</span> deficit (2021-26) vs <span className="text-gray-200">₹58,534 cr</span> (2016-21).
+        </div>
+        <div className="text-[11px] text-gray-500 mt-1.5">A ₹24,087 cr improvement on the same yardstick — precisely, a far smaller loss, not a profit; but the gap is real and large.</div>
+      </div>
+
       {/* THE deficit-collapse chart */}
       <div className="rounded-md border border-[#262626] bg-[#141414] p-4 mb-3">
         <div className="text-[13px] font-semibold text-gray-200 mb-1">Annual EB deficit — each government&rsquo;s final year</div>
