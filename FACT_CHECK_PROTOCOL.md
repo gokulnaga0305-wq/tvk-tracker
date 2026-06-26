@@ -74,3 +74,26 @@ at Tier 5.
 Every row records `origin` (`youturn` / `tweet_watch` / `copilot` / `propaganda_event`
 / `credit_steal` / `manual`) and `origin_id`, so each verdict traces to its source
 and the sync stays idempotent.
+
+## G. The claim ladder (which *kind* of statement is this?)
+
+Adapted from booth-level election-forensics discipline. Before publishing, name
+the rung — most bad-faith arguments work by silently promoting a lower rung to a
+higher one ("the numbers moved" → "they rigged it").
+
+| Rung | Statement | Publish as |
+|---|---|---|
+| 1 · **Observed** | Directly in the source (a GO exists, a figure in the audited report, a quote on record). | A fact. Tier 1–2. |
+| 2 · **Inferred** | A pattern the data *supports* but doesn't state (a correlation, an ecological estimate). | Only when labelled as inference — never as fact. |
+| 3 · **Causal** | "X *caused* Y." | Only with a named decision/actor + a plausible mechanism. Co-occurrence ≠ cause. |
+| 4 · **Speculation** | Plausible, motivated, unevidenced. | Never — it decides what to *investigate*, nothing more. |
+
+Two enforcing rules:
+- **Adversarial review** — argue the strongest case *against* your own conclusion
+  before it ships (this is the `what_would_change` field, used as a red-team step).
+- **Scripts compute, humans decide** — no automated score (image detector,
+  fact-check match, anomaly flag) is published as a finding on its own.
+
+Worked application: *"the 2026 result was rigged"* is rung 3–4 with no primary
+evidence in hand → **not published**. *"DMK's vote share fell most in X"* is
+rung 1 (observed) → fine. The method tells us where to stop.

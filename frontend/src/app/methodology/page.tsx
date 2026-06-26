@@ -1,4 +1,4 @@
-import { ShieldCheck, Database, Bot, Users, AlertTriangle, Copy, Image as ImageIcon, Activity } from 'lucide-react';
+import { ShieldCheck, Database, Bot, Users, AlertTriangle, Copy, Image as ImageIcon, Activity, ListChecks } from 'lucide-react';
 
 export const metadata = {
   title: 'Methodology — TVK Files',
@@ -29,6 +29,73 @@ export default function MethodologyPage() {
         <p className="text-gray-500 text-sm mt-1">
           How we collect, verify, and publish incidents. Public, auditable, and challengeable.
         </p>
+      </div>
+
+      {/* Foundational epistemic standard, adapted from booth-level election-
+          forensics methodology (the "scripts compute, humans decide" discipline
+          and the observed/inferred/causal/speculation ladder). Every claim on
+          the dashboard sits on one rung, and we label which — that is what makes
+          a debunk hard to debunk. Placed first because it governs all of the
+          mechanics below. */}
+      <div className="bg-emerald-950/20 border border-emerald-800/40 rounded-lg p-5 mb-4">
+        <h2 className="text-emerald-200 font-semibold mb-3 flex items-center gap-2">
+          <ListChecks size={16} className="text-emerald-400" />
+          First principle: the claim ladder
+        </h2>
+        <div className="text-gray-300 text-sm leading-relaxed space-y-3">
+          <p>
+            Before anything is published we ask which <em>kind</em> of statement it is.
+            Every claim sits on one of four rungs — and we say which out loud. Most
+            bad-faith arguments work by quietly promoting a lower rung to a higher one
+            (&ldquo;the numbers moved&rdquo; &rarr; &ldquo;they rigged it&rdquo;). Naming the
+            rung kills that move.
+          </p>
+          <ul className="ml-5 space-y-2">
+            <li>
+              <span className="text-green-400 font-semibold">1. Observed</span> — it is directly
+              in the source: a Government Order exists, a figure is printed in the audited report,
+              a quote is on the record. The only rung that needs no inference.{' '}
+              <span className="text-gray-500">(Evidence Tier 1&ndash;2.)</span>
+            </li>
+            <li>
+              <span className="text-sky-300 font-semibold">2. Inferred</span> — a pattern the data
+              <em> supports</em> but does not state outright (a correlation, an ecological estimate
+              of vote movement). Publishable only when labelled as inference — never as fact.
+            </li>
+            <li>
+              <span className="text-amber-300 font-semibold">3. Causal</span> — &ldquo;X{' '}
+              <em>caused</em> Y.&rdquo; Allowed only with a named decision or actor and a plausible
+              mechanism. Something merely happening under a government is not proof it caused it.
+            </li>
+            <li>
+              <span className="text-gray-400 font-semibold">4. Speculation</span> — plausible,
+              motivated, but unevidenced. Useful for deciding what to <em>investigate</em>;{' '}
+              <span className="text-gray-200">never published as a verdict.</span>
+            </li>
+          </ul>
+          <p>Two rules keep us on the ladder:</p>
+          <ul className="ml-5 list-disc space-y-1">
+            <li>
+              <strong className="text-white">Adversarial review.</strong> Before a verdict ships,
+              we argue the strongest possible case <em>against</em> our own conclusion. If it
+              survives, it publishes; if not, it is held. That is the{' '}
+              <em>what-would-change-our-mind</em> line on every fact-check.
+            </li>
+            <li>
+              <strong className="text-white">Scripts compute, humans decide.</strong> No automated
+              score — image detector, fact-check match, anomaly flag — is ever published as a
+              finding on its own. A person signs off first.
+            </li>
+          </ul>
+          <p className="text-emerald-200/80 text-xs border-t border-emerald-900/50 pt-3">
+            This is also why this dashboard does <strong>not</strong> claim the 2026 election was
+            stolen. &ldquo;The vote shifted&rdquo; is an <span className="text-green-400">observed</span>{' '}
+            fact; &ldquo;it was rigged&rdquo; is rung 3&ndash;4 with no primary evidence in hand — so
+            by our own standard it stays unpublished. We hold the winners accountable on the record;
+            we do not relitigate the result. Applying the rigorous method honestly is exactly what
+            tells us where to stop.
+          </p>
+        </div>
       </div>
 
       <Section icon={Database} title="1. Data sources">
