@@ -107,6 +107,42 @@ export default function EbWhitePaperDebunk() {
         </div>
       </div>
 
+      {/* HOW they did it — the infrastructure behind the deficit cut */}
+      <section className="rounded-md border border-[#262626] bg-[#141414] p-4 mb-3">
+        <div className="text-[13px] font-semibold text-gray-200 mb-1">How they did it — what the DMK actually built (and is building)</div>
+        <p className="text-[12px] text-gray-500 mb-3">The deficit didn&rsquo;t shrink on tariffs alone — it was backed by real investment that cuts losses and avoids expensive emergency power. (&ldquo;No development&rdquo; doesn&rsquo;t survive the white paper&rsquo;s own asset register.)</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+          <div className="rounded bg-[#0d0d0d] border border-[#222] p-3">
+            <div className="text-[11px] uppercase tracking-wide text-emerald-300/80 mb-1.5 font-semibold">Built (2021-26) — completed</div>
+            <ul className="space-y-1 text-[12px] text-gray-300 leading-snug">
+              <li>· <span className="text-white">99,573</span> distribution transformers — the most of any 5-yr block</li>
+              <li>· <span className="text-white">25,963 km</span> of HT lines — the most ever</li>
+              <li>· 122 substations + 400 power transformers</li>
+              <li>· First-ever <span className="text-white">765 kV</span> ultra-high-voltage lines (906 ckm)</li>
+              <li>· Udangudi super-critical plant (1,320 MW) + 27,000+ MW renewables</li>
+            </ul>
+          </div>
+          <div className="rounded bg-[#0d0d0d] border border-[#222] p-3">
+            <div className="text-[11px] uppercase tracking-wide text-sky-300/80 mb-1.5 font-semibold">In the pipeline (white paper&rsquo;s own figures)</div>
+            <ul className="space-y-1 text-[12px] text-gray-300 leading-snug">
+              <li>· <span className="text-white">121 substations</span> under construction — ₹9,735 cr</li>
+              <li>· 423 substations announced 2021-26 (270 yet to start)</li>
+              <li>· <span className="text-white">₹43,855 cr</span> four-year development plan</li>
+              <li>· ₹8,318 cr legacy-substation repair programme</li>
+              <li>· Met record peak demand <span className="text-white">21,307 MW</span> with 24×7 supply</li>
+            </ul>
+          </div>
+        </div>
+        <div className="rounded bg-emerald-950/15 border border-emerald-900/30 px-3 py-2">
+          <div className="text-[12px] text-gray-300 leading-relaxed">
+            <span className="text-emerald-200 font-semibold">Why this cut the deficit:</span> the extra transformers and lines
+            <span className="text-white"> reduce transmission losses</span> (less power lost = less revenue lost); switching from
+            costly spot-market power to long-term deals (LTOA/MTOA) saves <span className="text-white">~₹215 cr/month</span> in
+            summer (white paper p.9); and digitised billing lifts collection. Investment that pays for itself.
+          </div>
+        </div>
+      </section>
+
       {/* stock vs flow explainer */}
       <div className="rounded-md border border-sky-900/40 bg-sky-950/12 p-4 mb-3">
         <div className="text-[13px] font-semibold text-white mb-2">The trick: brandish the STOCK, bury the FLOW</div>
@@ -132,12 +168,14 @@ export default function EbWhitePaperDebunk() {
           <li>· The deficit cut isn&rsquo;t pure efficiency — revenue doubled partly via <span className="text-gray-200">tariff true-ups + state subsidy</span>; consumers and the budget carried some load. (Still, 99% cost recovery is what good discom management looks like.)</li>
           <li>· <span className="text-gray-200">Debt did rise</span> (₹87,399 cr borrowed 2021-26) — real; but it&rsquo;s a stock financing legacy losses, not the annual flow.</li>
           <li>· 2025-26 is a <span className="text-gray-200">Revised Estimate</span>, not audited actuals; and EB staffing (65,921 vacancies) is a genuine weakness.</li>
+          <li>· Fewer substations were <span className="text-gray-200">completed</span> (122) than the prior term (359) — but distribution transformers led, and 121+ more are mid-construction (₹9,735 cr).</li>
         </ul>
       </div>
 
       <p className="text-[10px] text-gray-600 leading-relaxed mt-2">
         Source: Energy Department White Paper, Government of Tamil Nadu, 25.06.2026 (Consolidated TNEB — 4 companies; revenue/
-        expenditure pp. 4-5 &amp; 34, debt p. 6, infrastructure p. 34, 2026-27 budget p. 36). All figures are the white paper&rsquo;s
+        expenditure pp. 4-5 &amp; 34, debt p. 6, infrastructure built pp. 15-16 &amp; 34, ongoing/pipeline pp. 21-23, procurement
+        savings p. 9, 2026-27 budget p. 36). All figures are the white paper&rsquo;s
         own. &ldquo;Deficit&rdquo; = revenue receipt − expenditure (the flow); &ldquo;debt&rdquo; = cumulative borrowings (the stock).
       </p>
     </div>
