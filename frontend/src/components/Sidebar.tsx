@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, AlertTriangle, CheckSquare,
   Info, Copy, ShieldCheck, Menu, X, Database, ScrollText,
-  MapPin, Factory, Zap, Activity, Wine, Megaphone, Scale, HandHeart, Pill,
+  MapPin, Factory, Zap, Activity, Wine, Scale, HandHeart, Pill,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useLocale } from './LocaleProvider';
@@ -35,7 +35,6 @@ const NAV: { section: StringKey; items: { href: string; key: StringKey; icon: an
     { href: '/receipts',      key: 'nav.receipts',      icon: ScrollText },
   ]},
   { section: 'nav.sec.about', items: [
-    { href: '/studio',        key: 'nav.studio',        icon: Megaphone },
     { href: '/methodology',   key: 'nav.methodology',   icon: ShieldCheck },
     { href: '/data-health',   key: 'nav.data_health',   icon: Activity },
     { href: '/about',         key: 'nav.about',         icon: Info },

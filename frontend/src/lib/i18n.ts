@@ -18,7 +18,7 @@ export const STRINGS = {
   "nav.sec.overview": { en: "Overview",          ta: "மேற்பார்வை" },
   "nav.sec.govt":     { en: "Track the Govt",    ta: "அரசைக் கண்காணி" },
   "nav.sec.myths":    { en: "Myths & the Record", ta: "பொய் & உண்மை" },
-  "nav.sec.about":    { en: "Share & About",     ta: "பகிர் & பற்றி" },
+  "nav.sec.about":    { en: "Method & About",    ta: "முறை & பற்றி" },
   "nav.dashboard":    { en: "Dashboard",        ta: "முகப்பு" },
   "nav.incidents":    { en: "Incidents",        ta: "சம்பவங்கள்" },
   "nav.credit_steals":{ en: "Credit Steals",    ta: "திருட்டு சாதனைகள்" },
