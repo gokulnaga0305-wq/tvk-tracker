@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Zap, TrendingUp, Award, CheckCircle2, AlertTriangle, Info } from 'lucide-react';
 import TangedcoTurnaround from '@/components/TangedcoTurnaround';
 import UdayPrePostCard from '@/components/UdayPrePostCard';
+import EbWhitePaperDebunk from '@/components/EbWhitePaperDebunk';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -107,6 +108,9 @@ export default function PowerPage() {
           <p className="text-[11px] text-gray-400 leading-relaxed">{d.rating.detail}</p>
         </section>
       </div>
+
+      {/* EB white paper (25 Jun 2026) debunk — the official document's own data */}
+      <EbWhitePaperDebunk />
 
       {/* TANGEDCO financial turnaround — plain-English, audited */}
       <TangedcoTurnaround />
