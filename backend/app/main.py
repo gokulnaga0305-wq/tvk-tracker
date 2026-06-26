@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config import settings
-from app.api.routes import stats, incidents, promises, members, ingest, baselines, citizen, dmk_archive, economic, defections, cron, propaganda, diagnostics, telegram, investments, power, factcheck, export
+from app.api.routes import stats, incidents, promises, members, ingest, baselines, citizen, dmk_archive, economic, defections, cron, propaganda, diagnostics, telegram, investments, power, factcheck, fact_checks, export
 import logging
 
 logging.basicConfig(level=logging.INFO)
@@ -37,6 +37,7 @@ app.include_router(telegram.router, prefix="/api")
 app.include_router(investments.router, prefix="/api")
 app.include_router(power.router, prefix="/api")
 app.include_router(factcheck.router, prefix="/api")
+app.include_router(fact_checks.router, prefix="/api")
 app.include_router(export.router, prefix="/api")
 
 
