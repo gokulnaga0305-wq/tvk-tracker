@@ -33,6 +33,9 @@ _ECI_STATE = {
         {"alliance": "SPA-DMK+",  "vote_share": 31.40, "seats": 73},
         {"alliance": "NDA-ADMK+", "vote_share": 27.21, "seats": 53},
     ],
+    # OBSERVED gender turnout — % of each gender's electors who actually voted.
+    # This is turnout (who showed up), NOT how they voted. Source: ECI / CEO TN.
+    "turnout_by_gender": {"male": 83.57, "female": 85.76, "third": 60.49},
     "source": "ECI (results.eci.gov.in), 2026 final",
 }
 

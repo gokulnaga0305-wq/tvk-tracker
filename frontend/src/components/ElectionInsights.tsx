@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
-import { Vote, ArrowRightLeft, Users, TrendingDown, Search, Code2, ExternalLink, ChevronRight } from 'lucide-react';
+import { Vote, ArrowRightLeft, Users, TrendingDown, Search, Code2, ExternalLink, ChevronRight, Info } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -25,6 +25,7 @@ interface Summary {
     turnout_pct: number; registered_electors: number;
     parties: { party: string; votes: number; vote_share: number; swing: number | null; seats: number }[];
     alliances: { alliance: string; vote_share: number; seats: number }[];
+    turnout_by_gender?: { male: number; female: number; third: number };
     source: string;
   };
   credits: { method: string; analysis_inspiration: string; results_data: string };
@@ -98,6 +99,64 @@ export default function ElectionInsights() {
         what makes the rest of this dashboard credible. Seat figures match ECI final
         (TVK 108 / DMK 59 / AIADMK 47).
       </div>
+
+      {/* What Form 20 can and can't tell you — the methodological frame */}
+      <div className="bg-emerald-950/15 border border-emerald-800/40 rounded-lg p-5 my-6">
+        <h2 className="text-emerald-200 font-semibold mb-3 flex items-center gap-2">
+          <Info size={16} className="text-emerald-400" />
+          What Form 20 can — and can&apos;t — tell you
+        </h2>
+        <div className="text-sm text-gray-300 leading-relaxed space-y-3">
+          <div className="grid sm:grid-cols-2 gap-3">
+            <div className="bg-[#101810] border border-emerald-900/40 rounded p-3">
+              <div className="text-emerald-300 text-xs font-semibold mb-1">✓ What it shows</div>
+              <p className="text-xs text-gray-400">How many votes each candidate got <b className="text-gray-200">in each polling booth</b>. That is the entire content — how a <em>place</em> voted.</p>
+            </div>
+            <div className="bg-[#181010] border border-red-900/40 rounded p-3">
+              <div className="text-red-300 text-xs font-semibold mb-1">✗ What it does NOT show</div>
+              <p className="text-xs text-gray-400">The <b className="text-gray-200">religion, caste, gender or age</b> of who voted. The ballot is secret — there is no record of how any <em>group</em> voted.</p>
+            </div>
+          </div>
+          <p className="text-xs text-gray-400">
+            So a claim like <span className="text-gray-200">&ldquo;Form 20 shows community X voted 70–95% for party Y&rdquo;</span> is{' '}
+            <b className="text-white">not what Form 20 says</b>. It&apos;s guessed from how booths in that community&apos;s
+            areas voted — the <em>ecological fallacy</em>: those booths hold everyone else too, and you can&apos;t separate
+            one group&apos;s ballots. A precise bloc figure — or a wide &ldquo;70–95%&rdquo; range stated as fact — pinned on
+            &ldquo;Form 20&rdquo; is the giveaway.
+          </p>
+          <p className="text-xs text-gray-400">
+            <b className="text-gray-200">What is fair:</b> post-poll <b className="text-gray-200">surveys</b> (CSDS-Lokniti, Axis)
+            actually interview voters and <em>do</em> estimate vote-by-community, with a margin of error. In Tamil Nadu those
+            surveys have long shown religious minorities leaning strongly to the DMK-led front — a real finding, but a
+            <em> survey</em> one, never something Form 20 can prove.
+          </p>
+          <p className="text-emerald-200/80 text-xs border-t border-emerald-900/50 pt-3">
+            <b>Our rule:</b> booth data tells you how a <em>booth</em> voted — never how a religion, gender or age-group voted.
+            We don&apos;t publish community/gender/age vote-shares as fact, and neither should anyone waving &ldquo;Form 20&rdquo;.
+            (Gender/age estimates would only ever appear here clearly labelled as modelled estimates, with their uncertainty.)
+          </p>
+        </div>
+      </div>
+
+      {/* Observed gender layer — registration + turnout, NOT vote choice */}
+      {s.eci_state.turnout_by_gender && (
+        <Section title="Who&apos;s on the rolls & who turned out (observed)">
+          <p className="text-xs text-gray-500 mb-3">
+            These are <b className="text-gray-400">observed facts</b> — registration and turnout. They do <b className="text-gray-400">not</b> tell you how women or men voted (see above).
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Stat icon={Users} label="Women in the electorate"
+              value={`${((s.electors.female / s.electors.total) * 100).toFixed(1)}%`}
+              sub={`${(s.electors.female / 1e7).toFixed(2)} cr women`} accent="text-pink-300" />
+            <Stat icon={Vote} label="Women turnout" value={`${s.eci_state.turnout_by_gender.female}%`} sub="of women electors voted" accent="text-pink-300" />
+            <Stat icon={Vote} label="Men turnout" value={`${s.eci_state.turnout_by_gender.male}%`} sub="of men electors voted" accent="text-sky-300" />
+            <Stat icon={Vote} label="Third-gender turnout" value={`${s.eci_state.turnout_by_gender.third}%`} sub="of third-gender electors" />
+          </div>
+          <p className="text-[11px] text-gray-600 mt-2">
+            Women turned out at a higher rate than men ({s.eci_state.turnout_by_gender.female}% vs {s.eci_state.turnout_by_gender.male}%) — an observed turnout gap, not a statement about which party they chose.
+          </p>
+        </Section>
+      )}
 
       {/* Hero stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-7">
