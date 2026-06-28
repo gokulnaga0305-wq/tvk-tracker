@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import {
   LayoutDashboard, AlertTriangle, CheckSquare,
   Info, Copy, ShieldCheck, Menu, X, Database, ScrollText,
-  MapPin, Factory, Zap, Activity, Wine, Scale, HandHeart, Pill, BadgeCheck,
+  MapPin, Factory, Zap, Activity, Wine, Scale, HandHeart, Pill, BadgeCheck, Vote,
 } from 'lucide-react';
 import clsx from 'clsx';
 import { useLocale } from './LocaleProvider';
@@ -25,6 +25,7 @@ const NAV: { section: StringKey; items: { href: string; key: StringKey; icon: an
   ]},
   { section: 'nav.sec.myths', items: [
     { href: '/fact-checks',   key: 'nav.fact_checks',   icon: BadgeCheck },
+    { href: '/election-insights', key: 'nav.election_insights', icon: Vote },
     { href: '/dravidian-model', key: 'nav.dravidian_model', icon: HandHeart },
     { href: '/investments',   key: 'nav.investments',   icon: Factory },
     { href: '/drug-myth',     key: 'nav.drug_myth',     icon: Pill },

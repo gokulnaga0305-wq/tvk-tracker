@@ -32,6 +32,7 @@ export const STRINGS = {
   "nav.dravidian_model": { en: "Dravidian Model", ta: "திராவிட மாடல்" },
   "nav.drug_myth":    { en: "Drug-State Myth",  ta: "போதை மாநில பொய்" },
   "nav.fact_checks":  { en: "Fact-Check Ledger", ta: "உண்மை சரிபார்ப்பு" },
+  "nav.election_insights": { en: "Election Insights", ta: "தேர்தல் பகுப்பாய்வு" },
   "nav.studio":       { en: "Share Studio",     ta: "பகிர் ஸ்டுடியோ" },
   "nav.receipts":     { en: "Receipts",          ta: "ஆதாரங்கள்" },
   "nav.promises":     { en: "Promises",         ta: "வாக்குறுதிகள்" },
