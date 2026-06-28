@@ -1,31 +1,33 @@
--- 027: candidate-level profiles for Election Insights (P1.5, OBSERVED).
+-- 027: candidate affidavit profiles (MyNeta/ADR) for Election Insights.
 --
--- 4,023 candidates across 234 ACs with party/alliance, gender, age, education,
--- declared assets and criminal-case flag (from candidate affidavits in the
--- accessible feed). Powers candidate insights: criminal-case share, women
--- winners, asset distribution, age — per AC and rolled up by district.
+-- Sourced from myneta.info/TamilNadu2026 (ADR analysis of ECI nomination
+-- affidavits): per candidate — declared criminal cases (COUNT, not a flag),
+-- assets, liabilities, education, age, party. Joined to our alliance buckets and
+-- booth votes so each AC page can show TVK / DMK+ / ADMK+ / NTK contestants with
+-- their background. NOTE: criminal cases & assets are SELF-DECLARED in the
+-- affidavit — the standard caveat applies (shown as "declared").
 
 CREATE TABLE IF NOT EXISTS election_candidates (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    ac_no       SMALLINT NOT NULL REFERENCES election_constituencies(ac_no),
-    sl_no       SMALLINT,
-    name        TEXT NOT NULL,
-    party       TEXT,
-    alliance    TEXT,                 -- spa | nda | tvk | ntk | others | independent
-    gender      TEXT,
-    age         SMALLINT,
-    education   TEXT,
-    profession  TEXT,
-    symbol      TEXT,
-    assets_text TEXT,                 -- raw declared assets, e.g. "₹7.57 Cr"
-    assets_cr   NUMERIC(12,3),        -- parsed to crore for aggregation
-    criminal    BOOLEAN DEFAULT FALSE,
-    result      TEXT,                 -- won | lost
-    UNIQUE (ac_no, sl_no, name)
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    ac_no           SMALLINT NOT NULL REFERENCES election_constituencies(ac_no),
+    name            TEXT NOT NULL,
+    party           TEXT,
+    bucket          TEXT,                 -- TVK | DMK+ | ADMK+ | NTK | OTHERS
+    age             SMALLINT,
+    education       TEXT,
+    criminal_cases  SMALLINT,             -- declared count (0,1,2,...)
+    assets_text     TEXT,                 -- "Rs 3,66,94,500 ~ 3 Cr"
+    assets_rs       BIGINT,               -- parsed to rupees for sorting
+    liabilities_rs  BIGINT,
+    myneta_id       INTEGER,              -- for the candidate's photo / detail page
+    photo_url       TEXT,
+    is_lead         BOOLEAN DEFAULT FALSE,-- the bucket's main contestant in the AC
+    result          TEXT,                 -- won | lost
+    UNIQUE (ac_no, myneta_id)
 );
 CREATE INDEX IF NOT EXISTS idx_cand_ac     ON election_candidates (ac_no);
-CREATE INDEX IF NOT EXISTS idx_cand_party  ON election_candidates (party);
-CREATE INDEX IF NOT EXISTS idx_cand_result ON election_candidates (result);
+CREATE INDEX IF NOT EXISTS idx_cand_bucket ON election_candidates (bucket);
+CREATE INDEX IF NOT EXISTS idx_cand_crime  ON election_candidates (criminal_cases DESC);
 
 ALTER TABLE election_candidates ENABLE ROW LEVEL SECURITY;
 CREATE POLICY elec_cand_read  ON election_candidates FOR SELECT USING (true);
