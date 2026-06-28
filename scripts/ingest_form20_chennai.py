@@ -119,6 +119,7 @@ def run() -> int:
         # Aggregate per booth by party (majors individual, rest -> OTHERS; NOTA separate).
         ac_party_tot: dict[str, int] = {}
         rows = []
+        bad_booths = 0
         for booth_no, vals in booths:
             pv: dict[str, int] = {}
             lead: dict[str, tuple[str, int]] = {}
@@ -131,6 +132,11 @@ def run() -> int:
             # Column ncand is the Form 20 "Total Valid Votes" column. Use it as
             # the booth total AND as an integrity check (buckets must sum to it).
             total_valid = vals[ncand] if len(vals) > ncand else sum(pv.values())
+            # Integrity: the 5 buckets must sum exactly to the official total-valid
+            # column. A mismatch means the column layout is offset (extra/missing
+            # column) and the party mapping can't be trusted.
+            if sum(pv.values()) != total_valid:
+                bad_booths += 1
             for party, v in pv.items():
                 ac_party_tot[party] = ac_party_tot.get(party, 0) + v
                 rows.append({
@@ -139,7 +145,12 @@ def run() -> int:
                     "votes": v, "total_polled": total_valid,
                 })
 
-        # VALIDATE: parsed top party == official winner.
+        # VALIDATE (two hard gates — both must pass, else skip, never load):
+        #   1. structural integrity: every booth's buckets sum to total-valid
+        #   2. parsed top bucket == official winner
+        if bad_booths:
+            skipped.append((ac_no, f"structure mismatch: {bad_booths}/{len(booths)} booths sum != total-valid (column offset)"))
+            continue
         parsed_winner = max((p for p in ac_party_tot if p not in ("OTHERS", "NOTA")),
                             key=lambda p: ac_party_tot[p], default=None)
         if parsed_winner != winners.get(ac_no):
