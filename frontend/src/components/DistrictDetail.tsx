@@ -109,13 +109,14 @@ export default function DistrictDetail({ district }: { district: string }) {
                   {winner.assets_text && <span className="text-gray-500"> · {winner.assets_text}</span>}</>}
               </div>
 
-              {/* Booth-level insight (Form 20) */}
+              {/* Booth-level insight (Form 20) — click through to the booth table */}
               {c.booth_summary && (
-                <div className="mt-2.5 pt-2.5 border-t border-[#1c1c1c]">
+                <Link href={`/election-insights/${encodeURIComponent(d.district)}/${c.ac_no}`}
+                  className="block mt-2.5 pt-2.5 border-t border-[#1c1c1c] group/booth hover:bg-[#141414] -mx-3 px-3 rounded-b-lg transition-colors">
                   <div className="flex items-center justify-between text-[10px] mb-1.5">
-                    <span className="text-gray-400 font-medium">
+                    <span className="text-gray-400 font-medium group-hover/booth:text-orange-300">
                       {c.booth_summary.total_booths} booths
-                      <span className="text-gray-600"> · Form 20</span>
+                      <span className="text-gray-600"> · Form 20 ›</span>
                     </span>
                     <span className="text-gray-600">
                       {c.booth_summary.strongholds} strongholds · {c.booth_summary.swing_booths} swing
@@ -133,7 +134,7 @@ export default function DistrictDetail({ district }: { district: string }) {
                       <span key={p}><span style={{ color: pcol(p) }}>●</span> {p} led {n}</span>
                     ))}
                   </div>
-                </div>
+                </Link>
               )}
             </div>
           );

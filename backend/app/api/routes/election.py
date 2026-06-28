@@ -129,12 +129,14 @@ async def list_constituencies():
 def _booths_for_acs(db, ac_nos: list[int]) -> dict[int, list[dict]]:
     """All booth rows grouped by ac_no (paged past 1000)."""
     out: dict[int, list[dict]] = {}
-    for i in range(0, len(ac_nos), 30):
-        chunk = ac_nos[i:i + 30]
+    # Fetch one AC at a time with a STABLE order so range-pagination can't drop
+    # or duplicate rows (PostgREST range without ORDER BY is undefined order).
+    for ac in ac_nos:
         offset = 0
         while True:
-            batch = (db.table("election_booth_results").select("*")
-                     .in_("ac_no", chunk).range(offset, offset + 999).execute().data or [])
+            batch = (db.table("election_booth_results").select("*").eq("ac_no", ac)
+                     .order("booth_no").order("party")
+                     .range(offset, offset + 999).execute().data or [])
             for r in batch:
                 out.setdefault(r["ac_no"], []).append(r)
             if len(batch) < 1000:
