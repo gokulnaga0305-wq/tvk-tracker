@@ -2,6 +2,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import { Vote, ArrowRightLeft, Users, TrendingDown, Search, Code2, ExternalLink, ChevronRight, Info } from 'lucide-react';
+import SwingView from './SwingView';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -206,6 +207,9 @@ export default function ElectionInsights() {
           })}
         </div>
       </Section>
+
+      {/* 2021 -> 2026 swing — where parties lost their holds */}
+      <SwingView />
 
       {/* District rollup — each card drills into booth/candidate detail */}
       <Section title={`Districts (${dists.length}) — click any district to drill in`}>
