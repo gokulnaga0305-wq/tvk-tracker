@@ -7,9 +7,11 @@ const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 // Party palette (kept muted to read on the dark theme).
 const PARTY: Record<string, string> = {
-  TVK: '#eab308', DMK: '#ef4444', ADMK: '#16a34a', AIADMK: '#16a34a',
-  INC: '#38bdf8', BJP: '#f97316', PMK: '#a3a3a3', VCK: '#3b82f6',
-  CPI: '#dc2626', 'CPI(M)': '#dc2626', IUML: '#22c55e', DMDK: '#facc15', AMMK: '#84cc16',
+  // 5-player buckets (used in all aggregates)
+  TVK: '#eab308', 'DMK+': '#ef4444', 'ADMK+': '#16a34a', NTK: '#fde047', OTHERS: '#6b7280', NOTA: '#52525b',
+  // individual party codes (constituency-level winner labels)
+  DMK: '#ef4444', ADMK: '#16a34a', AIADMK: '#16a34a', INC: '#38bdf8', BJP: '#f97316',
+  PMK: '#a3a3a3', VCK: '#3b82f6', CPI: '#dc2626', 'CPI(M)': '#dc2626', IUML: '#22c55e', DMDK: '#facc15', AMMK: '#84cc16',
 };
 const pcol = (p?: string | null) => (p && PARTY[p]) || '#6b7280';
 
@@ -129,17 +131,20 @@ export default function ElectionInsights() {
           first-past-the-post amplified a plurality into the largest bloc. No party crossed 118 (majority); it&apos;s a hung house.
         </p>
         <div className="space-y-2">
-          {s.eci_state.parties.map(p => (
-            <div key={p.party} className="flex items-center gap-3 text-xs">
-              <span className="w-16 text-right text-gray-300 shrink-0">{p.party}</span>
-              <div className="flex-1 flex items-center gap-2">
-                <div className="flex-1 bg-[#1a1a1a] rounded h-4 overflow-hidden">
-                  <div className="h-full" style={{ width: `${p.vote_share * 2}%`, background: pcol(p.party) }} />
+          {s.eci_state.alliances.map(a => {
+            const label = a.alliance.replace('SPA-', '').replace('NDA-', ''); // DMK+ / ADMK+ / TVK
+            return (
+              <div key={a.alliance} className="flex items-center gap-3 text-xs">
+                <span className="w-16 text-right text-gray-300 shrink-0">{label}</span>
+                <div className="flex-1 flex items-center gap-2">
+                  <div className="flex-1 bg-[#1a1a1a] rounded h-4 overflow-hidden">
+                    <div className="h-full" style={{ width: `${a.vote_share * 2}%`, background: pcol(label) }} />
+                  </div>
+                  <span className="text-gray-400 w-32 shrink-0">{a.vote_share}% votes · {a.seats} seats</span>
                 </div>
-                <span className="text-gray-400 w-32 shrink-0">{p.vote_share}% votes · {p.seats} seats</span>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </Section>
 

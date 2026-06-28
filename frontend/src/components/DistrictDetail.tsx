@@ -6,7 +6,8 @@ import { ArrowLeft, ArrowRightLeft, Scale, ShieldAlert, Users, MapPin, Clock } f
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 const PARTY: Record<string, string> = {
-  TVK: '#eab308', DMK: '#ef4444', ADMK: '#16a34a', AIADMK: '#16a34a', INC: '#38bdf8',
+  TVK: '#eab308', 'DMK+': '#ef4444', 'ADMK+': '#16a34a', NTK: '#fde047', OTHERS: '#6b7280', NOTA: '#52525b',
+  DMK: '#ef4444', ADMK: '#16a34a', AIADMK: '#16a34a', INC: '#38bdf8',
   BJP: '#f97316', PMK: '#a3a3a3', VCK: '#3b82f6', CPI: '#dc2626', 'CPI(M)': '#dc2626',
   IUML: '#22c55e', DMDK: '#facc15', AMMK: '#84cc16',
 };
@@ -16,9 +17,14 @@ interface Cand {
   name: string; party: string; alliance: string; gender: string; age: number;
   assets_text: string; assets_cr: number; criminal: boolean; result: string;
 }
+interface BoothSummary {
+  total_booths: number; booth_wins: Record<string, number>;
+  party_totals: Record<string, number>; strongholds: number; swing_booths: number;
+}
 interface Con {
   ac_no: number; ac_name: string; winner_2021: string; winner_2026: string;
   flipped: boolean; electors: number; female_share: number; candidates_list?: Cand[];
+  booth_summary?: BoothSummary | null;
 }
 interface Detail {
   district: string; found: boolean; seats: number; flips: number;
@@ -28,7 +34,7 @@ interface Detail {
     avg_age: number; avg_assets_cr: number; winners_total: number;
     winners_with_criminal: number; women_winners: number;
   };
-  booth_status: { available: boolean; note: string };
+  booth_status: { available: boolean; note: string; acs_with_booths?: number; acs_total?: number; total_booths?: number };
 }
 
 export default function DistrictDetail({ district }: { district: string }) {
@@ -96,26 +102,66 @@ export default function DistrictDetail({ district }: { district: string }) {
                 </div>
               </div>
               <div className="text-[10px] text-gray-600 mt-1">
-                {(c.electors || 0).toLocaleString('en-IN')} electors · {c.female_share}% women
+                {(c.electors || 0).toLocaleString('en-IN')} electors
+                {c.female_share != null && <> · {c.female_share}% women</>}
                 {winner && <> · won by <span className="text-gray-400">{winner.name}</span>
                   {winner.criminal && <span className="ml-1 text-red-400">⚠ criminal case</span>}
                   {winner.assets_text && <span className="text-gray-500"> · {winner.assets_text}</span>}</>}
               </div>
+
+              {/* Booth-level insight (Form 20) */}
+              {c.booth_summary && (
+                <div className="mt-2.5 pt-2.5 border-t border-[#1c1c1c]">
+                  <div className="flex items-center justify-between text-[10px] mb-1.5">
+                    <span className="text-gray-400 font-medium">
+                      {c.booth_summary.total_booths} booths
+                      <span className="text-gray-600"> · Form 20</span>
+                    </span>
+                    <span className="text-gray-600">
+                      {c.booth_summary.strongholds} strongholds · {c.booth_summary.swing_booths} swing
+                    </span>
+                  </div>
+                  {/* booth-wins bar */}
+                  <div className="flex gap-0.5 h-2 rounded overflow-hidden">
+                    {Object.entries(c.booth_summary.booth_wins).map(([p, n]) => (
+                      <div key={p} title={`${p} led ${n} booths`}
+                        style={{ width: `${(n / c.booth_summary!.total_booths) * 100}%`, background: pcol(p) }} />
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-x-3 gap-y-0.5 mt-1.5 text-[10px] text-gray-500">
+                    {Object.entries(c.booth_summary.booth_wins).map(([p, n]) => (
+                      <span key={p}><span style={{ color: pcol(p) }}>●</span> {p} led {n}</span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           );
         })}
       </div>
 
-      {/* Booth-level — honest pending state */}
-      <div className="bg-[#141414] border border-dashed border-[#333] rounded-lg p-5">
-        <div className="flex items-center gap-2 text-gray-300 font-semibold text-sm mb-2">
-          <Clock size={15} className="text-amber-400" /> Booth-level analysis (Form 20)
+      {/* Booth-level status */}
+      <div className={`rounded-lg p-5 ${d.booth_status.available
+        ? 'bg-emerald-950/15 border border-emerald-800/40' : 'bg-[#141414] border border-dashed border-[#333]'}`}>
+        <div className="flex items-center gap-2 text-gray-200 font-semibold text-sm mb-2">
+          {d.booth_status.available
+            ? <MapPin size={15} className="text-emerald-400" />
+            : <Clock size={15} className="text-amber-400" />}
+          Booth-level analysis (Form 20)
         </div>
-        <p className="text-xs text-gray-500 leading-relaxed">
-          {d.booth_status.note} Every polling booth in {d.district} will appear here — turnout,
-          party-wise votes, swing booths and strongholds — sourced strictly from ECI Form 20.
-          We show real booth data only; nothing is estimated to fill the map.
-        </p>
+        {d.booth_status.available ? (
+          <p className="text-xs text-gray-400 leading-relaxed">
+            <b className="text-white">{d.booth_status.total_booths?.toLocaleString('en-IN')} booths</b> loaded
+            across <b className="text-white">{d.booth_status.acs_with_booths} of {d.booth_status.acs_total}</b> constituencies,
+            straight from ECI Form 20 — each constituency&apos;s booth-wins, strongholds and swing booths shown above.
+            Every AC&apos;s booth votes were validated against its official winner; nothing is estimated.
+            Remaining ACs load as their Form 20 is published.
+          </p>
+        ) : (
+          <p className="text-xs text-gray-500 leading-relaxed">
+            {d.booth_status.note} Sourced strictly from ECI Form 20 — real booth data only, nothing estimated.
+          </p>
+        )}
       </div>
     </div>
   );

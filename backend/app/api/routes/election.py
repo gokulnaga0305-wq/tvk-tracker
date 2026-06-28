@@ -43,6 +43,22 @@ _CREDITS = {
 }
 
 
+# 5-player focus: collapse every party into TVK / DMK+ (SPA) / ADMK+ (NDA) /
+# NTK / OTHERS so charts show the major players, not a long tail of small parties.
+_BUCKET_MAP = {
+    "TVK": "TVK", "NTK": "NTK",
+    "DMK": "DMK+", "INC": "DMK+", "VCK": "DMK+", "CPI": "DMK+", "CPI(M)": "DMK+",
+    "CPM": "DMK+", "IUML": "DMK+", "MDMK": "DMK+", "KMDK": "DMK+", "MMK": "DMK+", "MVK": "DMK+",
+    "ADMK": "ADMK+", "AIADMK": "ADMK+", "PMK": "ADMK+", "BJP": "ADMK+", "DMDK": "ADMK+",
+    "TMC(M)": "ADMK+", "PT": "ADMK+", "GKMK": "ADMK+",
+}
+PLAYER_ORDER = {"TVK": 0, "DMK+": 1, "ADMK+": 2, "NTK": 3, "OTHERS": 4}
+
+
+def bucket(party: str) -> str:
+    return _BUCKET_MAP.get((party or "").strip(), "OTHERS")
+
+
 def _all_constituencies(db) -> list[dict]:
     rows, offset = [], 0
     while True:
@@ -67,9 +83,9 @@ async def election_summary():
     for c in cons:
         w26, w21 = c.get("winner_2026"), c.get("winner_2021")
         if w26:
-            seats_2026[w26] = seats_2026.get(w26, 0) + 1
+            b = bucket(w26); seats_2026[b] = seats_2026.get(b, 0) + 1
         if w21:
-            seats_2021[w21] = seats_2021.get(w21, 0) + 1
+            b = bucket(w21); seats_2021[b] = seats_2021.get(b, 0) + 1
         if w26 and w21 and w26 != w21:
             flips += 1
         e_total  += c.get("electors") or 0
@@ -108,6 +124,80 @@ async def list_constituencies():
             "female_share": round((c.get("electors_female") or 0) / el * 100, 1) if el else None,
         })
     return out
+
+
+def _booths_for_acs(db, ac_nos: list[int]) -> dict[int, list[dict]]:
+    """All booth rows grouped by ac_no (paged past 1000)."""
+    out: dict[int, list[dict]] = {}
+    for i in range(0, len(ac_nos), 30):
+        chunk = ac_nos[i:i + 30]
+        offset = 0
+        while True:
+            batch = (db.table("election_booth_results").select("*")
+                     .in_("ac_no", chunk).range(offset, offset + 999).execute().data or [])
+            for r in batch:
+                out.setdefault(r["ac_no"], []).append(r)
+            if len(batch) < 1000:
+                break
+            offset += 1000
+    return out
+
+
+def _booth_summary(rows: list[dict]) -> dict:
+    """From per-booth-per-party rows -> AC booth insight: booth-wins by party,
+    party totals, stronghold/swing counts."""
+    booths: dict[int, dict[str, int]] = {}
+    totals: dict[int, int] = {}
+    for r in rows:
+        booths.setdefault(r["booth_no"], {})[r["party"]] = r["votes"]
+        totals[r["booth_no"]] = r.get("total_polled") or totals.get(r["booth_no"], 0)
+    booth_wins: dict[str, int] = {}
+    party_totals: dict[str, int] = {}
+    margins = []
+    for bno, pv in booths.items():
+        contest = {p: v for p, v in pv.items() if p != "NOTA"}
+        for p, v in pv.items():
+            party_totals[p] = party_totals.get(p, 0) + v
+        if not contest:
+            continue
+        win = max(contest, key=contest.get)
+        booth_wins[win] = booth_wins.get(win, 0) + 1
+        tot = totals.get(bno) or sum(contest.values())
+        srt = sorted(contest.values(), reverse=True)
+        lead = (srt[0] - (srt[1] if len(srt) > 1 else 0))
+        margins.append({"booth_no": bno, "winner": win, "lead_pct": round(lead / tot * 100, 1) if tot else 0})
+    strongholds = sum(1 for m in margins if m["lead_pct"] >= 30)
+    swing = sum(1 for m in margins if m["lead_pct"] <= 5)
+    return {
+        "total_booths": len(booths),
+        "booth_wins": dict(sorted(booth_wins.items(), key=lambda x: -x[1])),
+        "party_totals": dict(sorted(party_totals.items(), key=lambda x: -x[1])),
+        "strongholds": strongholds,   # won by 30%+ margin
+        "swing_booths": swing,        # decided by <=5%
+    }
+
+
+@router.get("/booths/{ac_no}")
+async def ac_booths(ac_no: int):
+    """Full booth-level breakdown for one AC (Form 20)."""
+    db = get_db()
+    con = (db.table("election_constituencies").select("*").eq("ac_no", ac_no).execute().data or [None])[0]
+    rows = _booths_for_acs(db, [ac_no]).get(ac_no, [])
+    if not rows:
+        return {"ac_no": ac_no, "ac_name": con and con.get("ac_name"), "available": False}
+    booths: dict[int, dict] = {}
+    for r in rows:
+        b = booths.setdefault(r["booth_no"], {"booth_no": r["booth_no"], "total": r.get("total_polled"), "parties": {}})
+        b["parties"][r["party"]] = r["votes"]
+    for b in booths.values():
+        contest = {p: v for p, v in b["parties"].items() if p != "NOTA"}
+        b["winner"] = max(contest, key=contest.get) if contest else None
+    return {
+        "ac_no": ac_no, "ac_name": con and con.get("ac_name"), "available": True,
+        "summary": _booth_summary(rows),
+        "booths": sorted(booths.values(), key=lambda x: x["booth_no"]),
+        "source": "ECI Form 20 (via OpenCity); columns validated against official winner",
+    }
 
 
 def _candidate_stats(cands: list[dict]) -> dict:
@@ -151,9 +241,15 @@ async def district_detail(district: str):
     except Exception:
         cands = []  # table not migrated yet — degrade gracefully
 
+    booths_by_ac = _booths_for_acs(db, ac_nos)
+
     for c in cons:
+        el = c.get("electors") or 0
         c["flipped"] = bool(c.get("winner_2026") and c.get("winner_2021")
                             and c["winner_2026"] != c["winner_2021"])
+        c["female_share"] = round((c.get("electors_female") or 0) / el * 100, 1) if el else None
+        brows = booths_by_ac.get(c["ac_no"])
+        c["booth_summary"] = _booth_summary(brows) if brows else None
         if cands:
             c["candidates_list"] = sorted(
                 [{k: x.get(k) for k in ("name", "party", "alliance", "gender", "age",
@@ -161,6 +257,8 @@ async def district_detail(district: str):
                  for x in cands if x.get("ac_no") == c["ac_no"]],
                 key=lambda x: (x.get("result") != "won", -(x.get("assets_cr") or 0)))
 
+    acs_with_booths = sum(1 for c in cons if c.get("booth_summary"))
+    total_booths = sum(c["booth_summary"]["total_booths"] for c in cons if c.get("booth_summary"))
     return {
         "district": cons[0]["district"],
         "found": True,
@@ -169,9 +267,14 @@ async def district_detail(district: str):
         "constituencies": sorted(cons, key=lambda c: c["ac_no"]),
         "candidate_stats": _candidate_stats(cands) if cands else None,
         "booth_status": {
-            "available": False,
-            "note": ("Booth-level (Form 20) analysis is not yet ingested for this "
-                     "district. It is the next data phase — real Form 20 only, no estimates."),
+            "available": acs_with_booths > 0,
+            "acs_with_booths": acs_with_booths,
+            "acs_total": len(cons),
+            "total_booths": total_booths,
+            "note": ("Booth-level data is sourced strictly from ECI Form 20 and validated "
+                     "against the official AC winner. ACs without it are pending Form 20."
+                     if acs_with_booths else
+                     "Booth-level (Form 20) not yet ingested for this district."),
         },
     }
 
@@ -213,7 +316,7 @@ async def district_rollup():
         a["seats"] += 1
         w = c.get("winner_2026")
         if w:
-            a["seats_2026"][w] = a["seats_2026"].get(w, 0) + 1
+            b = bucket(w); a["seats_2026"][b] = a["seats_2026"].get(b, 0) + 1
         a["electors"] += c.get("electors") or 0
         a["electors_female"] += c.get("electors_female") or 0
     for a in agg.values():
