@@ -110,6 +110,97 @@ async def list_constituencies():
     return out
 
 
+def _candidate_stats(cands: list[dict]) -> dict:
+    total = len(cands)
+    women = sum(1 for c in cands if (c.get("gender") or "").lower().startswith("f"))
+    crim = sum(1 for c in cands if c.get("criminal"))
+    ages = [c["age"] for c in cands if c.get("age")]
+    assets = [c["assets_cr"] for c in cands if c.get("assets_cr") is not None]
+    winners = [c for c in cands if c.get("result") == "won"]
+    crim_win = sum(1 for c in winners if c.get("criminal"))
+    return {
+        "candidates": total,
+        "women": women,
+        "criminal": crim,
+        "criminal_pct": round(crim / total * 100, 1) if total else None,
+        "avg_age": round(sum(ages) / len(ages), 1) if ages else None,
+        "avg_assets_cr": round(sum(assets) / len(assets), 2) if assets else None,
+        "winners_total": len(winners),
+        "winners_with_criminal": crim_win,
+        "women_winners": sum(1 for c in winners if (c.get("gender") or "").lower().startswith("f")),
+    }
+
+
+@router.get("/district/{district}")
+async def district_detail(district: str):
+    """Drill-down for one district: its constituencies + candidate insights.
+    (Booth-level / Form 20 is a separate, pending layer — see booth_status.)"""
+    db = get_db()
+    cons = [c for c in _all_constituencies(db)
+            if (c.get("district") or "").lower() == district.lower()]
+    if not cons:
+        return {"district": district, "found": False}
+    ac_nos = [c["ac_no"] for c in cons]
+
+    cands: list[dict] = []
+    try:
+        for i in range(0, len(ac_nos), 50):
+            chunk = ac_nos[i:i + 50]
+            cands.extend(db.table("election_candidates").select("*")
+                         .in_("ac_no", chunk).execute().data or [])
+    except Exception:
+        cands = []  # table not migrated yet — degrade gracefully
+
+    for c in cons:
+        c["flipped"] = bool(c.get("winner_2026") and c.get("winner_2021")
+                            and c["winner_2026"] != c["winner_2021"])
+        if cands:
+            c["candidates_list"] = sorted(
+                [{k: x.get(k) for k in ("name", "party", "alliance", "gender", "age",
+                                        "assets_text", "assets_cr", "criminal", "result")}
+                 for x in cands if x.get("ac_no") == c["ac_no"]],
+                key=lambda x: (x.get("result") != "won", -(x.get("assets_cr") or 0)))
+
+    return {
+        "district": cons[0]["district"],
+        "found": True,
+        "seats": len(cons),
+        "flips": sum(1 for c in cons if c["flipped"]),
+        "constituencies": sorted(cons, key=lambda c: c["ac_no"]),
+        "candidate_stats": _candidate_stats(cands) if cands else None,
+        "booth_status": {
+            "available": False,
+            "note": ("Booth-level (Form 20) analysis is not yet ingested for this "
+                     "district. It is the next data phase — real Form 20 only, no estimates."),
+        },
+    }
+
+
+@router.get("/candidate-insights")
+async def candidate_insights():
+    """State-level candidate highlights (winners): criminal cases, richest, women."""
+    db = get_db()
+    try:
+        winners = (db.table("election_candidates").select("*")
+                   .eq("result", "won").execute().data or [])
+    except Exception:
+        return {"available": False, "note": "election_candidates not migrated yet"}
+    if not winners:
+        return {"available": False}
+    crim = [w for w in winners if w.get("criminal")]
+    richest = sorted([w for w in winners if w.get("assets_cr")],
+                     key=lambda w: -(w["assets_cr"]))[:10]
+    return {
+        "available": True,
+        "winners": len(winners),
+        "with_criminal_cases": len(crim),
+        "criminal_pct": round(len(crim) / len(winners) * 100, 1),
+        "women_winners": sum(1 for w in winners if (w.get("gender") or "").lower().startswith("f")),
+        "richest": [{"name": w["name"], "party": w.get("party"),
+                     "assets_text": w.get("assets_text"), "ac_no": w.get("ac_no")} for w in richest],
+    }
+
+
 @router.get("/districts")
 async def district_rollup():
     """38-district rollup: seats by party 2026, electors, female share."""

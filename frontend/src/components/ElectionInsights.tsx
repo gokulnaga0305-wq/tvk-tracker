@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
-import { Vote, ArrowRightLeft, Users, TrendingDown, Search, Code2, ExternalLink } from 'lucide-react';
+import Link from 'next/link';
+import { Vote, ArrowRightLeft, Users, TrendingDown, Search, Code2, ExternalLink, ChevronRight } from 'lucide-react';
 
 const API = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
@@ -142,13 +143,17 @@ export default function ElectionInsights() {
         </div>
       </Section>
 
-      {/* District rollup */}
-      <Section title={`Districts (${dists.length}) — who leads where`}>
+      {/* District rollup — each card drills into booth/candidate detail */}
+      <Section title={`Districts (${dists.length}) — click any district to drill in`}>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
           {dists.map(d => (
-            <div key={d.district} className="bg-[#111] border border-[#222] rounded-lg p-3">
+            <Link key={d.district} href={`/election-insights/${encodeURIComponent(d.district)}`}
+              className="bg-[#111] border border-[#222] rounded-lg p-3 hover:border-orange-600/40 hover:bg-[#141414] transition-colors group">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-200 truncate">{d.district}</span>
+                <span className="text-xs font-medium text-gray-200 truncate flex items-center gap-1">
+                  {d.district}
+                  <ChevronRight size={12} className="text-gray-600 group-hover:text-orange-400 transition-colors" />
+                </span>
                 <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold text-black shrink-0"
                       style={{ background: pcol(d.lead_party) }}>{d.lead_party}</span>
               </div>
@@ -160,7 +165,7 @@ export default function ElectionInsights() {
                   <div key={p} style={{ width: `${(n / d.seats) * 100}%`, background: pcol(p) }} title={`${p}: ${n}`} />
                 ))}
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       </Section>
