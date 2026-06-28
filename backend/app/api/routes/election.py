@@ -48,12 +48,16 @@ _CREDITS = {
 
 # 5-player focus: collapse every party into TVK / DMK+ (SPA) / ADMK+ (NDA) /
 # NTK / OTHERS so charts show the major players, not a long tail of small parties.
+# 2026 alliances (per CEO TN / DMK seat-sharing): DMDK is in SPA (DMK+) this
+# time, and AMMK is in NDA (ADMK+). PT contested outside the two fronts (OTHERS).
 _BUCKET_MAP = {
     "TVK": "TVK", "NTK": "NTK",
-    "DMK": "DMK+", "INC": "DMK+", "VCK": "DMK+", "CPI": "DMK+", "CPI(M)": "DMK+",
+    # SPA / DMK+
+    "DMK": "DMK+", "INC": "DMK+", "DMDK": "DMK+", "VCK": "DMK+", "CPI": "DMK+", "CPI(M)": "DMK+",
     "CPM": "DMK+", "IUML": "DMK+", "MDMK": "DMK+", "KMDK": "DMK+", "MMK": "DMK+", "MVK": "DMK+",
-    "ADMK": "ADMK+", "AIADMK": "ADMK+", "PMK": "ADMK+", "BJP": "ADMK+", "DMDK": "ADMK+",
-    "TMC(M)": "ADMK+", "PT": "ADMK+", "GKMK": "ADMK+",
+    "MJK": "DMK+", "SDPI": "DMK+", "MPP": "DMK+", "TDK": "DMK+",
+    # NDA / ADMK+
+    "ADMK": "ADMK+", "AIADMK": "ADMK+", "PMK": "ADMK+", "BJP": "ADMK+", "AMMK": "ADMK+",
 }
 PLAYER_ORDER = {"TVK": 0, "DMK+": 1, "ADMK+": 2, "NTK": 3, "OTHERS": 4}
 

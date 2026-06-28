@@ -33,9 +33,12 @@ def _bucket(party: str) -> str:
         return "TVK"
     if "naam tamilar" in p or "naam tamizhar" in p:
         return "NTK"
-    if "anna dravida" in p or "desiya murpokku" in p or "pattali" in p or "bharatiya janata" in p:
+    # NDA / ADMK+ (AMMK = Amma Makkal Munnettra). NOTE: DMDK is SPA in 2026, below.
+    if "anna dravida" in p or "pattali" in p or "bharatiya janata" in p or "amma makkal" in p:
         return "ADMK+"
-    if p == "dravida munnetra kazhagam" or "indian national congress" in p or "viduthalai" in p or "communist" in p:
+    # SPA / DMK+ — incl. DMDK (Desiya Murpokku) which allied with DMK this election
+    if (p == "dravida munnetra kazhagam" or "desiya murpokku" in p or "indian national congress" in p
+            or "viduthalai" in p or "communist" in p or "indian union muslim" in p):
         return "DMK+"
     return "OTHERS"  # minor parties, independents, NOTA
 
