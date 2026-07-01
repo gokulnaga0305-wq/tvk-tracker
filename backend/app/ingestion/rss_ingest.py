@@ -236,6 +236,43 @@ SOURCES_RSS: list[dict[str, str]] = [
         "rss_url":      "https://timesofindia.indiatimes.com/rssfeeds/-2128833038.cms",
         "name":         "Times of India (Chennai)",
     },
+    # ---- Tamil-language accountability queries (hl=ta-IN) ------------------
+    # Coverage audit (2026-07): 96% of ingested source links were Google-News
+    # (English) + Reddit; Tamil-language local press — where a lot of
+    # district-level corruption/crime breaks FIRST — was barely represented.
+    # These 5 Tamil-script Google-News queries widen the net into Tamil outlets
+    # (Dinamalar, Dinakaran, Polimer, Sun News, etc.). Each returns 55-100 items;
+    # the relevance gate + AI extraction still filter non-TN / routine items.
+    {
+        "source_label": "rss_gnews_corruption_ta",
+        "tier":         "regional_press",
+        "rss_url":      "https://news.google.com/rss/search?q=%E0%AE%A4%E0%AE%AE%E0%AE%BF%E0%AE%B4%E0%AF%8D%E0%AE%A8%E0%AE%BE%E0%AE%9F%E0%AF%81%20%28%E0%AE%8A%E0%AE%B4%E0%AE%B2%E0%AF%8D%20OR%20%E0%AE%B2%E0%AE%9E%E0%AF%8D%E0%AE%9A%E0%AE%AE%E0%AF%8D%20OR%20%E0%AE%AE%E0%AF%81%E0%AE%B1%E0%AF%88%E0%AE%95%E0%AF%87%E0%AE%9F%E0%AF%81%20OR%20%E0%AE%AE%E0%AF%8B%E0%AE%9A%E0%AE%9F%E0%AE%BF%29&hl=ta-IN&gl=IN&ceid=IN:ta",
+        "name":         "Google News (TN Corruption Tamil)",
+    },
+    {
+        "source_label": "rss_gnews_drugs_ta",
+        "tier":         "regional_press",
+        "rss_url":      "https://news.google.com/rss/search?q=%E0%AE%A4%E0%AE%AE%E0%AE%BF%E0%AE%B4%E0%AF%8D%E0%AE%A8%E0%AE%BE%E0%AE%9F%E0%AF%81%20%28%E0%AE%AA%E0%AF%8B%E0%AE%A4%E0%AF%88%20OR%20%E0%AE%95%E0%AE%9E%E0%AF%8D%E0%AE%9A%E0%AE%BE%20OR%20%E0%AE%AA%E0%AF%8B%E0%AE%A4%E0%AF%88%E0%AE%AA%E0%AF%8D%E0%AE%AA%E0%AF%8A%E0%AE%B0%E0%AF%81%E0%AE%B3%E0%AF%8D%29%20%28%E0%AE%AA%E0%AE%B1%E0%AE%BF%E0%AE%AE%E0%AF%81%E0%AE%A4%E0%AE%B2%E0%AF%8D%20OR%20%E0%AE%95%E0%AF%88%E0%AE%A4%E0%AF%81%29&hl=ta-IN&gl=IN&ceid=IN:ta",
+        "name":         "Google News (TN Drugs Tamil)",
+    },
+    {
+        "source_label": "rss_gnews_tvk_govt_ta",
+        "tier":         "regional_press",
+        "rss_url":      "https://news.google.com/rss/search?q=%E0%AE%A4%E0%AE%B5%E0%AF%86%E0%AE%95%20OR%20%28%E0%AE%B5%E0%AE%BF%E0%AE%9C%E0%AE%AF%E0%AF%8D%20%E0%AE%86%E0%AE%9F%E0%AF%8D%E0%AE%9A%E0%AE%BF%29%20OR%20%28%E0%AE%A4%E0%AE%AE%E0%AE%BF%E0%AE%B4%E0%AE%95%20%E0%AE%85%E0%AE%B0%E0%AE%9A%E0%AF%81%20%E0%AE%B5%E0%AE%BF%E0%AE%9C%E0%AE%AF%E0%AF%8D%29&hl=ta-IN&gl=IN&ceid=IN:ta",
+        "name":         "Google News (TVK Govt Tamil)",
+    },
+    {
+        "source_label": "rss_gnews_civic_ta",
+        "tier":         "regional_press",
+        "rss_url":      "https://news.google.com/rss/search?q=%E0%AE%A4%E0%AE%AE%E0%AE%BF%E0%AE%B4%E0%AF%8D%E0%AE%A8%E0%AE%BE%E0%AE%9F%E0%AF%81%20%28%E0%AE%95%E0%AF%81%E0%AE%9F%E0%AE%BF%E0%AE%A8%E0%AF%80%E0%AE%B0%E0%AF%8D%20OR%20%E0%AE%95%E0%AE%B4%E0%AE%BF%E0%AE%B5%E0%AF%81%E0%AE%A8%E0%AF%80%E0%AE%B0%E0%AF%8D%20OR%20%E0%AE%95%E0%AF%81%E0%AE%AA%E0%AF%8D%E0%AE%AA%E0%AF%88%20OR%20%E0%AE%9A%E0%AE%BE%E0%AE%B2%E0%AF%88%20%E0%AE%AA%E0%AE%B3%E0%AF%8D%E0%AE%B3%E0%AE%AE%E0%AF%8D%29&hl=ta-IN&gl=IN&ceid=IN:ta",
+        "name":         "Google News (TN Civic Tamil)",
+    },
+    {
+        "source_label": "rss_gnews_womenchild_ta",
+        "tier":         "regional_press",
+        "rss_url":      "https://news.google.com/rss/search?q=%E0%AE%A4%E0%AE%AE%E0%AE%BF%E0%AE%B4%E0%AF%8D%E0%AE%A8%E0%AE%BE%E0%AE%9F%E0%AF%81%20%28%E0%AE%9A%E0%AE%BF%E0%AE%B1%E0%AF%81%E0%AE%AE%E0%AE%BF%20OR%20%E0%AE%AA%E0%AF%86%E0%AE%A3%E0%AF%8D%20OR%20%E0%AE%95%E0%AF%81%E0%AE%B4%E0%AE%A8%E0%AF%8D%E0%AE%A4%E0%AF%88%29%20%28%E0%AE%AA%E0%AE%BE%E0%AE%B2%E0%AE%BF%E0%AE%AF%E0%AE%B2%E0%AF%8D%20OR%20%E0%AE%A4%E0%AE%BE%E0%AE%95%E0%AF%8D%E0%AE%95%E0%AF%81%E0%AE%A4%E0%AE%B2%E0%AF%8D%20OR%20%E0%AE%95%E0%AE%9F%E0%AE%A4%E0%AF%8D%E0%AE%A4%E0%AE%B2%E0%AF%8D%29&hl=ta-IN&gl=IN&ceid=IN:ta",
+        "name":         "Google News (TN Women/Child Crime Tamil)",
+    },
 ]
 
 
