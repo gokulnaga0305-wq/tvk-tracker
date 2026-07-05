@@ -314,6 +314,30 @@ LOCALITY_TO_DISTRICT: dict[str, str] = {
     "ilayankudi":         "Sivaganga",
     "ilaiyankudi":        "Sivaganga",
     "kuppam":             "Krishnagiri",   # Tamil-speaking border zone, closest TN district
+    # ---- Added after 2026-07 coverage audit (real localities the mapper missed) ----
+    "kummidipundi":       "Tiruvallur",    # Gummidipoondi spelling variant
+    "gummidipundi":       "Tiruvallur",
+    "parandur":           "Kanchipuram",   # proposed airport site
+    "thiruttani":         "Tiruvallur",
+    "srivaikuntam":       "Thoothukudi",
+    "srivaikundam":       "Thoothukudi",
+    "thiruparankundram":  "Madurai",
+    "thiruparankundram":  "Madurai",
+    "ambasamudram":       "Tirunelveli",
+    "ambazamuthur":       "Tirunelveli",   # phonetic variant
+    "jayamkondam":        "Ariyalur",
+    "jayankondam":        "Ariyalur",
+    "tharapuram":         "Tiruppur",      # Dharapuram variant
+    "oosoor":             "Krishnagiri",   # Hosur variant
+    "shozhinganallur":    "Chengalpattu",
+    "sholinganallur":     "Chengalpattu",
+    "pallavaram":         "Chengalpattu",
+    "tambaram":           "Chengalpattu",
+    "vridhachalam":       "Cuddalore",
+    "vriddhachalam":      "Cuddalore",
+    "kadayanallur":       "Tenkasi",
+    "sankarankovil":      "Tenkasi",
+    "manamadurai":        "Sivaganga",
 }
 
 
