@@ -258,6 +258,13 @@ async def cron_scrape_factcheckers(
             logger.info("factcheck scrape complete: %s", result)
         except Exception as e:
             logger.error("factcheck scrape background task failed: %s", e)
+        # Newly-scraped debunks only reach the public ledger via sync — run it
+        # here so the Fact-Checks page never drifts stale between manual syncs.
+        try:
+            from app.factcheck.sync import sync_all
+            logger.info("fact_checks sync after scrape: %s", sync_all())
+        except Exception as e:
+            logger.error("fact_checks sync after scrape failed: %s", e)
 
     background_tasks.add_task(_go)
     return {"status": "queued", "max_per_source": max_per_source}
@@ -669,6 +676,12 @@ async def cron_credit_steal_sweep(
                         r["auto_marked"], r["sent_to_review"], r["ai_cleared"])
         except Exception as e:
             logger.error("credit-steal-sweep failed: %s", e)
+        # Push newly-confirmed credit-steals into the public fact-check ledger.
+        try:
+            from app.factcheck.sync import sync_all
+            logger.info("fact_checks sync after credit-steal-sweep: %s", sync_all())
+        except Exception as e:
+            logger.error("fact_checks sync after credit-steal-sweep failed: %s", e)
 
     background_tasks.add_task(_go)
     return {"status": "queued", "days": days, "use_ai": use_ai, "max_ai": max_ai}
